@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 
 namespace dbgroup::atomic::mwcas
 {
@@ -22,17 +23,27 @@ constexpr size_t kCacheLineSize = 64;
  */
 template <class T>
 union CASTargetConverter {
-  static_assert(sizeof(T) == kWordSize);
+  static_assert(sizeof(T) <= kWordSize);
   static_assert(std::is_trivially_copyable<T>::value == true);
 
   const T target_data;
   const uintptr_t converted_data;
 
-  explicit CASTargetConverter(const T target) : target_data{target} {};
+  explicit CASTargetConverter(const uintptr_t converted) : converted_data{converted} {}
 
-#if T != uintptr_t
-  explicit CASTargetConverter(const uintptr_t converted) : converted_data{converted} {};
-#endif
+  explicit CASTargetConverter(const T target) : target_data{target} {}
+};
+
+/**
+ * @brief Specialization for unsigned long type.
+ *
+ */
+template <>
+union CASTargetConverter<uint64_t> {
+  const uint64_t target_data;
+  const uintptr_t converted_data;
+
+  explicit CASTargetConverter(const uint64_t target) : target_data{target} {}
 };
 
 }  // namespace dbgroup::atomic::mwcas
