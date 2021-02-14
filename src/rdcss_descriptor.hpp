@@ -70,15 +70,15 @@ class RDCSSDescriptor
    * Public utility functions
    *##############################################################################################*/
 
-  static RDCSSField
-  PerformRDCSS(RDCSSDescriptor *desc)
+  RDCSSField
+  RDCSS()
   {
     RDCSSField loaded_word;
     do {
-      const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
-      auto old_2 = desc->old_2_;
-      desc->addr_2_->compare_exchange_weak(old_2, desc_addr);
-      loaded_word = desc->addr_2_->load();
+      const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(this), true};
+      auto old_2 = old_2_;
+      addr_2_->compare_exchange_weak(old_2, desc_addr);
+      loaded_word = addr_2_->load();
       if (loaded_word.IsRDCSSDescriptor()) {
         auto loaded_desc =
             reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetTargetData<uintptr_t>());
@@ -86,8 +86,8 @@ class RDCSSDescriptor
       }
     } while (loaded_word.IsRDCSSDescriptor());
 
-    if (loaded_word == desc->old_2_) {
-      CompleteRDCSS(desc);
+    if (loaded_word == old_2_) {
+      CompleteRDCSS(this);
     }
 
     return loaded_word;
