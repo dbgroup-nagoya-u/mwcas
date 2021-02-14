@@ -7,7 +7,7 @@
 
 namespace dbgroup::atomic::mwcas
 {
-class RDCSSTargetWordFixture : public ::testing::Test
+class RDCSSFieldFixture : public ::testing::Test
 {
  protected:
   void
@@ -25,31 +25,31 @@ class RDCSSTargetWordFixture : public ::testing::Test
  * Public utility tests
  *------------------------------------------------------------------------------------------------*/
 
-TEST_F(RDCSSTargetWordFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyInitialized)
+TEST_F(RDCSSFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyInitialized)
 {
   const auto data_1 = uint64_t{0};
-  const auto target_word_1 = RDCSSTargetWord(data_1);
+  const auto target_word_1 = RDCSSField(data_1);
 
   EXPECT_FALSE(target_word_1.IsRDCSSDescriptor());
   EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
 
   const auto data_2 = int32_t{-1};
-  const auto target_word_2 = RDCSSTargetWord(data_2);
+  const auto target_word_2 = RDCSSField(data_2);
 
   EXPECT_FALSE(target_word_2.IsRDCSSDescriptor());
   EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());
 }
 
-TEST_F(RDCSSTargetWordFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
+TEST_F(RDCSSFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
 {
   const auto data_1 = uint64_t{0};
-  const auto target_word_1 = RDCSSTargetWord(data_1, true);
+  const auto target_word_1 = RDCSSField(data_1, true);
 
   EXPECT_TRUE(target_word_1.IsRDCSSDescriptor());
   EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
 
   const auto data_2 = int32_t{-1};
-  const auto target_word_2 = RDCSSTargetWord(data_2, true);
+  const auto target_word_2 = RDCSSField(data_2, true);
 
   EXPECT_TRUE(target_word_2.IsRDCSSDescriptor());
   EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());

@@ -17,49 +17,65 @@ namespace dbgroup::atomic::mwcas
 class RDCSSDescriptor
 {
  private:
-  std::atomic<RDCSSTargetWord> *addr_1_;
+  /*################################################################################################
+   * Internal member variables
+   *##############################################################################################*/
 
-  RDCSSTargetWord old_1_;
+  std::atomic<RDCSSField> *addr_1_;
 
-  std::atomic<RDCSSTargetWord> *addr_2_;
+  RDCSSField old_1_;
 
-  RDCSSTargetWord old_2_;
+  std::atomic<RDCSSField> *addr_2_;
 
-  RDCSSTargetWord new_2_;
+  RDCSSField old_2_;
+
+  RDCSSField new_2_;
 
  public:
+  /*################################################################################################
+   * Public constructors/destructors
+   *##############################################################################################*/
+
   RDCSSDescriptor() {}
 
   ~RDCSSDescriptor() {}
 
+  /*################################################################################################
+   * Public getters/setters
+   *##############################################################################################*/
+
   template <class T>
   void
   SetFirstTarget(  //
-      const T *target_addr,
+      void *target_addr,
       const T old_target)
   {
-    addr_1_ = static_cast<RDCSSTargetWord *>(target_addr);
-    old_1_ = RDCSSTargetWord{old_target};
+    addr_1_ = static_cast<std::atomic<RDCSSField> *>(target_addr);
+    old_1_ = RDCSSField{old_target};
   }
 
   template <class T>
   void
   SetSecondTarget(  //
-      const T *target_addr,
+      void *target_addr,
       const T old_target,
       const T new_target)
   {
-    addr_2_ = static_cast<RDCSSTargetWord *>(target_addr);
-    old_2_ = RDCSSTargetWord{old_target};
-    new_2_ = RDCSSTargetWord{new_target};
+    addr_2_ = static_cast<std::atomic<RDCSSField> *>(target_addr);
+    old_2_ = RDCSSField{old_target};
+    new_2_ = RDCSSField{new_target};
   }
 
-  static RDCSSTargetWord
+  /*################################################################################################
+   * Public utility functions
+   *##############################################################################################*/
+
+  static RDCSSField
   PerformRDCSS(RDCSSDescriptor *desc)
   {
-    RDCSSTargetWord loaded_word;
+    RDCSSField loaded_word;
     do {
-      const auto desc_addr = RDCSSTargetWord{reinterpret_cast<uintptr_t>(desc), true};
+      const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
       auto old_2 = desc->old_2_;
       desc->addr_2_->compare_exchange_weak(old_2, desc_addr);
       loaded_word = desc->addr_2_->load();
@@ -80,7 +96,7 @@ class RDCSSDescriptor
   static void
   CompleteRDCSS(RDCSSDescriptor *desc)
   {
-    auto desc_addr = RDCSSTargetWord{reinterpret_cast<uintptr_t>(desc), true};
+    auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
     if (desc->addr_1_->load() == desc->old_1_) {
       desc->addr_2_->compare_exchange_weak(desc_addr, desc->new_2_);
     } else {
@@ -92,9 +108,8 @@ class RDCSSDescriptor
   static T
   ReadRDCSSField(void *addr)
   {
-    RDCSSTargetWord *target_word;
+    RDCSSField *target_word = static_cast<RDCSSField *>(addr);
     do {
-      target_word = static_cast<RDCSSTargetWord *>(addr);
       if (target_word->IsRDCSSDescriptor()) {
         auto loaded_desc =
             reinterpret_cast<RDCSSDescriptor *>(target_word->GetTargetData<uintptr_t>());

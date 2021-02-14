@@ -13,7 +13,7 @@ namespace dbgroup::atomic::mwcas
  * @brief A class to represent an RDCSS target word.
  *
  */
-class alignas(kWordSize) RDCSSTargetWord
+class alignas(kWordSize) RDCSSField
 {
  private:
   /*################################################################################################
@@ -29,10 +29,10 @@ class alignas(kWordSize) RDCSSTargetWord
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr RDCSSTargetWord() : rdcss_flag_{0}, target_bit_arr_{0} {}
+  constexpr RDCSSField() : rdcss_flag_{0}, target_bit_arr_{0} {}
 
   template <class T>
-  constexpr RDCSSTargetWord(  //
+  constexpr RDCSSField(  //
       const T target_data,
       const bool is_rdcss_descriptor = false)
       : rdcss_flag_{is_rdcss_descriptor},
@@ -40,15 +40,15 @@ class alignas(kWordSize) RDCSSTargetWord
   {
   }
 
-  ~RDCSSTargetWord() {}
+  ~RDCSSField() = default;
 
-  RDCSSTargetWord(const RDCSSTargetWord &) = default;
-  RDCSSTargetWord &operator=(const RDCSSTargetWord &obj) = default;
-  RDCSSTargetWord(RDCSSTargetWord &&) = default;
-  RDCSSTargetWord &operator=(RDCSSTargetWord &&) = default;
+  RDCSSField(const RDCSSField &) = default;
+  RDCSSField &operator=(const RDCSSField &obj) = default;
+  RDCSSField(RDCSSField &&) = default;
+  RDCSSField &operator=(RDCSSField &&) = default;
 
   constexpr bool
-  operator==(const RDCSSTargetWord &obj) const
+  operator==(const RDCSSField &obj) const
   {
     return this->rdcss_flag_ == obj.rdcss_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
   }
@@ -69,15 +69,9 @@ class alignas(kWordSize) RDCSSTargetWord
   {
     return CASTargetConverter<T>{target_bit_arr_}.target_data;
   }
-
-  constexpr uint64_t
-  GetTargetAsUInt64() const
-  {
-    return target_bit_arr_;
-  }
 };
 
 // CAS target words must be one word
-static_assert(sizeof(RDCSSTargetWord) == kWordSize);
+static_assert(sizeof(RDCSSField) == kWordSize);
 
 }  // namespace dbgroup::atomic::mwcas
