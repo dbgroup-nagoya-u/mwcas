@@ -40,4 +40,19 @@ TEST_F(RDCSSTargetWordFixture, Construct_DescriptorFlagOff_MemberVariablesCorrec
   EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());
 }
 
+TEST_F(RDCSSTargetWordFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
+{
+  const auto data_1 = uint64_t{0};
+  const auto target_word_1 = RDCSSTargetWord(data_1, true);
+
+  EXPECT_TRUE(target_word_1.IsRDCSSDescriptor());
+  EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
+
+  const auto data_2 = int32_t{-1};
+  const auto target_word_2 = RDCSSTargetWord(data_2, true);
+
+  EXPECT_TRUE(target_word_2.IsRDCSSDescriptor());
+  EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());
+}
+
 }  // namespace dbgroup::atomic::mwcas
