@@ -1,7 +1,7 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "rdcss_target_word.hpp"
+#include "rdcss_field.hpp"
 
 #include "gtest/gtest.h"
 

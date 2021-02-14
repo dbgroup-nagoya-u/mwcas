@@ -4,7 +4,7 @@
 #include "rdcss_descriptor.hpp"
 
 #include "gtest/gtest.h"
-#include "rdcss_target_word.hpp"
+#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {

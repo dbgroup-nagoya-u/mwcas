@@ -6,7 +6,7 @@
 #include <atomic>
 
 #include "common.hpp"
-#include "rdcss_target_word.hpp"
+#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
