@@ -20,14 +20,16 @@ class alignas(kWordSize) RDCSSTargetWord
    * Internal member variables
    *##############################################################################################*/
 
-  const uint64_t rdcss_flag_ : 1;
+  uint64_t rdcss_flag_ : 1;
 
-  const uintptr_t target_bit_arr_ : 63;
+  uint64_t target_bit_arr_ : 63;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
+
+  constexpr RDCSSTargetWord() : rdcss_flag_{0}, target_bit_arr_{0} {}
 
   template <class T>
   constexpr RDCSSTargetWord(  //
@@ -41,9 +43,15 @@ class alignas(kWordSize) RDCSSTargetWord
   ~RDCSSTargetWord() {}
 
   RDCSSTargetWord(const RDCSSTargetWord &) = default;
-  RDCSSTargetWord &operator=(const RDCSSTargetWord &) = default;
+  RDCSSTargetWord &operator=(const RDCSSTargetWord &obj) = default;
   RDCSSTargetWord(RDCSSTargetWord &&) = default;
   RDCSSTargetWord &operator=(RDCSSTargetWord &&) = default;
+
+  constexpr bool
+  operator==(const RDCSSTargetWord &obj) const
+  {
+    return this->rdcss_flag_ == obj.rdcss_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
+  }
 
   /*################################################################################################
    * Public getters/setters
@@ -62,8 +70,8 @@ class alignas(kWordSize) RDCSSTargetWord
     return CASTargetConverter<T>{target_bit_arr_}.target_data;
   }
 
-  constexpr uintptr_t
-  GetDescriptorAddr() const
+  constexpr uint64_t
+  GetTargetAsUInt64() const
   {
     return target_bit_arr_;
   }
@@ -71,17 +79,5 @@ class alignas(kWordSize) RDCSSTargetWord
 
 // CAS target words must be one word
 static_assert(sizeof(RDCSSTargetWord) == kWordSize);
-
-/**
- * @brief An union to convert a RDCSS target word into a std::atomic target.
- *
- */
-union alignas(kWordSize) RDCSSField {
-  RDCSSTargetWord word;
-  std::atomic_uint64_t cas_target;
-};
-
-// CAS target filed must be represented by one word
-static_assert(sizeof(RDCSSField) == kWordSize);
 
 }  // namespace dbgroup::atomic::mwcas

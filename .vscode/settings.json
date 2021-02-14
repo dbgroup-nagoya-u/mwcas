@@ -27,7 +27,9 @@
   ],
   "cSpell.words": [
     "NCAS",
-    "alignas"
+    "RDCSS",
+    "alignas",
+    "mwcas"
   ],
   "files.associations": {
     "fstream": "cpp",

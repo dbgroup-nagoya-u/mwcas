@@ -6,7 +6,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 
 namespace dbgroup::atomic::mwcas
 {
@@ -27,9 +26,9 @@ union CASTargetConverter {
   static_assert(std::is_trivially_copyable<T>::value == true);
 
   const T target_data;
-  const uintptr_t converted_data;
+  const uint64_t converted_data;
 
-  explicit CASTargetConverter(const uintptr_t converted) : converted_data{converted} {}
+  explicit CASTargetConverter(const uint64_t converted) : converted_data{converted} {}
 
   explicit CASTargetConverter(const T target) : target_data{target} {}
 };
@@ -41,7 +40,7 @@ union CASTargetConverter {
 template <>
 union CASTargetConverter<uint64_t> {
   const uint64_t target_data;
-  const uintptr_t converted_data;
+  const uint64_t converted_data;
 
   explicit CASTargetConverter(const uint64_t target) : target_data{target} {}
 };
