@@ -14,13 +14,16 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   target_include_directories(${MWCAS_TEST_TARGET} PRIVATE
     "${MWCAS_SOURCE_DIR}/src"
     "${MWCAS_SOURCE_DIR}/include"
-    "${GOOGLETEST_SOURCE_DIR}/include"
+    "${SIMPLE_GC_SOURCE_DIR}/include"
+    "${GOOGLETEST_SOURCE_DIR}/googletest/include"
   )
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
     pthread
+    simple_gc
     gtest_main
   )
   add_dependencies(${MWCAS_TEST_TARGET}
+    simple_gc
     gtest_main
   )
   add_test(NAME ${MWCAS_TEST_TARGET} COMMAND $<TARGET_FILE:${MWCAS_TEST_TARGET}>)

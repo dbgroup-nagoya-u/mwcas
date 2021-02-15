@@ -15,6 +15,10 @@ project(mwcas
 # define source directories
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(GOOGLETEST_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/googletest")
+set(SIMPLE_GC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/simple-garbage-collectors")
+
+# use self-made garbage collection
+add_subdirectory("${SIMPLE_GC_SOURCE_DIR}")
 
 # build BzTree as a header-only library
 add_library(mwcas INTERFACE)
@@ -29,9 +33,14 @@ target_compile_options(mwcas INTERFACE
 target_include_directories(mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/src"
   "${MWCAS_SOURCE_DIR}/include"
+  "${SIMPLE_GC_SOURCE_DIR}/include"
 )
 target_link_libraries(mwcas INTERFACE
   pthread
+  simple_gc
+)
+add_dependencies(mwcas
+  simple_gc
 )
 
 # build unit tests if required
