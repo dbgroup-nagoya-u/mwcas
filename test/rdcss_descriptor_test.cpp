@@ -26,6 +26,22 @@ class RDCSSDescriptorFixture : public ::testing::Test
  * Public utility tests
  *------------------------------------------------------------------------------------------------*/
 
+TEST_F(RDCSSDescriptorFixture, Construct_SetTargets_ReadInitialValue)
+{
+  const auto old_1 = size_t{1};
+  const auto old_2 = size_t{2};
+  const auto new_2 = size_t{20};
+
+  auto target_1 = RDCSSField{old_1};
+  auto target_2 = RDCSSField{old_2};
+
+  auto desc = RDCSSDescriptor{&target_1, old_1, &target_2, old_2, new_2};
+
+  const auto read_2 = RDCSSDescriptor::ReadRDCSSField<size_t>(&target_2);
+
+  EXPECT_EQ(old_2, read_2);
+}
+
 TEST_F(RDCSSDescriptorFixture, ReadRDCSSField_BeforeCAS_ReadOldValue)
 {
   const auto old_1 = size_t{1};

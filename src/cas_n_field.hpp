@@ -1,0 +1,77 @@
+// Copyright (c) Database Group, Nagoya University. All rights reserved.
+// Licensed under the MIT license.
+
+#pragma once
+
+#include <atomic>
+
+#include "common.hpp"
+
+namespace dbgroup::atomic::mwcas
+{
+/**
+ * @brief A class to represent an RDCSS target word.
+ *
+ */
+class alignas(kWordSize) CASNField
+{
+ protected:
+  /*################################################################################################
+   * Internal member variables
+   *##############################################################################################*/
+
+  uint64_t target_bit_arr_ : 62;
+
+  uint64_t mwcas_flag_ : 1;
+
+ public:
+  /*################################################################################################
+   * Public constructors/destructors
+   *##############################################################################################*/
+
+  constexpr CASNField() : target_bit_arr_{0}, mwcas_flag_{0} {}
+
+  template <class T>
+  constexpr CASNField(  //
+      const T target_data,
+      const bool is_mwcas_descriptor = false)
+      : target_bit_arr_{CASTargetConverter{target_data}.converted_data},
+        mwcas_flag_{is_mwcas_descriptor}
+  {
+  }
+
+  ~CASNField() = default;
+
+  CASNField(const CASNField &) = default;
+  CASNField &operator=(const CASNField &obj) = default;
+  CASNField(CASNField &&) = default;
+  CASNField &operator=(CASNField &&) = default;
+
+  constexpr bool
+  operator==(const CASNField &obj) const
+  {
+    return this->mwcas_flag_ == obj.mwcas_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
+  }
+
+  /*################################################################################################
+   * Public getters/setters
+   *##############################################################################################*/
+
+  constexpr bool
+  IsMwCASDescriptor() const
+  {
+    return mwcas_flag_ > 0;
+  }
+
+  template <class T>
+  constexpr T
+  GetTargetData() const
+  {
+    return CASTargetConverter<T>{target_bit_arr_}.target_data;
+  }
+};
+
+// CAS target words must be one word
+static_assert(sizeof(CASNField) == kWordSize);
+
+}  // namespace dbgroup::atomic::mwcas

@@ -65,6 +65,21 @@ class RDCSSDescriptor
 
   RDCSSDescriptor() {}
 
+  template <class T1, class T2>
+  RDCSSDescriptor(  //
+      void *addr_1,
+      const T1 old_1,
+      void *addr_2,
+      const T2 old_2,
+      const T2 new_2)
+      : addr_1_{static_cast<std::atomic<RDCSSField> *>(addr_1)},
+        old_1_{old_1},
+        addr_2_{static_cast<std::atomic<RDCSSField> *>(addr_2)},
+        old_2_{old_2},
+        new_2_{new_2}
+  {
+  }
+
   ~RDCSSDescriptor() {}
 
   /*################################################################################################
