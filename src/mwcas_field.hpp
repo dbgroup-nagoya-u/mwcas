@@ -40,6 +40,8 @@ class alignas(kWordSize) MwCASField
   {
   }
 
+  constexpr MwCASField(const RDCSSField &&rdcss_field) : field_{rdcss_field} {}
+
   ~MwCASField() = default;
 
   MwCASField(const MwCASField &) = default;
@@ -51,6 +53,12 @@ class alignas(kWordSize) MwCASField
   operator==(const MwCASField &obj) const
   {
     return this->field_ == obj.field_;
+  }
+
+  constexpr bool
+  operator!=(const MwCASField &obj) const
+  {
+    return !(this->field_ == obj.field_);
   }
 
   /*################################################################################################

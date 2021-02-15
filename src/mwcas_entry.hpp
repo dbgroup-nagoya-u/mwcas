@@ -5,6 +5,7 @@
 
 #include <atomic>
 
+#include "cas_n_field.hpp"
 #include "common.hpp"
 #include "mwcas_field.hpp"
 #include "rdcss_descriptor.hpp"
@@ -17,20 +18,19 @@ namespace dbgroup::atomic::mwcas
  */
 class alignas(kCacheLineSize) MwCASEntry
 {
- private:
+ public:
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
 
-  std::atomic<MwCASField> *addr_;
+  std::atomic<MwCASField> *addr;
 
-  MwCASField old_;
+  MwCASField old_val;
 
-  MwCASField new_;
+  MwCASField new_val;
 
-  RDCSSDescriptor rdcss_desc_;
+  RDCSSDescriptor rdcss_desc;
 
- public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
@@ -39,9 +39,8 @@ class alignas(kCacheLineSize) MwCASEntry
   constexpr MwCASEntry(  //
       void *addr,
       const T old_val,
-      const T new_val,
-      RDCSSDescriptor &&rdcss_desc)
-      : addr_{addr}, old_{old_val}, new_{new_val}, rdcss_desc_{rdcss_desc}
+      const T new_val)
+      : addr{addr}, old_val{old_val}, new_val{new_val}
   {
   }
 
@@ -51,10 +50,6 @@ class alignas(kCacheLineSize) MwCASEntry
   MwCASEntry &operator=(const MwCASEntry &obj) = delete;
   MwCASEntry(MwCASEntry &&) = default;
   MwCASEntry &operator=(MwCASEntry &&) = default;
-
-  /*################################################################################################
-   * Public getters/setters
-   *##############################################################################################*/
 };
 
 static_assert(sizeof(MwCASEntry) == kCacheLineSize);

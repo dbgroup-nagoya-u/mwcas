@@ -33,27 +33,56 @@ class MwCASDescriptor
    * Public constructors/destructors
    *##############################################################################################*/
 
-  MwCASDescriptor() : status_{MwCASStatus::kUndecided} {}
+  explicit MwCASDescriptor(std::vector<MwCASEntry> &&entries)
+      : status_{MwCASStatus::kUndecided}, entries_{entries}
+  {
+    const auto desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
+    for (auto &&entry : entries_) {
+      entry.rdcss_desc =
+          RDCSSDescriptor{&status_, MwCASStatus::kUndecided, entry.addr, entry.old_val, desc_addr};
+    }
+  }
 
   ~MwCASDescriptor() = default;
 
   /*################################################################################################
-   * Public getters/setters
+   * Public utility functions
    *##############################################################################################*/
 
-  template <class T>
-  void
-  AddEntry(  //
-      void* addr,
-      const T old_val,
-      const T new_val)
+  bool
+  CASN()
   {
-    auto&& old_field = MwCASField{old_val};
-    auto&& desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
-    auto&& rdcss_desc =
-        RDCSSDescriptor{&status_, MwCASStatus::kUndecided, addr, old_field, desc_addr};
+    auto current_status = status_.load();
+    if (current_status == MwCASStatus::kUndecided) {
+      auto new_status = MwCASStatus::kSuccess;
+      for (size_t i = 0; i < entries_.size(); ++i) {
+        MwCASField expected;
+        do {
+          expected = MwCASField{entries_[i].rdcss_desc.RDCSS()};
+          if (expected.IsMwCASDescriptor()) {
+            auto desc = reinterpret_cast<MwCASDescriptor *>(expected.GetTargetData<uintptr_t>());
+            if (desc != this) {
+              desc->CASN();
+              continue;
+            }
+          }
+        } while (false);
+        if (entries_[i].old_val != expected) {
+          new_status = MwCASStatus::kFailed;
+          break;
+        }
+      }
+      status_.compare_exchange_weak(current_status, new_status);
+    }
 
-    entries_.emplace_back(MwCASEntry{addr, old_val, new_val, rdcss_desc});
+    const auto success = current_status == MwCASStatus::kSuccess;
+    const auto desc_uintptr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
+    for (auto &&entry : entries_) {
+      auto desc = desc_uintptr;
+      entry.addr->compare_exchange_weak(desc, (success) ? entry.new_val : entry.old_val);
+    }
+
+    return success;
   }
 };
 
