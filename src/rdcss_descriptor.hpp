@@ -31,6 +31,33 @@ class RDCSSDescriptor
 
   RDCSSField new_2_;
 
+  /*################################################################################################
+   * Internal utility functions
+   *##############################################################################################*/
+
+  static RDCSSField
+  CompleteRDCSS(RDCSSDescriptor *desc)
+  {
+    auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
+    if (desc->addr_1_->load() == desc->old_1_) {
+      // because the first target remains, try completion of RDCSS
+      if (desc->addr_2_->compare_exchange_weak(desc_addr, desc->new_2_)) {
+        return desc->new_2_;
+      } else {
+        // a target field has been already swapped by other threads
+        return desc_addr;
+      }
+    } else {
+      // because other threads modify the first target, abort RDCSS
+      if (desc->addr_2_->compare_exchange_weak(desc_addr, desc->old_2_)) {
+        return desc->old_2_;
+      } else {
+        // a target field has been already swapped by other threads
+        return desc_addr;
+      }
+    }
+  }
+
  public:
   /*################################################################################################
    * Public constructors/destructors
@@ -73,34 +100,21 @@ class RDCSSDescriptor
   RDCSSField
   RDCSS()
   {
-    RDCSSField loaded_word;
-    do {
-      const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(this), true};
-      auto old_2 = old_2_;
-      addr_2_->compare_exchange_weak(old_2, desc_addr);
-      loaded_word = addr_2_->load();
-      if (loaded_word.IsRDCSSDescriptor()) {
-        auto loaded_desc =
-            reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetTargetData<uintptr_t>());
-        CompleteRDCSS(loaded_desc);
-      }
-    } while (loaded_word.IsRDCSSDescriptor());
+    const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(this), true};
 
-    if (loaded_word == old_2_) {
-      CompleteRDCSS(this);
-    }
-
-    return loaded_word;
-  }
-
-  static void
-  CompleteRDCSS(RDCSSDescriptor *desc)
-  {
-    auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
-    if (desc->addr_1_->load() == desc->old_1_) {
-      desc->addr_2_->compare_exchange_weak(desc_addr, desc->new_2_);
+    // empbed a target descriptor in a corresponding address
+    auto loaded_word = old_2_;
+    if (addr_2_->compare_exchange_weak(loaded_word, desc_addr)) {
+      // if embedding succeeds, try completion of RDCSS
+      return CompleteRDCSS(this);
+    } else if (loaded_word.IsRDCSSDescriptor()) {
+      // if another descriptor is embedded, complete it first
+      auto loaded_desc =
+          reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetTargetData<uintptr_t>());
+      return CompleteRDCSS(loaded_desc);
     } else {
-      desc->addr_2_->compare_exchange_weak(desc_addr, desc->old_2_);
+      // if a target field is updated, return it
+      return loaded_word;
     }
   }
 
@@ -108,16 +122,17 @@ class RDCSSDescriptor
   static T
   ReadRDCSSField(void *addr)
   {
-    RDCSSField *target_word = static_cast<RDCSSField *>(addr);
-    do {
-      if (target_word->IsRDCSSDescriptor()) {
-        auto loaded_desc =
-            reinterpret_cast<RDCSSDescriptor *>(target_word->GetTargetData<uintptr_t>());
-        CompleteRDCSS(loaded_desc);
-      }
-    } while (target_word->IsRDCSSDescriptor());
+    // read a target address atomically
+    auto target_word = static_cast<std::atomic<RDCSSField> *>(addr)->load();
 
-    return target_word->GetTargetData<T>();
+    if (target_word.IsRDCSSDescriptor()) {
+      // if a read value is a descriptor, complete it first
+      auto loaded_desc =
+          reinterpret_cast<RDCSSDescriptor *>(target_word.GetTargetData<uintptr_t>());
+      return CompleteRDCSS(loaded_desc).GetTargetData<T>();
+    } else {
+      return target_word.GetTargetData<T>();
+    }
   }
 };
 

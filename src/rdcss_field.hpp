@@ -20,23 +20,23 @@ class alignas(kWordSize) RDCSSField
    * Internal member variables
    *##############################################################################################*/
 
-  uint64_t rdcss_flag_ : 1;
-
   uint64_t target_bit_arr_ : 63;
+
+  uint64_t rdcss_flag_ : 1;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr RDCSSField() : rdcss_flag_{0}, target_bit_arr_{0} {}
+  constexpr RDCSSField() : target_bit_arr_{0}, rdcss_flag_{0} {}
 
   template <class T>
   constexpr RDCSSField(  //
       const T target_data,
       const bool is_rdcss_descriptor = false)
-      : rdcss_flag_{is_rdcss_descriptor},
-        target_bit_arr_{CASTargetConverter{target_data}.converted_data}
+      : target_bit_arr_{CASTargetConverter{target_data}.converted_data},
+        rdcss_flag_{is_rdcss_descriptor}
   {
   }
 
