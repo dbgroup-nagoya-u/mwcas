@@ -82,6 +82,11 @@ class RDCSSDescriptor
 
   ~RDCSSDescriptor() {}
 
+  RDCSSDescriptor(const RDCSSDescriptor &) = delete;
+  RDCSSDescriptor &operator=(const RDCSSDescriptor &obj) = delete;
+  RDCSSDescriptor(RDCSSDescriptor &&) = default;
+  RDCSSDescriptor &operator=(RDCSSDescriptor &&) = default;
+
   /*################################################################################################
    * Public getters/setters
    *##############################################################################################*/

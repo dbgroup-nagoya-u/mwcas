@@ -4,59 +4,57 @@
 #pragma once
 
 #include <atomic>
+#include <vector>
 
 #include "common.hpp"
+#include "mwcas_entry.hpp"
 #include "mwcas_field.hpp"
-#include "rdcss_descriptor.hpp"
+#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
 /**
- * @brief A class to represent an RDCSS target word.
+ * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
  *
  */
-class alignas(kCacheLineSize) MwCASEntry
+class MwCASDescriptor
 {
  private:
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
 
-  std::atomic<MwCASField> *addr_;
+  std::atomic<MwCASStatus> status_;
 
-  MwCASField old_;
-
-  MwCASField new_;
-
-  RDCSSDescriptor rdcss_desc_;
+  std::vector<MwCASEntry> entries_;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  template <class T>
-  constexpr MwCASEntry(  //
-      void *addr,
-      const T old_val,
-      const T new_val,
-      RDCSSDescriptor &&rdcss_desc)
-      : addr_{addr}, old_{old_val}, new_{new_val}, rdcss_desc_{rdcss_desc}
-  {
-  }
+  MwCASDescriptor() : status_{MwCASStatus::kUndecided} {}
 
-  ~MwCASEntry() = default;
-
-  MwCASEntry(const MwCASEntry &) = delete;
-  MwCASEntry &operator=(const MwCASEntry &obj) = delete;
-  MwCASEntry(MwCASEntry &&) = default;
-  MwCASEntry &operator=(MwCASEntry &&) = default;
+  ~MwCASDescriptor() = default;
 
   /*################################################################################################
    * Public getters/setters
    *##############################################################################################*/
-};
 
-static_assert(sizeof(MwCASEntry) == kCacheLineSize);
+  template <class T>
+  void
+  AddEntry(  //
+      void* addr,
+      const T old_val,
+      const T new_val)
+  {
+    auto&& old_field = MwCASField{old_val};
+    auto&& desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
+    auto&& rdcss_desc =
+        RDCSSDescriptor{&status_, MwCASStatus::kUndecided, addr, old_field, desc_addr};
+
+    entries_.emplace_back(MwCASEntry{addr, old_val, new_val, rdcss_desc});
+  }
+};
 
 }  // namespace dbgroup::atomic::mwcas
