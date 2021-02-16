@@ -4,6 +4,7 @@
 #pragma once
 
 #include <atomic>
+#include <utility>
 
 #include "common.hpp"
 #include "rdcss_field.hpp"
@@ -35,26 +36,15 @@ class RDCSSDescriptor
    * Internal utility functions
    *##############################################################################################*/
 
-  static RDCSSField
+  static void
   CompleteRDCSS(RDCSSDescriptor *desc)
   {
-    auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
-    if (desc->addr_1_->load() == desc->old_1_) {
-      // because the first target remains, try completion of RDCSS
-      if (desc->addr_2_->compare_exchange_weak(desc_addr, desc->new_2_)) {
-        return desc->new_2_;
-      } else {
-        // a target field has been already swapped by other threads
-        return desc_addr;
-      }
-    } else {
-      // because other threads modify the first target, abort RDCSS
-      if (desc->addr_2_->compare_exchange_weak(desc_addr, desc->old_2_)) {
-        return desc->old_2_;
-      } else {
-        // a target field has been already swapped by other threads
-        return desc_addr;
-      }
+    const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
+    const auto desired = (desc->addr_1_->load() == desc->old_1_) ? desc->new_2_ : desc->old_2_;
+
+    auto expected = desc_addr;
+    while (!desc->addr_2_->compare_exchange_weak(expected, desired) && expected == desc_addr) {
+      // weak CAS may fail although it can perform
     }
   }
 
@@ -96,20 +86,27 @@ class RDCSSDescriptor
   {
     const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(this), true};
 
-    // empbed a target descriptor in a corresponding address
-    auto loaded_word = old_2_;
-    if (addr_2_->compare_exchange_weak(loaded_word, desc_addr)) {
-      // if embedding succeeds, try completion of RDCSS
-      return CompleteRDCSS(this);
-    } else if (loaded_word.IsRDCSSDescriptor()) {
+    do {
+      // empbed a target descriptor in a corresponding address
+      auto loaded_word = old_2_;
+      while (!addr_2_->compare_exchange_weak(loaded_word, desc_addr) && loaded_word == old_2_) {
+        // weak CAS may fail although it can perform
+      }
+
+      if (loaded_word == old_2_) {
+        // if embedding succeeds, try completion of RDCSS
+        CompleteRDCSS(this);
+        return loaded_word;
+      } else if (!loaded_word.IsRDCSSDescriptor()) {
+        // if a target word is updated, return it
+        return loaded_word;
+      }
+
       // if another descriptor is embedded, complete it first
       auto loaded_desc =
           reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetTargetData<uintptr_t>());
-      return CompleteRDCSS(loaded_desc);
-    } else {
-      // if a target field is updated, return it
-      return loaded_word;
-    }
+      CompleteRDCSS(loaded_desc);
+    } while (true);
   }
 
   template <class T>
@@ -117,16 +114,17 @@ class RDCSSDescriptor
   ReadRDCSSField(void *addr)
   {
     // read a target address atomically
-    auto target_word = static_cast<std::atomic<RDCSSField> *>(addr)->load();
+    auto target_addr = static_cast<std::atomic<RDCSSField> *>(addr);
+    auto target_word = target_addr->load();
 
-    if (target_word.IsRDCSSDescriptor()) {
-      // if a read value is a descriptor, complete it first
+    while (target_word.IsRDCSSDescriptor()) {
       auto loaded_desc =
           reinterpret_cast<RDCSSDescriptor *>(target_word.GetTargetData<uintptr_t>());
-      return CompleteRDCSS(loaded_desc).GetTargetData<T>();
-    } else {
-      return target_word.GetTargetData<T>();
+      CompleteRDCSS(loaded_desc);
+      target_word = target_addr->load();
     }
+
+    return target_word.GetTargetData<T>();
   }
 };
 

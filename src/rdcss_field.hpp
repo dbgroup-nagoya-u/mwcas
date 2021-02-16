@@ -53,11 +53,17 @@ class alignas(kWordSize) RDCSSField
     return this->rdcss_flag_ == obj.rdcss_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
   }
 
+  constexpr bool
+  operator!=(const RDCSSField &obj) const
+  {
+    return this->rdcss_flag_ != obj.rdcss_flag_ || this->target_bit_arr_ != obj.target_bit_arr_;
+  }
+
   /*################################################################################################
    * Public getters/setters
    *##############################################################################################*/
 
-  constexpr bool
+  bool
   IsRDCSSDescriptor() const
   {
     return rdcss_flag_ > 0;
