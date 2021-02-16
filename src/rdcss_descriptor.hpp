@@ -88,32 +88,6 @@ class RDCSSDescriptor
   RDCSSDescriptor &operator=(RDCSSDescriptor &&) = default;
 
   /*################################################################################################
-   * Public getters/setters
-   *##############################################################################################*/
-
-  template <class T>
-  void
-  SetFirstTarget(  //
-      void *target_addr,
-      const T old_target)
-  {
-    addr_1_ = static_cast<std::atomic<RDCSSField> *>(target_addr);
-    old_1_ = RDCSSField{old_target};
-  }
-
-  template <class T>
-  void
-  SetSecondTarget(  //
-      void *target_addr,
-      const T old_target,
-      const T new_target)
-  {
-    addr_2_ = static_cast<std::atomic<RDCSSField> *>(target_addr);
-    old_2_ = RDCSSField{old_target};
-    new_2_ = RDCSSField{new_target};
-  }
-
-  /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
 

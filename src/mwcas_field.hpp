@@ -36,7 +36,7 @@ class alignas(kWordSize) MwCASField
       const T target_data,
       const bool is_mwcas_descriptor = false,
       const bool is_rdcss_descriptor = false)
-      : field_{RDCSSField{MwCASField{target_data, is_mwcas_descriptor}, is_rdcss_descriptor}}
+      : field_{RDCSSField{CASNField{target_data, is_mwcas_descriptor}, is_rdcss_descriptor}}
   {
   }
 
