@@ -4,6 +4,7 @@
 #pragma once
 
 #include <atomic>
+#include <utility>
 #include <vector>
 
 #include "common.hpp"
@@ -34,12 +35,11 @@ class MwCASDescriptor
    *##############################################################################################*/
 
   explicit MwCASDescriptor(std::vector<MwCASEntry> &&entries)
-      : status_{MwCASStatus::kUndecided}, entries_{entries}
+      : status_{MwCASStatus::kUndecided}, entries_{std::move(entries)}
   {
-    const auto desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
+    const auto desc_addr = CASNField{reinterpret_cast<uintptr_t>(this), true};
     for (auto &&entry : entries_) {
-      entry.rdcss_desc =
-          RDCSSDescriptor{&status_, MwCASStatus::kUndecided, entry.addr, entry.old_val, desc_addr};
+      entry.rdcss_desc.SetMwCASDescriptorInfo(&status_, desc_addr);
     }
   }
 
@@ -77,14 +77,20 @@ class MwCASDescriptor
           break;
         }
       }
-      status_.compare_exchange_weak(current_status, new_status);
+      while (!status_.compare_exchange_weak(current_status, new_status)
+             && current_status == MwCASStatus::kSuccess) {
+        // weak CAS may fail although it can perform
+      }
     }
 
-    const auto success = current_status == MwCASStatus::kSuccess;
+    const auto success = status_ == MwCASStatus::kSuccess;
     const auto desc_uintptr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
     for (auto &&entry : entries_) {
+      const auto desired = (success) ? entry.new_val : entry.old_val;
       auto desc = desc_uintptr;
-      entry.addr->compare_exchange_weak(desc, (success) ? entry.new_val : entry.old_val);
+      while (!entry.addr->compare_exchange_weak(desc, desired) && desc == desc_uintptr) {
+        // weak CAS may fail although it can perform
+      }
     }
 
     return success;

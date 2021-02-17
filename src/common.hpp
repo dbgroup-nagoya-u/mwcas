@@ -16,9 +16,9 @@ constexpr size_t kWordSize = 8;
 constexpr size_t kCacheLineSize = 64;
 
 /// status codes of MwCAS processing
-enum MwCASStatus
+enum MwCASStatus : uint64_t
 {
-  kSuccess = 0,
+  kSuccess,
   kUndecided,
   kFailed
 };

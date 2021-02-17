@@ -38,9 +38,12 @@ class alignas(kCacheLineSize) MwCASEntry
   template <class T>
   constexpr MwCASEntry(  //
       void *addr,
-      const T old_val,
-      const T new_val)
-      : addr{static_cast<std::atomic<MwCASField> *>(addr)}, old_val{old_val}, new_val{new_val}
+      const T old_v,
+      const T new_v)
+      : addr{static_cast<std::atomic<MwCASField> *>(addr)},
+        old_val{old_v},
+        new_val{new_v},
+        rdcss_desc{MwCASStatus::kUndecided, addr, old_v}
   {
   }
 

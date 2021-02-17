@@ -70,12 +70,35 @@ class RDCSSDescriptor
   {
   }
 
+  template <class T1, class T2>
+  RDCSSDescriptor(  //
+      const T1 old_1,
+      void *addr_2,
+      const T2 old_2)
+      : old_1_{old_1}, addr_2_{static_cast<std::atomic<RDCSSField> *>(addr_2)}, old_2_{old_2}
+  {
+  }
+
   ~RDCSSDescriptor() {}
 
   RDCSSDescriptor(const RDCSSDescriptor &) = delete;
   RDCSSDescriptor &operator=(const RDCSSDescriptor &obj) = delete;
   RDCSSDescriptor(RDCSSDescriptor &&) = default;
   RDCSSDescriptor &operator=(RDCSSDescriptor &&) = default;
+
+  /*################################################################################################
+   * Public getters/setters
+   *##############################################################################################*/
+
+  template <class T>
+  void
+  SetMwCASDescriptorInfo(  //
+      void *status_addr,
+      const T desc_addr)
+  {
+    addr_1_ = static_cast<std::atomic<RDCSSField> *>(status_addr);
+    new_2_ = RDCSSField{desc_addr};
+  }
 
   /*################################################################################################
    * Public utility functions
