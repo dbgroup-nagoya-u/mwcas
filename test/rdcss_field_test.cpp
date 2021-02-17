@@ -64,8 +64,6 @@ TEST_F(RDCSSFieldFixture, EqualOp_EqualInstances_ReturnTrue)
 
   EXPECT_TRUE(target_word_1 == target_word_2);
 
-  data_1 = int32_t{10};
-  data_2 = int32_t{10};
   target_word_1 = RDCSSField(data_1, true);
   target_word_2 = RDCSSField(data_2, true);
 
@@ -98,8 +96,6 @@ TEST_F(RDCSSFieldFixture, NotEqualOp_EqualInstances_ReturnFalse)
 
   EXPECT_FALSE(target_word_1 != target_word_2);
 
-  data_1 = int32_t{10};
-  data_2 = int32_t{10};
   target_word_1 = RDCSSField(data_1, true);
   target_word_2 = RDCSSField(data_2, true);
 

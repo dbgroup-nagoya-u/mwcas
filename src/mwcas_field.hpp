@@ -58,7 +58,7 @@ class alignas(kWordSize) MwCASField
   constexpr bool
   operator!=(const MwCASField &obj) const
   {
-    return !(this->field_ == obj.field_);
+    return this->field_ != obj.field_;
   }
 
   /*################################################################################################

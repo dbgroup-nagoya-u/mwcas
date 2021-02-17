@@ -63,7 +63,7 @@ class alignas(kWordSize) RDCSSField
    * Public getters/setters
    *##############################################################################################*/
 
-  bool
+  constexpr bool
   IsRDCSSDescriptor() const
   {
     return rdcss_flag_ > 0;
