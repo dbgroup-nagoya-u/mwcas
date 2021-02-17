@@ -31,12 +31,14 @@ TEST_F(MwCASFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyIn
   const auto data_1 = uint64_t{0};
   const auto target_word_1 = MwCASField(data_1);
 
+  EXPECT_FALSE(target_word_1.IsRDCSSDescriptor());
   EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
   EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
 
   const auto data_2 = int32_t{-1};
   const auto target_word_2 = MwCASField(data_2);
 
+  EXPECT_FALSE(target_word_2.IsRDCSSDescriptor());
   EXPECT_FALSE(target_word_2.IsMwCASDescriptor());
   EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());
 }
@@ -68,6 +70,16 @@ TEST_F(MwCASFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyIni
   EXPECT_TRUE(target_word_4.IsRDCSSDescriptor());
   EXPECT_FALSE(target_word_4.IsMwCASDescriptor());
   EXPECT_EQ(data_2, target_word_4.GetTargetData<int32_t>());
+}
+
+TEST_F(MwCASFieldFixture, Construct_InputRDCSSField_MemberVariablesCorrectlyInitialized)
+{
+  const auto data_1 = uint64_t{0};
+  const auto target_word_1 = MwCASField{RDCSSField{data_1, true}};
+
+  EXPECT_TRUE(target_word_1.IsRDCSSDescriptor());
+  EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
+  EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
 }
 
 TEST_F(MwCASFieldFixture, EqualOp_EqualInstances_ReturnTrue)
