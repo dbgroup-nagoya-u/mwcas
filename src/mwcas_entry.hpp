@@ -40,7 +40,7 @@ class alignas(kCacheLineSize) MwCASEntry
       void *addr,
       const T old_val,
       const T new_val)
-      : addr{addr}, old_val{old_val}, new_val{new_val}
+      : addr{static_cast<std::atomic<MwCASField> *>(addr)}, old_val{old_val}, new_val{new_val}
   {
   }
 
