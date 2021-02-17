@@ -31,7 +31,7 @@ class MwCASManager
    * Public constructors/destructors
    *##############################################################################################*/
 
-  MwCASManager() {}
+  explicit MwCASManager(const size_t gc_interval_msec = 100) : gc_{gc_interval_msec} {}
 
   ~MwCASManager() = default;
 
@@ -47,9 +47,23 @@ class MwCASManager
     auto desc = new MwCASDescriptor{std::move(entries)};
     const auto success = desc->CASN();
 
-    gc_.AddGarbage(guard, desc);
+    gc_.AddGarbage(desc);
 
     return success;
+  }
+
+  template <class T>
+  static T
+  ReadMwCASField(const void *addr)
+  {
+    auto target_addr = const_cast<void *>(addr);
+    auto read_val = RDCSSDescriptor::ReadRDCSSField<CASNField>(target_addr);
+    while (read_val.IsMwCASDescriptor()) {
+      auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
+      desc->CASN();
+      read_val = RDCSSDescriptor::ReadRDCSSField<CASNField>(target_addr);
+    }
+    return read_val.GetTargetData<T>();
   }
 };
 
