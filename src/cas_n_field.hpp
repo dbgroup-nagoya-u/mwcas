@@ -53,6 +53,12 @@ class alignas(kWordSize) CASNField
     return this->mwcas_flag_ == obj.mwcas_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
   }
 
+  constexpr bool
+  operator!=(const CASNField &obj) const
+  {
+    return this->mwcas_flag_ != obj.mwcas_flag_ || this->target_bit_arr_ != obj.target_bit_arr_;
+  }
+
   /*################################################################################################
    * Public getters/setters
    *##############################################################################################*/

@@ -32,3 +32,4 @@ endfunction()
 # add unit tests to build targets
 ADD_MWCAS_TEST("rdcss_field_test")
 ADD_MWCAS_TEST("rdcss_descriptor_test")
+ADD_MWCAS_TEST("cas_n_field_test")
