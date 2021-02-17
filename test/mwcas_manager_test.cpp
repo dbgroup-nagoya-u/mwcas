@@ -60,4 +60,39 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
   f(0);
 }
 
+TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
+{
+  constexpr auto kLoopNum = 1000UL;
+  constexpr auto kThreadNum = 1UL;
+
+  const auto init = 9999UL;
+  auto target_1 = uint64_t{init};
+  auto target_2 = uint64_t{init};
+
+  auto f = [&manager = manager, &target_1 = target_1,
+            &target_2 = target_2](const uint64_t begin_index) {
+    for (uint64_t count = 0; count < kLoopNum; ++count) {
+      std::vector<MwCASEntry> entries;
+
+      const auto old_1 = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
+      const auto new_1 = begin_index + kThreadNum * count;
+      const auto old_2 = MwCASManager::ReadMwCASField<uint64_t>(&target_2);
+      const auto new_2 = begin_index + kThreadNum * count;
+
+      entries.emplace_back(MwCASEntry{&target_1, old_1, new_1});
+      entries.emplace_back(MwCASEntry{&target_2, old_2, new_2});
+      const auto mwcas_result = manager.MwCAS(std::move(entries));
+
+      const auto read_1 = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
+      const auto read_2 = MwCASManager::ReadMwCASField<uint64_t>(&target_2);
+
+      EXPECT_TRUE(mwcas_result);
+      EXPECT_EQ(new_1, read_1);
+      EXPECT_EQ(new_2, read_2);
+    }
+  };
+
+  f(0);
+}
+
 }  // namespace dbgroup::atomic::mwcas
