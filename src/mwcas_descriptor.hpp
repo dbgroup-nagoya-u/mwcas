@@ -45,6 +45,11 @@ class MwCASDescriptor
 
   ~MwCASDescriptor() = default;
 
+  MwCASDescriptor(const MwCASDescriptor &) = delete;
+  MwCASDescriptor &operator=(const MwCASDescriptor &obj) = delete;
+  MwCASDescriptor(MwCASDescriptor &&) = default;
+  MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
+
   /*################################################################################################
    * Public utility functions
    *##############################################################################################*/

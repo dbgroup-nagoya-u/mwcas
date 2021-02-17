@@ -35,6 +35,11 @@ class MwCASManager
 
   ~MwCASManager() = default;
 
+  MwCASManager(const MwCASManager &) = delete;
+  MwCASManager &operator=(const MwCASManager &obj) = delete;
+  MwCASManager(MwCASManager &&) = default;
+  MwCASManager &operator=(MwCASManager &&) = default;
+
   /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
@@ -46,7 +51,6 @@ class MwCASManager
 
     auto desc = new MwCASDescriptor{std::move(entries)};
     const auto success = desc->CASN();
-
     gc_.AddGarbage(desc);
 
     return success;
