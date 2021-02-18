@@ -60,6 +60,38 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
   f(0);
 }
 
+TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
+{
+  constexpr auto kLoopNum = 1000UL;
+  constexpr auto kThreadNum = 2UL;
+
+  const auto init = 9999UL;
+  auto target = uint64_t{init};
+
+  auto f = [&manager = manager, &target = target](const uint64_t begin_index) {
+    for (uint64_t count = 0; count < kLoopNum; ++count) {
+      std::vector<MwCASEntry> entries;
+
+      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto new_val = begin_index + kThreadNum * count;
+
+      entries.emplace_back(MwCASEntry{&target, old_val, new_val});
+      const auto mwcas_success = manager.MwCAS(std::move(entries));
+
+      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto expected = (mwcas_success) ? new_val : old_val;
+      const auto result_is_valid = read_val == expected || read_val % kThreadNum != begin_index;
+
+      EXPECT_TRUE(result_is_valid);
+    }
+  };
+
+  auto t1 = std::thread{f, 0};
+  auto t2 = std::thread{f, 1};
+  t1.join();
+  t2.join();
+}
+
 TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
 {
   constexpr auto kLoopNum = 1000UL;
