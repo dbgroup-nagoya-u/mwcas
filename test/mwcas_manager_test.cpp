@@ -14,6 +14,8 @@ namespace dbgroup::atomic::mwcas
 class MwCASManagerFixture : public ::testing::Test
 {
  public:
+  static constexpr auto kLoopNum = 100000UL;
+
   MwCASManager manager{1};
 
  protected:
@@ -34,7 +36,6 @@ class MwCASManagerFixture : public ::testing::Test
 
 TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
 {
-  constexpr auto kLoopNum = 1000UL;
   constexpr auto kThreadNum = 1UL;
 
   const auto init = 9999UL;
@@ -62,7 +63,6 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
 
 TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
 {
-  constexpr auto kLoopNum = 1000UL;
   constexpr auto kThreadNum = 2UL;
 
   const auto init = 9999UL;
@@ -92,9 +92,42 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
   t2.join();
 }
 
+TEST_F(MwCASManagerFixture, MwCAS_OneFieldTenThreads_ReadValidValues)
+{
+  constexpr auto kThreadNum = 10UL;
+
+  const auto init = 9999UL;
+  auto target = uint64_t{init};
+
+  auto f = [&manager = manager, &target = target](const uint64_t begin_index) {
+    for (uint64_t count = 0; count < kLoopNum; ++count) {
+      std::vector<MwCASEntry> entries;
+
+      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto new_val = begin_index + kThreadNum * count;
+
+      entries.emplace_back(MwCASEntry{&target, old_val, new_val});
+      const auto mwcas_success = manager.MwCAS(std::move(entries));
+
+      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto expected = (mwcas_success) ? new_val : old_val;
+      const auto result_is_valid = read_val == expected || read_val % kThreadNum != begin_index;
+
+      EXPECT_TRUE(result_is_valid);
+    }
+  };
+
+  std::vector<std::thread> threads;
+  for (size_t count = 0; count < kThreadNum; ++count) {
+    threads.emplace_back(std::thread{f, count});
+  }
+  for (auto &&thread : threads) {
+    thread.join();
+  }
+}
+
 TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
 {
-  constexpr auto kLoopNum = 1000UL;
   constexpr auto kThreadNum = 1UL;
 
   const auto init = 9999UL;

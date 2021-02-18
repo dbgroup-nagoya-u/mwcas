@@ -70,26 +70,29 @@ class MwCASDescriptor
               desc->CASN();
               continue;
             }
+          } else if (entries_[i].old_val != expected) {
+            new_status = MwCASStatus::kFailed;
+            goto EMBEDDING_END;
           }
         } while (false);
-        if (entries_[i].old_val != expected) {
-          new_status = MwCASStatus::kFailed;
-          break;
-        }
       }
+    EMBEDDING_END:
       while (!status_.compare_exchange_weak(current_status, new_status)
-             && current_status == MwCASStatus::kSuccess) {
+             && current_status == MwCASStatus::kUndecided) {
         // weak CAS may fail although it can perform
       }
     }
 
     const auto success = status_ == MwCASStatus::kSuccess;
-    const auto desc_uintptr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
+    const auto desc_word = MwCASField{reinterpret_cast<uintptr_t>(this), true};
     for (auto &&entry : entries_) {
       const auto desired = (success) ? entry.new_val : entry.old_val;
-      auto desc = desc_uintptr;
-      while (!entry.addr->compare_exchange_weak(desc, desired) && desc == desc_uintptr) {
+      auto desc = desc_word;
+      while (!entry.addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
         // weak CAS may fail although it can perform
+      }
+      if (success && desired == entry.old_val) {
+        int tmp = 0;
       }
     }
 
