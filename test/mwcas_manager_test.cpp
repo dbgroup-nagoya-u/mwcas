@@ -150,4 +150,50 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
   f(0);
 }
 
+TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTwoThreads_ReadValidValues)
+{
+  constexpr auto kInnerLoopNum = 100;
+  constexpr auto kOuterLoopNum = kLoopNum / kInnerLoopNum;
+  constexpr auto kThreadNum = 2UL;
+
+  auto f = [&manager = manager, &target_1 = target_1,
+            &target_2 = target_2](const uint64_t begin_index) {
+    for (uint64_t count = 0; count < kInnerLoopNum; ++count) {
+      std::vector<MwCASEntry> entries;
+
+      const auto old_1 = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
+      const auto new_1 = begin_index + kThreadNum * count;
+      const auto old_2 = MwCASManager::ReadMwCASField<uint64_t>(&target_2);
+      const auto new_2 = begin_index + kThreadNum * count;
+
+      entries.emplace_back(MwCASEntry{&target_1, old_1, new_1});
+      entries.emplace_back(MwCASEntry{&target_2, old_2, new_2});
+      const auto mwcas_success = manager.MwCAS(std::move(entries));
+
+      const auto read_1 = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
+      const auto read_2 = MwCASManager::ReadMwCASField<uint64_t>(&target_2);
+
+      const auto expected_1 = (mwcas_success) ? new_1 : old_1;
+      const auto result_1_is_valid = read_1 == expected_1 || read_1 % kThreadNum != begin_index;
+      const auto expected_2 = (mwcas_success) ? new_2 : old_2;
+      const auto result_2_is_valid = read_2 == expected_2 || read_2 % kThreadNum != begin_index;
+
+      EXPECT_TRUE(result_1_is_valid);
+      EXPECT_TRUE(result_2_is_valid);
+    }
+  };
+
+  for (size_t count = 0; count < kOuterLoopNum; ++count) {
+    auto t1 = std::thread{f, 0};
+    auto t2 = std::thread{f, 1};
+    t1.join();
+    t2.join();
+
+    const auto read_1 = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
+    const auto read_2 = MwCASManager::ReadMwCASField<uint64_t>(&target_2);
+
+    EXPECT_EQ(read_1, read_2);
+  }
+}
+
 }  // namespace dbgroup::atomic::mwcas
