@@ -15,8 +15,11 @@ class MwCASManagerFixture : public ::testing::Test
 {
  public:
   static constexpr auto kLoopNum = 100000UL;
+  static constexpr auto kInitVal = 999999UL;
 
   MwCASManager manager{1};
+  uint64_t target_1{kInitVal};
+  uint64_t target_2{kInitVal};
 
  protected:
   void
@@ -38,20 +41,17 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
 {
   constexpr auto kThreadNum = 1UL;
 
-  const auto init = 9999UL;
-  auto target = uint64_t{init};
-
-  auto f = [&manager = manager, &target = target](const uint64_t begin_index) {
+  auto f = [&manager = manager, &target_1 = target_1](const uint64_t begin_index) {
     for (uint64_t count = 0; count < kLoopNum; ++count) {
       std::vector<MwCASEntry> entries;
 
-      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
       const auto new_val = begin_index + kThreadNum * count;
 
-      entries.emplace_back(MwCASEntry{&target, old_val, new_val});
+      entries.emplace_back(MwCASEntry{&target_1, old_val, new_val});
       const auto mwcas_result = manager.MwCAS(std::move(entries));
 
-      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
 
       EXPECT_TRUE(mwcas_result);
       EXPECT_EQ(new_val, read_val);
@@ -65,20 +65,17 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
 {
   constexpr auto kThreadNum = 2UL;
 
-  const auto init = 9999UL;
-  auto target = uint64_t{init};
-
-  auto f = [&manager = manager, &target = target](const uint64_t begin_index) {
+  auto f = [&manager = manager, &target_1 = target_1](const uint64_t begin_index) {
     for (uint64_t count = 0; count < kLoopNum; ++count) {
       std::vector<MwCASEntry> entries;
 
-      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
       const auto new_val = begin_index + kThreadNum * count;
 
-      entries.emplace_back(MwCASEntry{&target, old_val, new_val});
+      entries.emplace_back(MwCASEntry{&target_1, old_val, new_val});
       const auto mwcas_success = manager.MwCAS(std::move(entries));
 
-      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
       const auto expected = (mwcas_success) ? new_val : old_val;
       const auto result_is_valid = read_val == expected || read_val % kThreadNum != begin_index;
 
@@ -96,20 +93,17 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTenThreads_ReadValidValues)
 {
   constexpr auto kThreadNum = 10UL;
 
-  const auto init = 9999UL;
-  auto target = uint64_t{init};
-
-  auto f = [&manager = manager, &target = target](const uint64_t begin_index) {
+  auto f = [&manager = manager, &target_1 = target_1](const uint64_t begin_index) {
     for (uint64_t count = 0; count < kLoopNum; ++count) {
       std::vector<MwCASEntry> entries;
 
-      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto old_val = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
       const auto new_val = begin_index + kThreadNum * count;
 
-      entries.emplace_back(MwCASEntry{&target, old_val, new_val});
+      entries.emplace_back(MwCASEntry{&target_1, old_val, new_val});
       const auto mwcas_success = manager.MwCAS(std::move(entries));
 
-      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target);
+      const auto read_val = MwCASManager::ReadMwCASField<uint64_t>(&target_1);
       const auto expected = (mwcas_success) ? new_val : old_val;
       const auto result_is_valid = read_val == expected || read_val % kThreadNum != begin_index;
 
@@ -129,10 +123,6 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTenThreads_ReadValidValues)
 TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
 {
   constexpr auto kThreadNum = 1UL;
-
-  const auto init = 9999UL;
-  auto target_1 = uint64_t{init};
-  auto target_2 = uint64_t{init};
 
   auto f = [&manager = manager, &target_1 = target_1,
             &target_2 = target_2](const uint64_t begin_index) {

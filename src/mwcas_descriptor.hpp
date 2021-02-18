@@ -91,9 +91,6 @@ class MwCASDescriptor
       while (!entry.addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
         // weak CAS may fail although it can perform
       }
-      if (success && desired == entry.old_val) {
-        int tmp = 0;
-      }
     }
 
     return success;
