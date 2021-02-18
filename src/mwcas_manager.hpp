@@ -57,9 +57,11 @@ class MwCASManager
   }
 
   template <class T>
-  static T
+  T
   ReadMwCASField(const void *addr)
   {
+    const auto guard = gc_.CreateEpochGuard();
+
     auto target_addr = const_cast<void *>(addr);
     auto read_val = RDCSSDescriptor::ReadRDCSSField<CASNField>(target_addr);
     while (read_val.IsMwCASDescriptor()) {
