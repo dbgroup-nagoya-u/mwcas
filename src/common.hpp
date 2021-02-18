@@ -30,7 +30,7 @@ enum MwCASStatus : uint64_t
  */
 template <class T>
 union CASTargetConverter {
-  static_assert(sizeof(T) <= kWordSize);
+  static_assert(sizeof(T) == kWordSize);
   static_assert(std::is_trivially_copyable<T>::value == true);
 
   const T target_data;

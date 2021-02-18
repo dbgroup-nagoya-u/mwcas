@@ -35,12 +35,12 @@ TEST_F(MwCASFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyIn
   EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
   EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
 
-  const auto data_2 = int32_t{-1};
+  const auto data_2 = uint64_t{10};
   const auto target_word_2 = MwCASField(data_2);
 
   EXPECT_FALSE(target_word_2.IsRDCSSDescriptor());
   EXPECT_FALSE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());
+  EXPECT_EQ(data_2, target_word_2.GetTargetData<uint64_t>());
 }
 
 TEST_F(MwCASFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
@@ -52,12 +52,12 @@ TEST_F(MwCASFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyIni
   EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
   EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
 
-  const auto data_2 = int32_t{-1};
+  const auto data_2 = uint64_t{10};
   const auto target_word_2 = MwCASField(data_2, true);
 
   EXPECT_FALSE(target_word_2.IsRDCSSDescriptor());
   EXPECT_TRUE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<int32_t>());
+  EXPECT_EQ(data_2, target_word_2.GetTargetData<uint64_t>());
 
   const auto target_word_3 = MwCASField(data_1, false, true);
 
@@ -69,7 +69,7 @@ TEST_F(MwCASFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyIni
 
   EXPECT_TRUE(target_word_4.IsRDCSSDescriptor());
   EXPECT_FALSE(target_word_4.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_4.GetTargetData<int32_t>());
+  EXPECT_EQ(data_2, target_word_4.GetTargetData<uint64_t>());
 }
 
 TEST_F(MwCASFieldFixture, Construct_InputRDCSSField_MemberVariablesCorrectlyInitialized)
@@ -84,8 +84,8 @@ TEST_F(MwCASFieldFixture, Construct_InputRDCSSField_MemberVariablesCorrectlyInit
 
 TEST_F(MwCASFieldFixture, EqualOp_EqualInstances_ReturnTrue)
 {
-  auto data_1 = int32_t{10};
-  auto data_2 = int32_t{10};
+  auto data_1 = uint64_t{10};
+  auto data_2 = uint64_t{10};
   auto target_word_1 = MwCASField(data_1);
   auto target_word_2 = MwCASField(data_2);
 
@@ -104,15 +104,15 @@ TEST_F(MwCASFieldFixture, EqualOp_EqualInstances_ReturnTrue)
 
 TEST_F(MwCASFieldFixture, EqualOp_DifferentInstances_ReturnFalse)
 {
-  auto data_1 = int32_t{10};
-  auto data_2 = int32_t{1};
+  auto data_1 = uint64_t{10};
+  auto data_2 = uint64_t{1};
   auto target_word_1 = MwCASField(data_1);
   auto target_word_2 = MwCASField(data_2);
 
   EXPECT_FALSE(target_word_1 == target_word_2);
 
-  data_1 = int32_t{10};
-  data_2 = int32_t{10};
+  data_1 = uint64_t{10};
+  data_2 = uint64_t{10};
   target_word_1 = MwCASField(data_1, true);
   target_word_2 = MwCASField(data_2, false);
 
@@ -126,8 +126,8 @@ TEST_F(MwCASFieldFixture, EqualOp_DifferentInstances_ReturnFalse)
 
 TEST_F(MwCASFieldFixture, NotEqualOp_EqualInstances_ReturnFalse)
 {
-  auto data_1 = int32_t{10};
-  auto data_2 = int32_t{10};
+  auto data_1 = uint64_t{10};
+  auto data_2 = uint64_t{10};
   auto target_word_1 = MwCASField(data_1);
   auto target_word_2 = MwCASField(data_2);
 
@@ -146,15 +146,15 @@ TEST_F(MwCASFieldFixture, NotEqualOp_EqualInstances_ReturnFalse)
 
 TEST_F(MwCASFieldFixture, NotEqualOp_DifferentInstances_ReturnTrue)
 {
-  auto data_1 = int32_t{10};
-  auto data_2 = int32_t{1};
+  auto data_1 = uint64_t{10};
+  auto data_2 = uint64_t{1};
   auto target_word_1 = MwCASField(data_1);
   auto target_word_2 = MwCASField(data_2);
 
   EXPECT_TRUE(target_word_1 != target_word_2);
 
-  data_1 = int32_t{10};
-  data_2 = int32_t{10};
+  data_1 = uint64_t{10};
+  data_2 = uint64_t{10};
   target_word_1 = MwCASField(data_1, true);
   target_word_2 = MwCASField(data_2, false);
 
