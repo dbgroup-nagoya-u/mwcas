@@ -1,0 +1,52 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  unit_test:
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Clone Main Repository
+      uses: actions/checkout@v2
+
+    - name: Clone Submodule - GC
+      uses: actions/checkout@v2
+      with:
+        repository: dbgroup-nagoya-u/simple-garbage-collectors
+        path: external/simple-garbage-collectors
+        ssh-key: ${{secrets.SSH_KEY_FOR_ACTIONS}}
+        persist-credentials: false
+
+    - name: Clone Submodule - GoogleTest
+      uses: actions/checkout@v2
+      with:
+        repository: google/googletest
+        path: external/googletest
+
+    - name: Create Build Environment
+      shell: bash
+      run: |
+        sudo apt-get install -y build-essential cmake
+        cmake -E make_directory ${{github.workspace}}/build
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DMWCAS_BUILD_TESTS=on
+
+    - name: Build
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake --build . --config $BUILD_TYPE
+
+    - name: Test
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C $BUILD_TYPE
