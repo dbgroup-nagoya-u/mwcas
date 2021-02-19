@@ -27,9 +27,12 @@
   ],
   "cSpell.words": [
     "CASN",
+    "DCMAKE",
+    "DMWCAS",
     "NCAS",
     "RDCSS",
     "alignas",
+    "ctest",
     "mwcas"
   ],
   "files.associations": {
