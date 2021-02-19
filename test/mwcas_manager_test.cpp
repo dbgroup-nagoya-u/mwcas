@@ -1,13 +1,13 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "mwcas_manager.hpp"
+#include "mwcas/mwcas_manager.hpp"
 
 #include <utility>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "mwcas_entry.hpp"
+#include "mwcas/mwcas_entry.hpp"
 
 namespace dbgroup::atomic::mwcas
 {

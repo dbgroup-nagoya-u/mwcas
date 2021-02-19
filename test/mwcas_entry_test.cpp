@@ -1,7 +1,7 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "mwcas_entry.hpp"
+#include "mwcas/mwcas_entry.hpp"
 
 #include "gtest/gtest.h"
 
