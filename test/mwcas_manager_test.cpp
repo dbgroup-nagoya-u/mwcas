@@ -20,6 +20,8 @@ class MwCASManagerFixture : public ::testing::Test
   MwCASManager manager{100};
   uint64_t target_1{kInitVal};
   uint64_t target_2{kInitVal};
+  uint64_t target_3{kInitVal};
+  uint64_t target_4{kInitVal};
 
  protected:
   void
@@ -239,6 +241,72 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTenThreads_ReadValidValues)
     const auto read_2 = manager.ReadMwCASField<uint64_t>(&target_2);
 
     EXPECT_EQ(read_1, read_2);
+  }
+}
+
+TEST_F(MwCASManagerFixture, MwCAS_FourFieldsTenThreads_ReadValidValues)
+{
+  constexpr size_t kInnerLoopNum = 1E3;
+  constexpr auto kOuterLoopNum = kLoopNum / kInnerLoopNum;
+  constexpr auto kThreadNum = 10UL;
+
+  auto f = [&](const uint64_t begin_index) {
+    for (uint64_t count = 0; count < kInnerLoopNum; ++count) {
+      std::vector<MwCASEntry> entries;
+
+      const auto old_1 = manager.ReadMwCASField<uint64_t>(&target_1);
+      const auto new_1 = begin_index + kThreadNum * count;
+      const auto old_2 = manager.ReadMwCASField<uint64_t>(&target_2);
+      const auto new_2 = begin_index + kThreadNum * count;
+      const auto old_3 = manager.ReadMwCASField<uint64_t>(&target_3);
+      const auto new_3 = begin_index + kThreadNum * count;
+      const auto old_4 = manager.ReadMwCASField<uint64_t>(&target_4);
+      const auto new_4 = begin_index + kThreadNum * count;
+
+      entries.emplace_back(&target_1, old_1, new_1);
+      entries.emplace_back(&target_2, old_2, new_2);
+      entries.emplace_back(&target_3, old_3, new_3);
+      entries.emplace_back(&target_4, old_4, new_4);
+      const auto mwcas_success = manager.MwCAS(std::move(entries));
+
+      const auto read_1 = manager.ReadMwCASField<uint64_t>(&target_1);
+      const auto read_2 = manager.ReadMwCASField<uint64_t>(&target_2);
+      const auto read_3 = manager.ReadMwCASField<uint64_t>(&target_3);
+      const auto read_4 = manager.ReadMwCASField<uint64_t>(&target_4);
+
+      const auto expected_1 = (mwcas_success) ? new_1 : old_1;
+      const auto result_1_is_valid = read_1 == expected_1 || read_1 % kThreadNum != begin_index;
+      const auto expected_2 = (mwcas_success) ? new_2 : old_2;
+      const auto result_2_is_valid = read_2 == expected_2 || read_2 % kThreadNum != begin_index;
+      const auto expected_3 = (mwcas_success) ? new_3 : old_3;
+      const auto result_3_is_valid = read_3 == expected_3 || read_3 % kThreadNum != begin_index;
+      const auto expected_4 = (mwcas_success) ? new_2 : old_2;
+      const auto result_4_is_valid = read_4 == expected_4 || read_4 % kThreadNum != begin_index;
+
+      EXPECT_TRUE(result_1_is_valid);
+      EXPECT_TRUE(result_2_is_valid);
+      EXPECT_TRUE(result_3_is_valid);
+      EXPECT_TRUE(result_4_is_valid);
+    }
+  };
+
+  for (size_t count = 0; count < kOuterLoopNum; ++count) {
+    std::vector<std::thread> threads;
+    for (size_t index = 0; index < kThreadNum; ++index) {
+      threads.emplace_back(std::thread{f, index});
+    }
+    for (auto &&thread : threads) {
+      thread.join();
+    }
+
+    const auto read_1 = manager.ReadMwCASField<uint64_t>(&target_1);
+    const auto read_2 = manager.ReadMwCASField<uint64_t>(&target_2);
+    const auto read_3 = manager.ReadMwCASField<uint64_t>(&target_3);
+    const auto read_4 = manager.ReadMwCASField<uint64_t>(&target_4);
+
+    EXPECT_EQ(read_1, read_2);
+    EXPECT_EQ(read_1, read_3);
+    EXPECT_EQ(read_1, read_4);
   }
 }
 
