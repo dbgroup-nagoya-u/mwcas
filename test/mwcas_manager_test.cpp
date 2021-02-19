@@ -14,10 +14,10 @@ namespace dbgroup::atomic::mwcas
 class MwCASManagerFixture : public ::testing::Test
 {
  public:
-  static constexpr auto kLoopNum = 100000UL;
+  static constexpr size_t kLoopNum = 1E5;
   static constexpr auto kInitVal = 999999UL;
 
-  MwCASManager manager{1};
+  MwCASManager manager{100};
   uint64_t target_1{kInitVal};
   uint64_t target_2{kInitVal};
 
@@ -151,7 +151,7 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
 
 TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTwoThreads_ReadValidValues)
 {
-  constexpr auto kInnerLoopNum = 1000;
+  constexpr size_t kInnerLoopNum = 1E3;
   constexpr auto kOuterLoopNum = kLoopNum / kInnerLoopNum;
   constexpr auto kThreadNum = 2UL;
 
@@ -196,7 +196,7 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTwoThreads_ReadValidValues)
 
 TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTenThreads_ReadValidValues)
 {
-  constexpr auto kInnerLoopNum = 1000;
+  constexpr size_t kInnerLoopNum = 1E3;
   constexpr auto kOuterLoopNum = kLoopNum / kInnerLoopNum;
   constexpr auto kThreadNum = 10UL;
 

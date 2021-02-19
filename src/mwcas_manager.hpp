@@ -31,7 +31,7 @@ class MwCASManager
    * Public constructors/destructors
    *##############################################################################################*/
 
-  explicit MwCASManager(const size_t gc_interval_msec = 100) : gc_{gc_interval_msec} {}
+  explicit MwCASManager(const size_t gc_interval_micro_sec = 1E5) : gc_{gc_interval_micro_sec} {}
 
   ~MwCASManager() = default;
 
