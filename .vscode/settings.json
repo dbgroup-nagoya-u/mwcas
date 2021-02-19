@@ -26,8 +26,14 @@
     "-whitespace/newline"
   ],
   "cSpell.words": [
+    "CASN",
+    "DCMAKE",
+    "DMWCAS",
     "NCAS",
-    "alignas"
+    "RDCSS",
+    "alignas",
+    "ctest",
+    "mwcas"
   ],
   "files.associations": {
     "fstream": "cpp",
