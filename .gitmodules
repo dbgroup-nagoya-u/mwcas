@@ -4,3 +4,4 @@
 [submodule "external/simple-garbage-collectors"]
 	path = external/simple-garbage-collectors
 	url = git@github.com:dbgroup-nagoya-u/simple-garbage-collectors.git
+	branch = main
