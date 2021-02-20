@@ -13,6 +13,8 @@
 
 namespace dbgroup::atomic::mwcas
 {
+using ::dbgroup::gc::EpochBasedGC;
+
 /**
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
  *
@@ -24,7 +26,7 @@ class MwCASManager
    * Internal member variables
    *##############################################################################################*/
 
-  gc::epoch::EpochBasedGC<MwCASDescriptor> gc_;
+  EpochBasedGC<MwCASDescriptor> gc_;
 
  public:
   /*################################################################################################

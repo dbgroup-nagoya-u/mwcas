@@ -12,6 +12,8 @@
 
 namespace dbgroup::atomic::mwcas
 {
+using ::dbgroup::gc::EpochBasedGC;
+
 class RDCSSDescriptorFixture : public ::testing::Test
 {
  protected:
@@ -65,7 +67,7 @@ TEST_F(RDCSSDescriptorFixture, ReadRDCSSField_AfterCAS_ReadNewValue)
 
 TEST_F(RDCSSDescriptorFixture, RDCSS_TwoThreads_ReturnValidValues)
 {
-  auto gc = gc::epoch::EpochBasedGC<RDCSSDescriptor>{100};
+  auto gc = EpochBasedGC<RDCSSDescriptor>{100};
 
   constexpr auto kLoopNum = 1000UL;
 
@@ -102,7 +104,7 @@ TEST_F(RDCSSDescriptorFixture, RDCSS_TwoThreads_ReturnValidValues)
 
 TEST_F(RDCSSDescriptorFixture, RDCSS_TenThreads_ReturnValidValues)
 {
-  auto gc = gc::epoch::EpochBasedGC<RDCSSDescriptor>{100};
+  auto gc = EpochBasedGC<RDCSSDescriptor>{100};
 
   constexpr auto kLoopNum = 1000UL;
   constexpr auto kThreadNum = 10UL;
