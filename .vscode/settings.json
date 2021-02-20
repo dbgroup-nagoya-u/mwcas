@@ -31,9 +31,12 @@
     "DMWCAS",
     "NCAS",
     "RDCSS",
+    "Wextra",
     "alignas",
     "ctest",
-    "mwcas"
+    "gtest",
+    "mwcas",
+    "pthread"
   ],
   "files.associations": {
     "fstream": "cpp",
