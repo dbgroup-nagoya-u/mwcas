@@ -5,10 +5,10 @@
 
 #include <atomic>
 
-#include "cas_n_field.hpp"
 #include "common.hpp"
 #include "mwcas_field.hpp"
 #include "rdcss_descriptor.hpp"
+#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
@@ -23,11 +23,11 @@ class alignas(kCacheLineSize) MwCASEntry
    * Internal member variables
    *##############################################################################################*/
 
-  std::atomic<MwCASField> *addr;
+  std::atomic<RDCSSField> *addr;
 
-  MwCASField old_val;
+  RDCSSField old_val;
 
-  MwCASField new_val;
+  RDCSSField new_val;
 
   RDCSSDescriptor rdcss_desc;
 
@@ -40,7 +40,7 @@ class alignas(kCacheLineSize) MwCASEntry
       void *addr,
       const T old_v,
       const T new_v)
-      : addr{static_cast<std::atomic<MwCASField> *>(addr)},
+      : addr{static_cast<std::atomic<RDCSSField> *>(addr)},
         old_val{old_v},
         new_val{new_v},
         rdcss_desc{MwCASStatus::kUndecided, addr, old_v}

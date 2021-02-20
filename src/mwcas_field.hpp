@@ -5,9 +5,7 @@
 
 #include <atomic>
 
-#include "cas_n_field.hpp"
 #include "common.hpp"
-#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
@@ -22,25 +20,25 @@ class alignas(kWordSize) MwCASField
    * Internal member variables
    *##############################################################################################*/
 
-  RDCSSField field_;
+  uint64_t target_bit_arr_ : 62;
+
+  uint64_t mwcas_flag_ : 1;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr MwCASField() {}
+  constexpr MwCASField() : target_bit_arr_{0}, mwcas_flag_{0} {}
 
   template <class T>
   constexpr MwCASField(  //
       const T target_data,
-      const bool is_mwcas_descriptor = false,
-      const bool is_rdcss_descriptor = false)
-      : field_{RDCSSField{CASNField{target_data, is_mwcas_descriptor}, is_rdcss_descriptor}}
+      const bool is_mwcas_descriptor = false)
+      : target_bit_arr_{CASTargetConverter{target_data}.converted_data},
+        mwcas_flag_{is_mwcas_descriptor}
   {
   }
-
-  constexpr MwCASField(const RDCSSField &&rdcss_field) : field_{rdcss_field} {}
 
   ~MwCASField() = default;
 
@@ -52,13 +50,13 @@ class alignas(kWordSize) MwCASField
   constexpr bool
   operator==(const MwCASField &obj) const
   {
-    return this->field_ == obj.field_;
+    return this->mwcas_flag_ == obj.mwcas_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
   }
 
   constexpr bool
   operator!=(const MwCASField &obj) const
   {
-    return this->field_ != obj.field_;
+    return this->mwcas_flag_ != obj.mwcas_flag_ || this->target_bit_arr_ != obj.target_bit_arr_;
   }
 
   /*################################################################################################
@@ -68,20 +66,14 @@ class alignas(kWordSize) MwCASField
   constexpr bool
   IsMwCASDescriptor() const
   {
-    return field_.GetTargetData<CASNField>().IsMwCASDescriptor();
-  }
-
-  constexpr bool
-  IsRDCSSDescriptor() const
-  {
-    return field_.IsRDCSSDescriptor();
+    return mwcas_flag_ > 0;
   }
 
   template <class T>
   constexpr T
   GetTargetData() const
   {
-    return field_.GetTargetData<CASNField>().GetTargetData<T>();
+    return CASTargetConverter<T>{target_bit_arr_}.target_data;
   }
 };
 

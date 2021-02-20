@@ -13,6 +13,8 @@
 
 namespace dbgroup::atomic::mwcas
 {
+using ::dbgroup::gc::EpochBasedGC;
+
 /**
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
  *
@@ -24,7 +26,7 @@ class MwCASManager
    * Internal member variables
    *##############################################################################################*/
 
-  gc::epoch::EpochBasedGC<MwCASDescriptor> gc_;
+  EpochBasedGC<MwCASDescriptor> gc_;
 
  public:
   /*################################################################################################
@@ -63,11 +65,11 @@ class MwCASManager
     const auto guard = gc_.CreateEpochGuard();
 
     auto target_addr = const_cast<void *>(addr);
-    auto read_val = RDCSSDescriptor::ReadRDCSSField<CASNField>(target_addr);
+    auto read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
     while (read_val.IsMwCASDescriptor()) {
       auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
       desc->CASN();
-      read_val = RDCSSDescriptor::ReadRDCSSField<CASNField>(target_addr);
+      read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
     }
     return read_val.GetTargetData<T>();
   }
