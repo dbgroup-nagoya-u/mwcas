@@ -37,7 +37,7 @@ class MwCASDescriptor
   explicit MwCASDescriptor(std::vector<MwCASEntry> &&entries)
       : status_{MwCASStatus::kUndecided}, entries_{std::move(entries)}
   {
-    const auto desc_addr = CASNField{reinterpret_cast<uintptr_t>(this), true};
+    const auto desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
     for (auto &&entry : entries_) {
       entry.rdcss_desc.SetMwCASDescriptorInfo(&status_, desc_addr);
     }
@@ -61,11 +61,12 @@ class MwCASDescriptor
     if (current_status == MwCASStatus::kUndecided) {
       auto new_status = MwCASStatus::kSuccess;
       for (size_t i = 0; i < entries_.size(); ++i) {
-        MwCASField expected;
+        RDCSSField expected;
         do {
-          expected = MwCASField{entries_[i].rdcss_desc.RDCSS()};
-          if (expected.IsMwCASDescriptor()) {
-            auto desc = reinterpret_cast<MwCASDescriptor *>(expected.GetTargetData<uintptr_t>());
+          expected = entries_[i].rdcss_desc.RDCSS();
+          if (const auto target = expected.GetTargetData<MwCASField>();
+              target.IsMwCASDescriptor()) {
+            auto desc = reinterpret_cast<MwCASDescriptor *>(target.GetTargetData<uintptr_t>());
             if (desc != this) {
               desc->CASN();
               continue;
@@ -84,7 +85,7 @@ class MwCASDescriptor
     }
 
     const auto success = status_ == MwCASStatus::kSuccess;
-    const auto desc_word = MwCASField{reinterpret_cast<uintptr_t>(this), true};
+    const auto desc_word = RDCSSField{MwCASField{reinterpret_cast<uintptr_t>(this), true}};
     for (auto &&entry : entries_) {
       const auto desired = (success) ? entry.new_val : entry.old_val;
       auto desc = desc_word;
