@@ -15,6 +15,14 @@ constexpr size_t kWordSize = 8;
 /// this library assumes that the size of one cache line is 64 bytes
 constexpr size_t kCacheLineSize = 64;
 
+#ifdef MWCAS_WORD_NUM
+/// the maximum number of target words of MwCAS
+constexpr size_t kTargetWordNum = MWCAS_WORD_NUM;
+#else
+/// the maximum number of target words of MwCAS
+constexpr size_t kTargetWordNum = 3;
+#endif
+
 /// status codes of MwCAS processing
 enum MwCASStatus : uint64_t
 {

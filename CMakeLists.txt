@@ -16,6 +16,11 @@ project(mwcas
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(SIMPLE_GC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/simple-garbage-collectors")
 
+# set compile options
+set(MWCAS_WORD_NUM "3" CACHE STRING
+  "The maximum number of target words of MwCAS."
+)
+
 # use self-made garbage collection
 add_subdirectory("${SIMPLE_GC_SOURCE_DIR}")
 
@@ -28,6 +33,9 @@ target_compile_options(mwcas INTERFACE
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Release">:"-O2 -march=native">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
+)
+target_compile_definitions(mwcas INTERFACE
+  MWCAS_WORD_NUM=${MWCAS_WORD_NUM}
 )
 target_include_directories(mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/src"

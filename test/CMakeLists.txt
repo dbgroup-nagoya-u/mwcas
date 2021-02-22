@@ -14,6 +14,9 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
   )
+  target_compile_definitions(${MWCAS_TEST_TARGET} PRIVATE
+    MWCAS_WORD_NUM=${MWCAS_WORD_NUM}
+  )
   target_include_directories(${MWCAS_TEST_TARGET} PRIVATE
     "${MWCAS_SOURCE_DIR}/src"
     "${MWCAS_SOURCE_DIR}/include"
