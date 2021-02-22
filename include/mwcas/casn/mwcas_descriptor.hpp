@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <utility>
-#include <vector>
 
 #include "common.hpp"
-#include "mwcas/mwcas_entry.hpp"
+#include "mwcas_entry.hpp"
 #include "mwcas_field.hpp"
 #include "rdcss_field.hpp"
 
@@ -18,30 +18,25 @@ namespace dbgroup::atomic::mwcas
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
  *
  */
-class MwCASDescriptor
+class alignas(kCacheLineSize) MwCASDescriptor
 {
  private:
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
 
-  std::atomic<MwCASStatus> status_;
+  std::array<MwCASEntry, kTargetWordNum> entries_;
 
-  std::vector<MwCASEntry> entries_;
+  size_t word_count_;
+
+  std::atomic<MwCASStatus> status_;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  explicit MwCASDescriptor(std::vector<MwCASEntry> &&entries)
-      : status_{MwCASStatus::kUndecided}, entries_{std::move(entries)}
-  {
-    const auto desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
-    for (auto &&entry : entries_) {
-      entry.rdcss_desc.SetMwCASDescriptorInfo(&status_, desc_addr);
-    }
-  }
+  MwCASDescriptor() : word_count_{0}, status_{MwCASStatus::kUndecided} {}
 
   ~MwCASDescriptor() = default;
 
@@ -54,13 +49,28 @@ class MwCASDescriptor
    * Public utility functions
    *##############################################################################################*/
 
+  template <class T>
+  bool
+  AddEntry(  //
+      void *addr,
+      const T old_v,
+      const T new_v)
+  {
+    if (word_count_ == kTargetWordNum) {
+      return false;
+    }
+
+    entries_[word_count_++] = MwCASEntry{addr, old_v, new_v, this, &status_};
+    return true;
+  }
+
   bool
   CASN()
   {
     auto current_status = status_.load();
     if (current_status == MwCASStatus::kUndecided) {
       auto new_status = MwCASStatus::kSuccess;
-      for (size_t i = 0; i < entries_.size(); ++i) {
+      for (size_t i = 0; i < word_count_; ++i) {
         RDCSSField expected;
         do {
           expected = entries_[i].rdcss_desc.RDCSS();
@@ -86,10 +96,10 @@ class MwCASDescriptor
 
     const auto success = status_ == MwCASStatus::kSuccess;
     const auto desc_word = RDCSSField{MwCASField{reinterpret_cast<uintptr_t>(this), true}};
-    for (auto &&entry : entries_) {
-      const auto desired = (success) ? entry.new_val : entry.old_val;
+    for (size_t index = 0; index < word_count_; ++index) {
+      const auto desired = (success) ? entries_[index].new_val : entries_[index].old_val;
       auto desc = desc_word;
-      while (!entry.addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
+      while (!entries_[index].addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
         // weak CAS may fail although it can perform
       }
     }

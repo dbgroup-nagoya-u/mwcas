@@ -7,13 +7,15 @@
 #include <utility>
 #include <vector>
 
-#include "common.hpp"
+#include "casn/mwcas_descriptor.hpp"
 #include "gc/epoch_based_gc.hpp"
-#include "mwcas_descriptor.hpp"
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic
 {
 using ::dbgroup::gc::EpochBasedGC;
+using mwcas::MwCASDescriptor;
+using mwcas::MwCASField;
+using mwcas::RDCSSDescriptor;
 
 /**
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
@@ -46,12 +48,17 @@ class MwCASManager
    * Public utility functions
    *##############################################################################################*/
 
+  MwCASDescriptor *
+  CreateMwCASDescriptor()
+  {
+    return new MwCASDescriptor{};
+  }
+
   bool
-  MwCAS(std::vector<MwCASEntry> &&entries)
+  MwCAS(MwCASDescriptor *desc)
   {
     const auto guard = gc_.CreateEpochGuard();
 
-    auto desc = new MwCASDescriptor{std::move(entries)};
     const auto success = desc->CASN();
     gc_.AddGarbage(desc);
 
@@ -75,4 +82,4 @@ class MwCASManager
   }
 };
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic

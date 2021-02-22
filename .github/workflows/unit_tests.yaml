@@ -25,12 +25,6 @@ jobs:
         ssh-key: ${{secrets.SSH_KEY_FOR_ACTIONS}}
         persist-credentials: false
 
-    - name: Clone Submodule - GoogleTest
-      uses: actions/checkout@v2
-      with:
-        repository: google/googletest
-        path: external/googletest
-
     - name: Create Build Environment
       shell: bash
       run: |

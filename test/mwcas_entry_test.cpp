@@ -1,7 +1,7 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "mwcas/mwcas_entry.hpp"
+#include "mwcas/casn/mwcas_entry.hpp"
 
 #include "gtest/gtest.h"
 
@@ -31,7 +31,7 @@ TEST_F(MwCASEntryFixture, Construct_InitialValues_MemberVariablesCorrectlyInitia
   const auto old_val = target;
   const auto new_val = uint64_t{20};
 
-  const auto entry = MwCASEntry{&target, old_val, new_val};
+  const auto entry = MwCASEntry{&target, old_val, new_val, &target, &target};
 
   EXPECT_EQ(static_cast<void*>(&target), static_cast<void*>(entry.addr));
   EXPECT_EQ(old_val, entry.old_val.GetTargetData<uint64_t>());
