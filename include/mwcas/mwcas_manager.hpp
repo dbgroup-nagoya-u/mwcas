@@ -10,7 +10,7 @@
 #include "casn/mwcas_descriptor.hpp"
 #include "gc/epoch_based_gc.hpp"
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic
 {
 using ::dbgroup::gc::EpochBasedGC;
 
@@ -25,7 +25,7 @@ class MwCASManager
    * Internal member variables
    *##############################################################################################*/
 
-  EpochBasedGC<MwCASDescriptor> gc_;
+  EpochBasedGC<mwcas::MwCASDescriptor> gc_;
 
  public:
   /*################################################################################################
@@ -46,11 +46,11 @@ class MwCASManager
    *##############################################################################################*/
 
   bool
-  MwCAS(std::vector<MwCASEntry> &&entries)
+  MwCAS(std::vector<mwcas::MwCASEntry> &&entries)
   {
     const auto guard = gc_.CreateEpochGuard();
 
-    auto desc = new MwCASDescriptor{std::move(entries)};
+    auto desc = new mwcas::MwCASDescriptor{std::move(entries)};
     const auto success = desc->CASN();
     gc_.AddGarbage(desc);
 
@@ -64,14 +64,14 @@ class MwCASManager
     const auto guard = gc_.CreateEpochGuard();
 
     auto target_addr = const_cast<void *>(addr);
-    auto read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
+    auto read_val = mwcas::RDCSSDescriptor::ReadRDCSSField<mwcas::MwCASField>(target_addr);
     while (read_val.IsMwCASDescriptor()) {
-      auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
+      auto desc = reinterpret_cast<mwcas::MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
       desc->CASN();
-      read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
+      read_val = mwcas::RDCSSDescriptor::ReadRDCSSField<mwcas::MwCASField>(target_addr);
     }
     return read_val.GetTargetData<T>();
   }
 };
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic
