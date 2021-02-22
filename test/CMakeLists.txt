@@ -1,7 +1,29 @@
-# use GoogleTest for unit tests
-find_package(GTest)
+# Download and unpack googletest at configure time
+configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+  RESULT_VARIABLE result
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
+if(result)
+  message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+endif()
+execute_process(COMMAND ${CMAKE_COMMAND} --build .
+  RESULT_VARIABLE result
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
+if(result)
+  message(FATAL_ERROR "Build step for googletest failed: ${result}")
+endif()
 
-  # define function to add unit tests in the same format
+# Prevent overriding the parent project's compiler/linker
+# settings on Windows
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+# Add googletest directly to our build. This defines
+# the gtest and gtest_main targets.
+add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
+                 ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
+                 EXCLUDE_FROM_ALL)
+
+# define function to add unit tests in the same format
 function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   add_executable(${MWCAS_TEST_TARGET}
     "${CMAKE_CURRENT_SOURCE_DIR}/${MWCAS_TEST_TARGET}.cpp"
@@ -26,7 +48,7 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
     pthread
     simple_gc
-    GTest::gtest_main
+    gtest_main
   )
   add_dependencies(${MWCAS_TEST_TARGET}
     simple_gc
