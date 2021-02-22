@@ -1,8 +1,9 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
+#include "mwcas/casn/mwcas_field.hpp"
+
 #include "gtest/gtest.h"
-#include "mwcas_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {

@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "common.hpp"
-#include "mwcas/mwcas_entry.hpp"
+#include "mwcas_entry.hpp"
 #include "mwcas_field.hpp"
 #include "rdcss_field.hpp"
 

@@ -1,14 +1,13 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "rdcss_descriptor.hpp"
+#include "mwcas/casn/rdcss_descriptor.hpp"
 
 #include <thread>
 #include <vector>
 
 #include "gc/epoch_based_gc.hpp"
 #include "gtest/gtest.h"
-#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {

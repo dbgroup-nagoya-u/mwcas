@@ -38,7 +38,6 @@ target_compile_definitions(mwcas INTERFACE
   MWCAS_WORD_NUM=${MWCAS_WORD_NUM}
 )
 target_include_directories(mwcas INTERFACE
-  "${MWCAS_SOURCE_DIR}/src"
   "${MWCAS_SOURCE_DIR}/include"
 )
 target_link_libraries(mwcas INTERFACE

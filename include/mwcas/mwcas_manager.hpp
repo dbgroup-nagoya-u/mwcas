@@ -7,9 +7,8 @@
 #include <utility>
 #include <vector>
 
-#include "common.hpp"
+#include "casn/mwcas_descriptor.hpp"
 #include "gc/epoch_based_gc.hpp"
-#include "mwcas_descriptor.hpp"
 
 namespace dbgroup::atomic::mwcas
 {

@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "mwcas/mwcas_entry.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
