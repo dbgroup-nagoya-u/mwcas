@@ -17,7 +17,7 @@ set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(SIMPLE_GC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/simple-garbage-collectors")
 
 # set compile options
-set(MWCAS_WORD_NUM "3" CACHE STRING
+set(MWCAS_WORD_NUM "4" CACHE STRING
   "The maximum number of target words of MwCAS."
 )
 

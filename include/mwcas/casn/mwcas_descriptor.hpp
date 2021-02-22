@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <utility>
-#include <vector>
 
 #include "common.hpp"
 #include "mwcas_entry.hpp"
@@ -70,7 +70,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     auto current_status = status_.load();
     if (current_status == MwCASStatus::kUndecided) {
       auto new_status = MwCASStatus::kSuccess;
-      for (size_t i = 0; i < entries_.size(); ++i) {
+      for (size_t i = 0; i < word_count_; ++i) {
         RDCSSField expected;
         do {
           expected = entries_[i].rdcss_desc.RDCSS();
@@ -96,10 +96,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     const auto success = status_ == MwCASStatus::kSuccess;
     const auto desc_word = RDCSSField{MwCASField{reinterpret_cast<uintptr_t>(this), true}};
-    for (auto &&entry : entries_) {
-      const auto desired = (success) ? entry.new_val : entry.old_val;
+    for (size_t index = 0; index < word_count_; ++index) {
+      const auto desired = (success) ? entries_[index].new_val : entries_[index].old_val;
       auto desc = desc_word;
-      while (!entry.addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
+      while (!entries_[index].addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
         // weak CAS may fail although it can perform
       }
     }

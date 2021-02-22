@@ -48,7 +48,7 @@ class alignas(kCacheLineSize) MwCASEntry
         old_val{old_v},
         new_val{new_v},
         rdcss_desc{status_addr, MwCASStatus::kUndecided, addr, old_v,
-                   reinterpret_cast<uintptr_t>(desc_addr)}
+                   MwCASField{reinterpret_cast<uintptr_t>(desc_addr), true}}
   {
   }
 
