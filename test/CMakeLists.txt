@@ -1,4 +1,7 @@
-# define function to add unit tests in the same format
+# use GoogleTest for unit tests
+find_package(GTest)
+
+  # define function to add unit tests in the same format
 function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   add_executable(${MWCAS_TEST_TARGET}
     "${CMAKE_CURRENT_SOURCE_DIR}/${MWCAS_TEST_TARGET}.cpp"
@@ -20,11 +23,10 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
     pthread
     simple_gc
-    gtest_main
+    GTest::gtest_main
   )
   add_dependencies(${MWCAS_TEST_TARGET}
     simple_gc
-    gtest_main
   )
   add_test(NAME ${MWCAS_TEST_TARGET} COMMAND $<TARGET_FILE:${MWCAS_TEST_TARGET}>)
 endfunction()

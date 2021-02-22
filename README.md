@@ -13,7 +13,7 @@ Note: this library is a header only. You can use this as just a submodule.
 ### Prerequisites
 
 ```bash
-sudo apt update && sudo apt install -y build-essential cmake
+sudo apt update && sudo apt install -y build-essential cmake googletest
 ```
 
 ### Build Options

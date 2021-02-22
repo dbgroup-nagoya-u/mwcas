@@ -25,16 +25,10 @@ jobs:
         ssh-key: ${{secrets.SSH_KEY_FOR_ACTIONS}}
         persist-credentials: false
 
-    - name: Clone Submodule - GoogleTest
-      uses: actions/checkout@v2
-      with:
-        repository: google/googletest
-        path: external/googletest
-
     - name: Create Build Environment
       shell: bash
       run: |
-        sudo apt-get install -y build-essential cmake
+        sudo apt-get install -y build-essential cmake googletest
         cmake -E make_directory ${{github.workspace}}/build
     - name: Configure CMake
       shell: bash

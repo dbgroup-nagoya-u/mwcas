@@ -14,13 +14,12 @@ project(mwcas
 
 # define source directories
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(GOOGLETEST_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/googletest")
 set(SIMPLE_GC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/simple-garbage-collectors")
 
 # use self-made garbage collection
 add_subdirectory("${SIMPLE_GC_SOURCE_DIR}")
 
-# build BzTree as a header-only library
+# build MwCAS as a header-only library
 add_library(mwcas INTERFACE)
 target_compile_features(mwcas INTERFACE "cxx_std_17")
 target_compile_options(mwcas INTERFACE
@@ -33,7 +32,6 @@ target_compile_options(mwcas INTERFACE
 target_include_directories(mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/src"
   "${MWCAS_SOURCE_DIR}/include"
-  "${SIMPLE_GC_SOURCE_DIR}/include"
 )
 target_link_libraries(mwcas INTERFACE
   pthread
@@ -47,8 +45,6 @@ add_dependencies(mwcas
 option(MWCAS_BUILD_TESTS, "Build unit tests for a MwCAS library" OFF)
 if(${MWCAS_BUILD_TESTS})
   enable_testing()
-  # use GoogleTest for unit tests
-  add_subdirectory("${GOOGLETEST_SOURCE_DIR}")
   # include unit tests
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/test")
 endif()

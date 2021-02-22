@@ -9,7 +9,6 @@
       "includePath": [
         "${workspaceFolder}/src",
         "${workspaceFolder}/include",
-        "${workspaceFolder}/external/googletest/googletest/include",
         "${workspaceFolder}/external/simple-garbage-collectors/src",
         "${workspaceFolder}/external/simple-garbage-collectors/include"
       ],
