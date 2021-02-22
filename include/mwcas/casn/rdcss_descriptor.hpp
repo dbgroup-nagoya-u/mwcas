@@ -70,15 +70,6 @@ class RDCSSDescriptor
   {
   }
 
-  template <class T1, class T2>
-  RDCSSDescriptor(  //
-      const T1 old_1,
-      void *addr_2,
-      const T2 old_2)
-      : old_1_{old_1}, addr_2_{static_cast<std::atomic<RDCSSField> *>(addr_2)}, old_2_{old_2}
-  {
-  }
-
   ~RDCSSDescriptor() {}
 
   RDCSSDescriptor(const RDCSSDescriptor &) = delete;

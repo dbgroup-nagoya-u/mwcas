@@ -35,15 +35,20 @@ class alignas(kCacheLineSize) MwCASEntry
    * Public constructors/destructors
    *##############################################################################################*/
 
+  MwCASEntry() {}
+
   template <class T>
   constexpr MwCASEntry(  //
       void *addr,
       const T old_v,
-      const T new_v)
+      const T new_v,
+      void *desc_addr,
+      void *status_addr)
       : addr{static_cast<std::atomic<RDCSSField> *>(addr)},
         old_val{old_v},
         new_val{new_v},
-        rdcss_desc{MwCASStatus::kUndecided, addr, old_v}
+        rdcss_desc{status_addr, MwCASStatus::kUndecided, addr, old_v,
+                   reinterpret_cast<uintptr_t>(desc_addr)}
   {
   }
 

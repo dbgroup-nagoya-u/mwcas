@@ -13,6 +13,9 @@
 namespace dbgroup::atomic
 {
 using ::dbgroup::gc::EpochBasedGC;
+using mwcas::MwCASDescriptor;
+using mwcas::MwCASField;
+using mwcas::RDCSSDescriptor;
 
 /**
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
@@ -25,7 +28,7 @@ class MwCASManager
    * Internal member variables
    *##############################################################################################*/
 
-  EpochBasedGC<mwcas::MwCASDescriptor> gc_;
+  EpochBasedGC<MwCASDescriptor> gc_;
 
  public:
   /*################################################################################################
@@ -45,12 +48,17 @@ class MwCASManager
    * Public utility functions
    *##############################################################################################*/
 
+  MwCASDescriptor *
+  CreateMwCASDescriptor()
+  {
+    return new MwCASDescriptor{};
+  }
+
   bool
-  MwCAS(std::vector<mwcas::MwCASEntry> &&entries)
+  MwCAS(MwCASDescriptor *desc)
   {
     const auto guard = gc_.CreateEpochGuard();
 
-    auto desc = new mwcas::MwCASDescriptor{std::move(entries)};
     const auto success = desc->CASN();
     gc_.AddGarbage(desc);
 
@@ -64,11 +72,11 @@ class MwCASManager
     const auto guard = gc_.CreateEpochGuard();
 
     auto target_addr = const_cast<void *>(addr);
-    auto read_val = mwcas::RDCSSDescriptor::ReadRDCSSField<mwcas::MwCASField>(target_addr);
+    auto read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
     while (read_val.IsMwCASDescriptor()) {
-      auto desc = reinterpret_cast<mwcas::MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
+      auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
       desc->CASN();
-      read_val = mwcas::RDCSSDescriptor::ReadRDCSSField<mwcas::MwCASField>(target_addr);
+      read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
     }
     return read_val.GetTargetData<T>();
   }

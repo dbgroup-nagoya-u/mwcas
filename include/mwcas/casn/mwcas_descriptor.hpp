@@ -18,30 +18,25 @@ namespace dbgroup::atomic::mwcas
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
  *
  */
-class MwCASDescriptor
+class alignas(kCacheLineSize) MwCASDescriptor
 {
  private:
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
 
-  std::atomic<MwCASStatus> status_;
+  std::array<MwCASEntry, kTargetWordNum> entries_;
 
-  std::vector<MwCASEntry> entries_;
+  size_t word_count_;
+
+  std::atomic<MwCASStatus> status_;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  explicit MwCASDescriptor(std::vector<MwCASEntry> &&entries)
-      : status_{MwCASStatus::kUndecided}, entries_{std::move(entries)}
-  {
-    const auto desc_addr = MwCASField{reinterpret_cast<uintptr_t>(this), true};
-    for (auto &&entry : entries_) {
-      entry.rdcss_desc.SetMwCASDescriptorInfo(&status_, desc_addr);
-    }
-  }
+  MwCASDescriptor() : word_count_{0}, status_{MwCASStatus::kUndecided} {}
 
   ~MwCASDescriptor() = default;
 
@@ -53,6 +48,21 @@ class MwCASDescriptor
   /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
+
+  template <class T>
+  bool
+  AddEntry(  //
+      void *addr,
+      const T old_v,
+      const T new_v)
+  {
+    if (word_count_ == kTargetWordNum) {
+      return false;
+    }
+
+    entries_[word_count_++] = MwCASEntry{addr, old_v, new_v, this, &status_};
+    return true;
+  }
 
   bool
   CASN()

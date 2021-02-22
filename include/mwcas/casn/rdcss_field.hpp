@@ -29,7 +29,7 @@ class alignas(kWordSize) RDCSSField
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr RDCSSField() : target_bit_arr_{0}, rdcss_flag_{0} {}
+  RDCSSField() {}
 
   template <class T>
   constexpr RDCSSField(  //
