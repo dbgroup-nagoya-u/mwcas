@@ -8,11 +8,11 @@
 #include <vector>
 
 #include "casn/mwcas_descriptor.hpp"
-#include "gc/epoch_based_gc.hpp"
+#include "gc/tls_based_gc.hpp"
 
 namespace dbgroup::atomic
 {
-using ::dbgroup::gc::EpochBasedGC;
+using ::dbgroup::gc::TLSBasedGC;
 using mwcas::MwCASDescriptor;
 using mwcas::MwCASField;
 using mwcas::RDCSSDescriptor;
@@ -28,14 +28,14 @@ class MwCASManager
    * Internal member variables
    *##############################################################################################*/
 
-  EpochBasedGC<MwCASDescriptor> gc_;
+  TLSBasedGC<MwCASDescriptor> gc_;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  explicit MwCASManager(const size_t gc_interval_micro_sec = 1E5) : gc_{gc_interval_micro_sec} {}
+  explicit MwCASManager(const size_t gc_interval_micro_sec = 1E3) : gc_{gc_interval_micro_sec} {}
 
   ~MwCASManager() = default;
 
@@ -78,6 +78,7 @@ class MwCASManager
       desc->CASN();
       read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(target_addr);
     }
+
     return read_val.GetTargetData<T>();
   }
 };

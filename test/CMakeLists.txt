@@ -1,4 +1,6 @@
-# Download and unpack googletest at configure time
+#--------------------------------------------------------------------------------------#
+# Copy and paste from GoogleTest doc.
+#--------------------------------------------------------------------------------------#
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
   RESULT_VARIABLE result
@@ -22,6 +24,9 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
                  EXCLUDE_FROM_ALL)
+#--------------------------------------------------------------------------------------#
+# End of copy and paste
+#--------------------------------------------------------------------------------------#
 
 # define function to add unit tests in the same format
 function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
@@ -40,10 +45,7 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
     MWCAS_WORD_NUM=${MWCAS_WORD_NUM}
   )
   target_include_directories(${MWCAS_TEST_TARGET} PRIVATE
-    "${MWCAS_SOURCE_DIR}/src"
     "${MWCAS_SOURCE_DIR}/include"
-    "${SIMPLE_GC_SOURCE_DIR}/include"
-    "${GOOGLETEST_SOURCE_DIR}/googletest/include"
   )
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
     pthread

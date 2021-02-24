@@ -3,17 +3,17 @@
 
 #include "mwcas/mwcas_manager.hpp"
 
+#include <gtest/gtest.h>
+
 #include <utility>
 #include <vector>
-
-#include "gtest/gtest.h"
 
 namespace dbgroup::atomic::mwcas
 {
 class MwCASManagerFixture : public ::testing::Test
 {
  public:
-  static constexpr size_t kLoopNum = 1E5;
+  static constexpr size_t kLoopNum = 1E4;
   static constexpr auto kInitVal = 999999UL;
 
   dbgroup::atomic::MwCASManager manager{100};
@@ -57,10 +57,12 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
 
       EXPECT_TRUE(mwcas_success);
       EXPECT_EQ(new_val, read_val);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
-  f(0);
+  std::thread{f, 0}.join();
 }
 
 TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
@@ -83,6 +85,8 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
       const auto result_is_valid = read_val == expected || read_val % kThreadNum != begin_index;
 
       EXPECT_TRUE(result_is_valid);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
@@ -112,6 +116,8 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTenThreads_ReadValidValues)
       const auto result_is_valid = read_val == expected || read_val % kThreadNum != begin_index;
 
       EXPECT_TRUE(result_is_valid);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
@@ -148,10 +154,12 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
       EXPECT_TRUE(mwcas_success);
       EXPECT_EQ(new_1, read_1);
       EXPECT_EQ(new_2, read_2);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
-  f(0);
+  std::thread{f, 0}.join();
 }
 
 TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTwoThreads_ReadValidValues)
@@ -184,6 +192,8 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTwoThreads_ReadValidValues)
 
       EXPECT_TRUE(result_1_is_valid);
       EXPECT_TRUE(result_2_is_valid);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
@@ -230,6 +240,8 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTenThreads_ReadValidValues)
 
       EXPECT_TRUE(result_1_is_valid);
       EXPECT_TRUE(result_2_is_valid);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
@@ -293,6 +305,8 @@ TEST_F(MwCASManagerFixture, MwCAS_FourFieldsTenThreads_ReadValidValues)
       EXPECT_TRUE(result_2_is_valid);
       EXPECT_TRUE(result_3_is_valid);
       EXPECT_TRUE(result_4_is_valid);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
