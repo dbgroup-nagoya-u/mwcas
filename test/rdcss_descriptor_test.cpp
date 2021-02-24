@@ -3,15 +3,16 @@
 
 #include "mwcas/casn/rdcss_descriptor.hpp"
 
+#include <gtest/gtest.h>
+
 #include <thread>
 #include <vector>
 
-#include "gc/epoch_based_gc.hpp"
-#include "gtest/gtest.h"
+#include "gc/tls_based_gc.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
-using ::dbgroup::gc::EpochBasedGC;
+using ::dbgroup::gc::TLSBasedGC;
 
 class RDCSSDescriptorFixture : public ::testing::Test
 {
@@ -66,7 +67,7 @@ TEST_F(RDCSSDescriptorFixture, ReadRDCSSField_AfterCAS_ReadNewValue)
 
 TEST_F(RDCSSDescriptorFixture, RDCSS_TwoThreads_ReturnValidValues)
 {
-  auto gc = EpochBasedGC<RDCSSDescriptor>{100};
+  auto gc = TLSBasedGC<RDCSSDescriptor>{100};
 
   constexpr auto kLoopNum = 1000UL;
 
@@ -92,6 +93,8 @@ TEST_F(RDCSSDescriptorFixture, RDCSS_TwoThreads_ReturnValidValues)
       EXPECT_TRUE(result);
 
       gc.AddGarbage(desc);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 
@@ -103,7 +106,7 @@ TEST_F(RDCSSDescriptorFixture, RDCSS_TwoThreads_ReturnValidValues)
 
 TEST_F(RDCSSDescriptorFixture, RDCSS_TenThreads_ReturnValidValues)
 {
-  auto gc = EpochBasedGC<RDCSSDescriptor>{100};
+  auto gc = TLSBasedGC<RDCSSDescriptor>{100};
 
   constexpr auto kLoopNum = 1000UL;
   constexpr auto kThreadNum = 10UL;
@@ -130,6 +133,8 @@ TEST_F(RDCSSDescriptorFixture, RDCSS_TenThreads_ReturnValidValues)
       EXPECT_TRUE(result);
 
       gc.AddGarbage(desc);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
     }
   };
 

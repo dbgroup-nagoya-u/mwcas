@@ -3,7 +3,7 @@
 
 #include "mwcas/casn/mwcas_field.hpp"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 namespace dbgroup::atomic::mwcas
 {
