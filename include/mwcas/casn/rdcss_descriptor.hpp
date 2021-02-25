@@ -106,8 +106,7 @@ class RDCSSDescriptor
       }
 
       // if another descriptor is embedded, complete it first
-      auto loaded_desc =
-          reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetTargetData<uintptr_t>());
+      auto loaded_desc = reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetDescAddr());
       CompleteRDCSS(loaded_desc);
     } while (true);
   }
@@ -121,8 +120,7 @@ class RDCSSDescriptor
     auto target_word = target_addr->load(mo_relax);
 
     while (target_word.IsRDCSSDescriptor()) {
-      auto loaded_desc =
-          reinterpret_cast<RDCSSDescriptor *>(target_word.GetTargetData<uintptr_t>());
+      auto loaded_desc = reinterpret_cast<RDCSSDescriptor *>(target_word.GetDescAddr());
       CompleteRDCSS(loaded_desc);
       target_word = target_addr->load(mo_relax);
     }

@@ -46,13 +46,13 @@ TEST_F(RDCSSFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyIni
   const auto target_word_1 = RDCSSField(data_1, true);
 
   EXPECT_TRUE(target_word_1.IsRDCSSDescriptor());
-  EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
+  EXPECT_EQ(data_1, target_word_1.GetDescAddr());
 
   const auto data_2 = uint64_t{10};
   const auto target_word_2 = RDCSSField(data_2, true);
 
   EXPECT_TRUE(target_word_2.IsRDCSSDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<uint64_t>());
+  EXPECT_EQ(data_2, target_word_2.GetDescAddr());
 }
 
 TEST_F(RDCSSFieldFixture, EqualOp_EqualInstances_ReturnTrue)
