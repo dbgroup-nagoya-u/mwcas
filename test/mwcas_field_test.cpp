@@ -46,13 +46,13 @@ TEST_F(CASNFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInit
   const auto target_word_1 = MwCASField(data_1, true);
 
   EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
-  EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
+  EXPECT_EQ(data_1, target_word_1.GetDescAddr());
 
   const auto data_2 = uint64_t{10};
   const auto target_word_2 = MwCASField(data_2, true);
 
   EXPECT_TRUE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<uint64_t>());
+  EXPECT_EQ(data_2, target_word_2.GetDescAddr());
 }
 
 TEST_F(CASNFieldFixture, EqualOp_EqualInstances_ReturnTrue)
