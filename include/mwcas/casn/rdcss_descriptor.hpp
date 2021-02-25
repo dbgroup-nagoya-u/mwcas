@@ -40,10 +40,12 @@ class RDCSSDescriptor
   CompleteRDCSS(RDCSSDescriptor *desc)
   {
     const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
-    const auto desired = (desc->addr_1_->load() == desc->old_1_) ? desc->new_2_ : desc->old_2_;
+    const auto desired =
+        (desc->addr_1_->load(mo_relax) == desc->old_1_) ? desc->new_2_ : desc->old_2_;
 
     auto expected = desc_addr;
-    while (!desc->addr_2_->compare_exchange_weak(expected, desired) && expected == desc_addr) {
+    while (!desc->addr_2_->compare_exchange_weak(expected, desired, mo_relax)
+           && expected == desc_addr) {
       // weak CAS may fail although it can perform
     }
   }
@@ -78,20 +80,6 @@ class RDCSSDescriptor
   RDCSSDescriptor &operator=(RDCSSDescriptor &&) = default;
 
   /*################################################################################################
-   * Public getters/setters
-   *##############################################################################################*/
-
-  template <class T>
-  void
-  SetMwCASDescriptorInfo(  //
-      void *status_addr,
-      const T desc_addr)
-  {
-    addr_1_ = static_cast<std::atomic<RDCSSField> *>(status_addr);
-    new_2_ = RDCSSField{desc_addr};
-  }
-
-  /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
 
@@ -103,7 +91,8 @@ class RDCSSDescriptor
     do {
       // empbed a target descriptor in a corresponding address
       auto loaded_word = old_2_;
-      while (!addr_2_->compare_exchange_weak(loaded_word, desc_addr) && loaded_word == old_2_) {
+      while (!addr_2_->compare_exchange_weak(loaded_word, desc_addr, mo_relax)
+             && loaded_word == old_2_) {
         // weak CAS may fail although it can perform
       }
 
@@ -129,13 +118,13 @@ class RDCSSDescriptor
   {
     // read a target address atomically
     auto target_addr = static_cast<std::atomic<RDCSSField> *>(addr);
-    auto target_word = target_addr->load();
+    auto target_word = target_addr->load(mo_relax);
 
     while (target_word.IsRDCSSDescriptor()) {
       auto loaded_desc =
           reinterpret_cast<RDCSSDescriptor *>(target_word.GetTargetData<uintptr_t>());
       CompleteRDCSS(loaded_desc);
-      target_word = target_addr->load();
+      target_word = target_addr->load(mo_relax);
     }
 
     return target_word.GetTargetData<T>();

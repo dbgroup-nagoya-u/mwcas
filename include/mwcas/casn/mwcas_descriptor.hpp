@@ -67,7 +67,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   bool
   CASN()
   {
-    auto current_status = status_.load();
+    auto current_status = status_.load(mo_relax);
     if (current_status == MwCASStatus::kUndecided) {
       auto new_status = MwCASStatus::kSuccess;
       for (size_t i = 0; i < word_count_; ++i) {
@@ -88,18 +88,19 @@ class alignas(kCacheLineSize) MwCASDescriptor
         } while (false);
       }
     EMBEDDING_END:
-      while (!status_.compare_exchange_weak(current_status, new_status)
+      while (!status_.compare_exchange_weak(current_status, new_status, mo_relax)
              && current_status == MwCASStatus::kUndecided) {
         // weak CAS may fail although it can perform
       }
     }
 
-    const auto success = status_ == MwCASStatus::kSuccess;
+    const auto success = status_.load(mo_relax) == MwCASStatus::kSuccess;
     const auto desc_word = RDCSSField{MwCASField{reinterpret_cast<uintptr_t>(this), true}};
     for (size_t index = 0; index < word_count_; ++index) {
       const auto desired = (success) ? entries_[index].new_val : entries_[index].old_val;
       auto desc = desc_word;
-      while (!entries_[index].addr->compare_exchange_weak(desc, desired) && desc == desc_word) {
+      while (!entries_[index].addr->compare_exchange_weak(desc, desired, mo_relax)
+             && desc == desc_word) {
         // weak CAS may fail although it can perform
       }
     }
