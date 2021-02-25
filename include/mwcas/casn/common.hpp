@@ -9,6 +9,8 @@
 
 namespace dbgroup::atomic::mwcas
 {
+constexpr std::memory_order mo_relax = std::memory_order_relaxed;
+
 /// this library assumes that the length of one word is 8 bytes
 constexpr size_t kWordSize = 8;
 
