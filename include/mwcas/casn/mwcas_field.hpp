@@ -73,7 +73,13 @@ class alignas(kWordSize) MwCASField
   constexpr T
   GetTargetData() const
   {
-    return CASTargetConverter<T>{target_bit_arr_}.target_data;
+    return *reinterpret_cast<const T *>(this);
+  }
+
+  constexpr uintptr_t
+  GetDescAddr() const
+  {
+    return target_bit_arr_;
   }
 };
 

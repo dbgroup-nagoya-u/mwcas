@@ -76,7 +76,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
           expected = entries_[i].rdcss_desc.RDCSS();
           if (const auto target = expected.GetTargetData<MwCASField>();
               target.IsMwCASDescriptor()) {
-            auto desc = reinterpret_cast<MwCASDescriptor *>(target.GetTargetData<uintptr_t>());
+            auto desc = reinterpret_cast<MwCASDescriptor *>(target.GetDescAddr());
             if (desc != this) {
               desc->CASN();
               continue;

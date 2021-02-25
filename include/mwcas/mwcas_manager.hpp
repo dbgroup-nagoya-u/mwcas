@@ -73,7 +73,7 @@ class MwCASManager
 
     auto read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(addr);
     while (read_val.IsMwCASDescriptor()) {
-      auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
+      auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetDescAddr());
       desc->CASN();
       read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(addr);
     }
