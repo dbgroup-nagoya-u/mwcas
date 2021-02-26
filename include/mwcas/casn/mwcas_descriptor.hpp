@@ -38,10 +38,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   ~MwCASDescriptor() = default;
 
-  MwCASDescriptor(const MwCASDescriptor &) = delete;
-  MwCASDescriptor &operator=(const MwCASDescriptor &obj) = delete;
-  MwCASDescriptor(MwCASDescriptor &&) = delete;
-  MwCASDescriptor &operator=(MwCASDescriptor &&) = delete;
+  MwCASDescriptor(const MwCASDescriptor &) = default;
+  MwCASDescriptor &operator=(const MwCASDescriptor &obj) = default;
+  MwCASDescriptor(MwCASDescriptor &&) = default;
+  MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
 
   /*################################################################################################
    * Public utility functions

@@ -63,15 +63,16 @@ class MwCASManager
   MwCASDescriptor *
   CreateMwCASDescriptor()
   {
-    return new MwCASDescriptor{};
+    thread_local MwCASDescriptor desc;
+    desc = MwCASDescriptor{};
+
+    return &desc;
   }
 
   bool
   MwCAS(MwCASDescriptor *desc)
   {
-    const auto success = desc->CASN();
-
-    return success;
+    return desc->CASN();
   }
 
   template <class T>
