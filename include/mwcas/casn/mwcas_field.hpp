@@ -66,7 +66,7 @@ class alignas(kWordSize) MwCASField
   constexpr bool
   IsMwCASDescriptor() const
   {
-    return mwcas_flag_ > 0;
+    return mwcas_flag_;
   }
 
   template <class T>

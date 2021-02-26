@@ -66,7 +66,7 @@ class alignas(kWordSize) RDCSSField
   constexpr bool
   IsRDCSSDescriptor() const
   {
-    return rdcss_flag_ > 0;
+    return rdcss_flag_;
   }
 
   template <class T>

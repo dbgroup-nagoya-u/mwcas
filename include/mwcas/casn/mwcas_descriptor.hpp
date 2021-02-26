@@ -18,18 +18,18 @@ namespace dbgroup::atomic::mwcas
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
  *
  */
-class alignas(kCacheLineSize) MwCASDescriptor
+class MwCASDescriptor
 {
  private:
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
 
-  std::array<MwCASEntry, kTargetWordNum> entries_;
-
   size_t word_count_;
 
   std::atomic<MwCASStatus> status_;
+
+  std::array<MwCASEntry, kTargetWordNum> entries_;
 
  public:
   /*################################################################################################
@@ -42,8 +42,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   MwCASDescriptor(const MwCASDescriptor &) = delete;
   MwCASDescriptor &operator=(const MwCASDescriptor &obj) = delete;
-  MwCASDescriptor(MwCASDescriptor &&) = default;
-  MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
+  MwCASDescriptor(MwCASDescriptor &&) = delete;
+  MwCASDescriptor &operator=(MwCASDescriptor &&) = delete;
 
   /*################################################################################################
    * Public utility functions

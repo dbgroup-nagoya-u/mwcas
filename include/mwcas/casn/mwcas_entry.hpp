@@ -54,8 +54,8 @@ class alignas(kCacheLineSize) MwCASEntry
 
   ~MwCASEntry() = default;
 
-  MwCASEntry(const MwCASEntry &) = delete;
-  MwCASEntry &operator=(const MwCASEntry &obj) = delete;
+  MwCASEntry(const MwCASEntry &) = default;
+  MwCASEntry &operator=(const MwCASEntry &obj) = default;
   MwCASEntry(MwCASEntry &&) = default;
   MwCASEntry &operator=(MwCASEntry &&) = default;
 };

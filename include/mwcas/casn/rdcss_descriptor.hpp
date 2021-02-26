@@ -40,7 +40,7 @@ class RDCSSDescriptor
   constexpr RDCSSDescriptor() : addr_1_{nullptr}, addr_2_{nullptr} {}
 
   template <class T1, class T2, class T3>
-  RDCSSDescriptor(  //
+  constexpr RDCSSDescriptor(  //
       void *addr_1,
       const T1 old_1,
       void *addr_2,
@@ -54,10 +54,10 @@ class RDCSSDescriptor
   {
   }
 
-  ~RDCSSDescriptor() {}
+  ~RDCSSDescriptor() = default;
 
-  RDCSSDescriptor(const RDCSSDescriptor &) = delete;
-  RDCSSDescriptor &operator=(const RDCSSDescriptor &obj) = delete;
+  RDCSSDescriptor(const RDCSSDescriptor &) = default;
+  RDCSSDescriptor &operator=(const RDCSSDescriptor &obj) = default;
   RDCSSDescriptor(RDCSSDescriptor &&) = default;
   RDCSSDescriptor &operator=(RDCSSDescriptor &&) = default;
 

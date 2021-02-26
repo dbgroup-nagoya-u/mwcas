@@ -46,9 +46,9 @@ union CASTargetConverter {
   const T target_data;
   const uint64_t converted_data;
 
-  explicit CASTargetConverter(const uint64_t converted) : converted_data{converted} {}
+  explicit constexpr CASTargetConverter(const uint64_t converted) : converted_data{converted} {}
 
-  explicit CASTargetConverter(const T target) : target_data{target} {}
+  explicit constexpr CASTargetConverter(const T target) : target_data{target} {}
 };
 
 /**
@@ -60,7 +60,7 @@ union CASTargetConverter<uint64_t> {
   const uint64_t target_data;
   const uint64_t converted_data;
 
-  explicit CASTargetConverter(const uint64_t target) : target_data{target} {}
+  explicit constexpr CASTargetConverter(const uint64_t target) : target_data{target} {}
 };
 
 }  // namespace dbgroup::atomic::mwcas
