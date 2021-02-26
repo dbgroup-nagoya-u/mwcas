@@ -16,7 +16,7 @@ class MwCASManagerFixture : public ::testing::Test
   static constexpr size_t kLoopNum = 1E4;
   static constexpr auto kInitVal = 999999UL;
 
-  dbgroup::atomic::MwCASManager manager{100};
+  dbgroup::atomic::MwCASManager manager{};
   uint64_t target_1{kInitVal};
   uint64_t target_2{kInitVal};
   uint64_t target_3{kInitVal};

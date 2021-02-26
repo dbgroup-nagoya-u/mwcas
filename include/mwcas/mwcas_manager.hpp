@@ -15,7 +15,7 @@ namespace dbgroup::atomic
 using ::dbgroup::gc::TLSBasedGC;
 using mwcas::MwCASDescriptor;
 using mwcas::MwCASField;
-using mwcas::RDCSSDescriptor;
+using mwcas::RDCSSField;
 
 /**
  * @brief A class of descriptor to manage Restricted Double-Compare Single-Swap operation.
@@ -25,17 +25,29 @@ class MwCASManager
 {
  private:
   /*################################################################################################
-   * Internal member variables
+   * Internal utility functions
    *##############################################################################################*/
 
-  TLSBasedGC<MwCASDescriptor> gc_;
+  template <class T>
+  static T
+  ReadRDCSSField(void *addr)
+  {
+    const auto target_addr = static_cast<std::atomic<RDCSSField> *>(addr);
+
+    RDCSSField target_word;
+    do {
+      target_word = target_addr->load(mwcas::mo_relax);
+    } while (target_word.IsRDCSSDescriptor());
+
+    return target_word.GetTargetData<T>();
+  }
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  explicit MwCASManager(const size_t gc_interval_micro_sec = 1E3) : gc_{gc_interval_micro_sec} {}
+  constexpr MwCASManager() {}
 
   ~MwCASManager() = default;
 
@@ -68,7 +80,7 @@ class MwCASManager
   {
     MwCASField read_val;
     do {
-      read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(addr);
+      read_val = ReadRDCSSField<MwCASField>(addr);
     } while (read_val.IsMwCASDescriptor());
 
     return read_val.GetTargetData<T>();
