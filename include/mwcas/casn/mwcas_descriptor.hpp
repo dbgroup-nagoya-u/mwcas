@@ -36,7 +36,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Public constructors/destructors
    *##############################################################################################*/
 
-  MwCASDescriptor() : word_count_{0}, status_{MwCASStatus::kUndecided} {}
+  constexpr MwCASDescriptor() : word_count_{0}, status_{MwCASStatus::kUndecided} {}
 
   ~MwCASDescriptor() = default;
 

@@ -55,7 +55,7 @@ class RDCSSDescriptor
    * Public constructors/destructors
    *##############################################################################################*/
 
-  RDCSSDescriptor() {}
+  constexpr RDCSSDescriptor() : addr_1_{nullptr}, addr_2_{nullptr} {}
 
   template <class T1, class T2, class T3>
   RDCSSDescriptor(  //

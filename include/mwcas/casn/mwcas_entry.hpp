@@ -35,7 +35,7 @@ class alignas(kCacheLineSize) MwCASEntry
    * Public constructors/destructors
    *##############################################################################################*/
 
-  MwCASEntry() {}
+  constexpr MwCASEntry() : addr{nullptr} {}
 
   template <class T>
   constexpr MwCASEntry(  //
