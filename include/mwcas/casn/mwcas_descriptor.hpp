@@ -29,6 +29,10 @@ class MwCASDescriptor
 
   std::atomic<MwCASStatus> status_;
 
+  uintptr_t desc_addr_;
+
+  RDCSSField desc_word_;
+
   std::array<MwCASEntry, kTargetWordNum> entries_;
 
  public:
@@ -36,7 +40,13 @@ class MwCASDescriptor
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr MwCASDescriptor() : word_count_{0}, status_{MwCASStatus::kUndecided} {}
+  constexpr MwCASDescriptor()
+      : word_count_{0},
+        status_{MwCASStatus::kUndecided},
+        desc_addr_{reinterpret_cast<uintptr_t>(this)},
+        desc_word_{MwCASField{desc_addr_, true}}
+  {
+  }
 
   ~MwCASDescriptor() = default;
 
@@ -58,49 +68,47 @@ class MwCASDescriptor
   {
     if (word_count_ == kTargetWordNum) {
       return false;
+    } else {
+      entries_[word_count_++] = MwCASEntry{addr, old_v, new_v, this, &status_};
+      return true;
     }
-
-    entries_[word_count_++] = MwCASEntry{addr, old_v, new_v, this, &status_};
-    return true;
   }
 
   bool
   CASN()
   {
-    auto current_status = status_.load(mo_relax);
-    if (current_status == MwCASStatus::kUndecided) {
-      auto new_status = MwCASStatus::kSuccess;
-      for (size_t i = 0; i < word_count_; ++i) {
-        RDCSSField expected;
-        do {
-          expected = entries_[i].rdcss_desc.RDCSS();
-          if (const auto target = expected.GetTargetData<MwCASField>();
-              target.IsMwCASDescriptor()) {
-            auto desc = reinterpret_cast<MwCASDescriptor *>(target.GetTargetData<uintptr_t>());
-            if (desc != this) {
-              desc->CASN();
-              continue;
-            }
-          } else if (entries_[i].old_val != expected) {
-            new_status = MwCASStatus::kFailed;
-            goto EMBEDDING_END;
-          }
-        } while (false);
-      }
-    EMBEDDING_END:
-      while (!status_.compare_exchange_weak(current_status, new_status, mo_relax)
-             && current_status == MwCASStatus::kUndecided) {
-        // weak CAS may fail although it can perform
+    auto new_status = MwCASStatus::kSuccess;
+    size_t embedded_count = 0;
+    for (size_t i = 0; i < word_count_; ++i, ++embedded_count) {
+      // embed a MwCAS decriptor
+      RDCSSField rdcss_result;
+      MwCASField embedded;
+      do {
+        rdcss_result = entries_[i].rdcss_desc.RDCSS();
+        embedded = rdcss_result.GetTargetData<MwCASField>();
+      } while (embedded.IsMwCASDescriptor() && embedded.GetTargetData<uintptr_t>() != desc_addr_);
+
+      if (!embedded.IsMwCASDescriptor() && rdcss_result != entries_[i].old_val) {
+        // if a target filed has been already updated, MwCAS is failed
+        new_status = MwCASStatus::kFailed;
+        break;
       }
     }
 
-    const auto success = status_.load(mo_relax) == MwCASStatus::kSuccess;
-    const auto desc_word = RDCSSField{MwCASField{reinterpret_cast<uintptr_t>(this), true}};
-    for (size_t index = 0; index < word_count_; ++index) {
+    // update the status of a MwCAS descriptor
+    auto current_status = MwCASStatus::kUndecided;
+    while (!status_.compare_exchange_weak(current_status, new_status, mo_relax)
+           && current_status == MwCASStatus::kUndecided) {
+      // weak CAS may fail although it can perform
+    }
+
+    // complete MwCAS
+    const auto success = new_status == MwCASStatus::kSuccess;
+    for (size_t index = 0; index < embedded_count; ++index) {
       const auto desired = (success) ? entries_[index].new_val : entries_[index].old_val;
-      auto desc = desc_word;
+      auto desc = desc_word_;
       while (!entries_[index].addr->compare_exchange_weak(desc, desired, mo_relax)
-             && desc == desc_word) {
+             && desc == desc_word_) {
         // weak CAS may fail although it can perform
       }
     }

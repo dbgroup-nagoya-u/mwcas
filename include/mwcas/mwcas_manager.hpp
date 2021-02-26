@@ -57,10 +57,7 @@ class MwCASManager
   bool
   MwCAS(MwCASDescriptor *desc)
   {
-    const auto guard = gc_.CreateEpochGuard();
-
     const auto success = desc->CASN();
-    gc_.AddGarbage(desc);
 
     return success;
   }
@@ -69,14 +66,10 @@ class MwCASManager
   T
   ReadMwCASField(void *addr)
   {
-    const auto guard = gc_.CreateEpochGuard();
-
-    auto read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(addr);
-    while (read_val.IsMwCASDescriptor()) {
-      auto desc = reinterpret_cast<MwCASDescriptor *>(read_val.GetTargetData<uintptr_t>());
-      desc->CASN();
+    MwCASField read_val;
+    do {
       read_val = RDCSSDescriptor::ReadRDCSSField<MwCASField>(addr);
-    }
+    } while (read_val.IsMwCASDescriptor());
 
     return read_val.GetTargetData<T>();
   }
