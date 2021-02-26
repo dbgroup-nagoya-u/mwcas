@@ -32,24 +32,6 @@ class RDCSSDescriptor
 
   RDCSSField new_2_;
 
-  /*################################################################################################
-   * Internal utility functions
-   *##############################################################################################*/
-
-  static void
-  CompleteRDCSS(RDCSSDescriptor *desc)
-  {
-    const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(desc), true};
-    const auto desired =
-        (desc->addr_1_->load(mo_relax) == desc->old_1_) ? desc->new_2_ : desc->old_2_;
-
-    auto expected = desc_addr;
-    while (!desc->addr_2_->compare_exchange_weak(expected, desired, mo_relax)
-           && expected == desc_addr) {
-      // weak CAS may fail although it can perform
-    }
-  }
-
  public:
   /*################################################################################################
    * Public constructors/destructors
@@ -88,44 +70,39 @@ class RDCSSDescriptor
   {
     const auto desc_addr = RDCSSField{reinterpret_cast<uintptr_t>(this), true};
 
+    // empbed a target descriptor in a corresponding address
+    RDCSSField loaded_word;
     do {
-      // empbed a target descriptor in a corresponding address
-      auto loaded_word = old_2_;
+      loaded_word = old_2_;
       while (!addr_2_->compare_exchange_weak(loaded_word, desc_addr, mo_relax)
              && loaded_word == old_2_) {
         // weak CAS may fail although it can perform
       }
+    } while (loaded_word.IsRDCSSDescriptor());
 
-      if (loaded_word == old_2_) {
-        // if embedding succeeds, try completion of RDCSS
-        CompleteRDCSS(this);
-        return loaded_word;
-      } else if (!loaded_word.IsRDCSSDescriptor()) {
-        // if a target word is updated, return it
-        return loaded_word;
+    if (loaded_word == old_2_) {
+      // embedding succeeds, so complete RDCSS
+      const auto desired = (addr_1_->load(mo_relax) == old_1_) ? new_2_ : old_2_;
+      auto expected = desc_addr;
+      while (!addr_2_->compare_exchange_weak(expected, desired, mo_relax)
+             && expected == desc_addr) {
+        // weak CAS may fail although it can perform
       }
+    }
 
-      // if another descriptor is embedded, complete it first
-      auto loaded_desc =
-          reinterpret_cast<RDCSSDescriptor *>(loaded_word.GetTargetData<uintptr_t>());
-      CompleteRDCSS(loaded_desc);
-    } while (true);
+    return loaded_word;
   }
 
   template <class T>
   static T
   ReadRDCSSField(void *addr)
   {
-    // read a target address atomically
-    auto target_addr = static_cast<std::atomic<RDCSSField> *>(addr);
-    auto target_word = target_addr->load(mo_relax);
+    const auto target_addr = static_cast<std::atomic<RDCSSField> *>(addr);
 
-    while (target_word.IsRDCSSDescriptor()) {
-      auto loaded_desc =
-          reinterpret_cast<RDCSSDescriptor *>(target_word.GetTargetData<uintptr_t>());
-      CompleteRDCSS(loaded_desc);
+    RDCSSField target_word;
+    do {
       target_word = target_addr->load(mo_relax);
-    }
+    } while (target_word.IsRDCSSDescriptor());
 
     return target_word.GetTargetData<T>();
   }
