@@ -14,6 +14,7 @@
     "**/.hg/store/**": true,
   },
   "testMate.cpp.test.runtimeLimit": 60,
+  "testMate.cpp.test.executables": "build/**/test/*_test",
   "[cmake]": {
     "editor.formatOnPaste": false,
     "editor.formatOnSave": false,
