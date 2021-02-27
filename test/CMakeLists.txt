@@ -28,6 +28,14 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
 # End of copy and paste
 #--------------------------------------------------------------------------------------#
 
+# set compile options for unit tests
+set(
+  MWCAS_TEST_THREAD_NUM
+  "8"
+  CACHE STRING
+  "The maximum number of threads to perform unit tests."
+)
+
 # define function to add unit tests in the same format
 function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   add_executable(${MWCAS_TEST_TARGET}
@@ -42,7 +50,8 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
   )
   target_compile_definitions(${MWCAS_TEST_TARGET} PRIVATE
-    MWCAS_WORD_NUM=${MWCAS_WORD_NUM}
+    MWCAS_CAPACITY=${MWCAS_CAPACITY}
+    MWCAS_TEST_THREAD_NUM=${MWCAS_TEST_THREAD_NUM}
   )
   target_include_directories(${MWCAS_TEST_TARGET} PRIVATE
     "${MWCAS_SOURCE_DIR}/include"

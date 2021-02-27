@@ -46,7 +46,7 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
    *##############################################################################################*/
 
   /// Target entries of MwCAS
-  mwcas::MwCASTarget targets_[mwcas::kTargetWordNum];
+  mwcas::MwCASTarget targets_[mwcas::kMwCASCapacity];
 
   /// The number of registered MwCAS targets
   size_t target_count_;
@@ -99,7 +99,7 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
       const T old_val,
       const T new_val)
   {
-    if (target_count_ == mwcas::kTargetWordNum) {
+    if (target_count_ == mwcas::kMwCASCapacity) {
       return false;
     } else {
       targets_[target_count_++] = mwcas::MwCASTarget{addr, old_val, new_val};

@@ -22,12 +22,12 @@ constexpr size_t kWordSize = 8;
 /// Assumes that the size of one cache line is 64 bytes
 constexpr size_t kCacheLineSize = 64;
 
-#ifdef MWCAS_WORD_NUM
+#ifdef MWCAS_CAPACITY
 /// The maximum number of target words of MwCAS
-constexpr size_t kTargetWordNum = MWCAS_WORD_NUM;
+constexpr size_t kMwCASCapacity = MWCAS_CAPACITY;
 #else
 /// The maximum number of target words of MwCAS
-constexpr size_t kTargetWordNum = 3;
+constexpr size_t kMwCASCapacity = 4;
 #endif
 
 /*##################################################################################################
