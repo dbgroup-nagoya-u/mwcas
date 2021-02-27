@@ -5,36 +5,38 @@
 
 #include <atomic>
 
-#include "common.hpp"
 #include "mwcas_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
 /**
- * @brief A class to represent an RDCSS target word.
+ * @brief A class to represent a MwCAS target.
  *
  */
-class MwCASEntry
+class MwCASTarget
 {
  public:
   /*################################################################################################
    * Public member variables
    *##############################################################################################*/
 
+  /// A target memory address
   std::atomic<MwCASField> *addr;
 
+  /// An expected value of a target field
   MwCASField old_val;
 
+  /// An inserting value into a target field
   MwCASField new_val;
 
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr MwCASEntry() : addr{nullptr} {}
+  constexpr MwCASTarget() : addr{nullptr} {}
 
   template <class T>
-  constexpr MwCASEntry(  //
+  constexpr MwCASTarget(  //
       void *addr,
       const T old_v,
       const T new_v)
@@ -42,12 +44,12 @@ class MwCASEntry
   {
   }
 
-  ~MwCASEntry() = default;
+  ~MwCASTarget() = default;
 
-  MwCASEntry(const MwCASEntry &) = default;
-  MwCASEntry &operator=(const MwCASEntry &obj) = default;
-  MwCASEntry(MwCASEntry &&) = default;
-  MwCASEntry &operator=(MwCASEntry &&) = default;
+  MwCASTarget(const MwCASTarget &) = default;
+  MwCASTarget &operator=(const MwCASTarget &obj) = default;
+  MwCASTarget(MwCASTarget &&) = default;
+  MwCASTarget &operator=(MwCASTarget &&) = default;
 };
 
 }  // namespace dbgroup::atomic::mwcas

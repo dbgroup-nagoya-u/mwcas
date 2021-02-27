@@ -9,34 +9,35 @@
 
 namespace dbgroup::atomic::mwcas
 {
+/*##################################################################################################
+ * Global enum and constants
+ *################################################################################################*/
+
+/// A short name of std::memory_order_relaxed
 constexpr std::memory_order mo_relax = std::memory_order_relaxed;
 
-/// this library assumes that the length of one word is 8 bytes
+/// Assumes that the length of one word is 8 bytes
 constexpr size_t kWordSize = 8;
 
-/// this library assumes that the size of one cache line is 64 bytes
+/// Assumes that the size of one cache line is 64 bytes
 constexpr size_t kCacheLineSize = 64;
 
 #ifdef MWCAS_WORD_NUM
-/// the maximum number of target words of MwCAS
+/// The maximum number of target words of MwCAS
 constexpr size_t kTargetWordNum = MWCAS_WORD_NUM;
 #else
-/// the maximum number of target words of MwCAS
+/// The maximum number of target words of MwCAS
 constexpr size_t kTargetWordNum = 3;
 #endif
 
-/// status codes of MwCAS processing
-enum MwCASStatus : uint64_t
-{
-  kSuccess,
-  kUndecided,
-  kFailed
-};
+/*##################################################################################################
+ * Global utility structs
+ *################################################################################################*/
 
 /**
  * @brief An union to convert MwCAS target data into uint64_t.
  *
- * @tparam T a type of target data.
+ * @tparam T a type of target data
  */
 template <class T>
 union CASTargetConverter {

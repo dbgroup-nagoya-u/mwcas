@@ -49,7 +49,7 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldSingleThread_ReadValidValues)
       const auto old_val = manager.ReadMwCASField<uint64_t>(&target_1);
       const auto new_val = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_val, new_val);
+      desc->AddMwCASTarget(&target_1, old_val, new_val);
 
       const auto mwcas_success = manager.MwCAS(desc);
 
@@ -74,7 +74,7 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTwoThreads_ReadValidValues)
       const auto old_val = manager.ReadMwCASField<uint64_t>(&target_1);
       const auto new_val = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_val, new_val);
+      desc->AddMwCASTarget(&target_1, old_val, new_val);
 
       const auto mwcas_success = manager.MwCAS(desc);
 
@@ -103,7 +103,7 @@ TEST_F(MwCASManagerFixture, MwCAS_OneFieldTenThreads_ReadValidValues)
       const auto old_val = manager.ReadMwCASField<uint64_t>(&target_1);
       const auto new_val = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_val, new_val);
+      desc->AddMwCASTarget(&target_1, old_val, new_val);
 
       const auto mwcas_success = manager.MwCAS(desc);
 
@@ -137,8 +137,8 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsSingleThread_ReadValidValues)
       const auto old_2 = manager.ReadMwCASField<uint64_t>(&target_2);
       const auto new_2 = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_1, new_1);
-      desc->AddEntry(&target_2, old_2, new_2);
+      desc->AddMwCASTarget(&target_1, old_1, new_1);
+      desc->AddMwCASTarget(&target_2, old_2, new_2);
 
       const auto mwcas_success = manager.MwCAS(desc);
 
@@ -169,8 +169,8 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTwoThreads_ReadValidValues)
       const auto old_2 = manager.ReadMwCASField<uint64_t>(&target_2);
       const auto new_2 = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_1, new_1);
-      desc->AddEntry(&target_2, old_2, new_2);
+      desc->AddMwCASTarget(&target_1, old_1, new_1);
+      desc->AddMwCASTarget(&target_2, old_2, new_2);
 
       const auto mwcas_success = manager.MwCAS(desc);
 
@@ -215,8 +215,8 @@ TEST_F(MwCASManagerFixture, MwCAS_TwoFieldsTenThreads_ReadValidValues)
       const auto old_2 = manager.ReadMwCASField<uint64_t>(&target_2);
       const auto new_2 = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_1, new_1);
-      desc->AddEntry(&target_2, old_2, new_2);
+      desc->AddMwCASTarget(&target_1, old_1, new_1);
+      desc->AddMwCASTarget(&target_2, old_2, new_2);
 
       const auto mwcas_success = manager.MwCAS(desc);
 
@@ -268,10 +268,10 @@ TEST_F(MwCASManagerFixture, MwCAS_FourFieldsTenThreads_ReadValidValues)
       const auto old_4 = manager.ReadMwCASField<uint64_t>(&target_4);
       const auto new_4 = begin_index + kThreadNum * count;
 
-      desc->AddEntry(&target_1, old_1, new_1);
-      desc->AddEntry(&target_2, old_2, new_2);
-      desc->AddEntry(&target_3, old_3, new_3);
-      desc->AddEntry(&target_4, old_4, new_4);
+      desc->AddMwCASTarget(&target_1, old_1, new_1);
+      desc->AddMwCASTarget(&target_2, old_2, new_2);
+      desc->AddMwCASTarget(&target_3, old_3, new_3);
+      desc->AddMwCASTarget(&target_4, old_4, new_4);
 
       const auto mwcas_success = manager.MwCAS(desc);
 

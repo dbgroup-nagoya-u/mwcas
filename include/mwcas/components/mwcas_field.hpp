@@ -10,7 +10,7 @@
 namespace dbgroup::atomic::mwcas
 {
 /**
- * @brief A class to represent an RDCSS target word.
+ * @brief A class to represent a MwCAS target field.
  *
  */
 class alignas(kWordSize) MwCASField
@@ -20,8 +20,10 @@ class alignas(kWordSize) MwCASField
    * Internal member variables
    *##############################################################################################*/
 
+  /// An actual target data
   uint64_t target_bit_arr_ : 63;
 
+  /// Representing whether this field contains a MwCAS descriptor
   uint64_t mwcas_flag_ : 1;
 
  public:
