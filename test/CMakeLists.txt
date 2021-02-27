@@ -28,6 +28,14 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
 # End of copy and paste
 #--------------------------------------------------------------------------------------#
 
+# set compile options for unit tests
+set(
+  MWCAS_TEST_THREAD_NUM
+  "8"
+  CACHE STRING
+  "The maximum number of threads to perform unit tests."
+)
+
 # define function to add unit tests in the same format
 function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   add_executable(${MWCAS_TEST_TARGET}
@@ -42,25 +50,20 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
   )
   target_compile_definitions(${MWCAS_TEST_TARGET} PRIVATE
-    MWCAS_WORD_NUM=${MWCAS_WORD_NUM}
+    MWCAS_CAPACITY=${MWCAS_CAPACITY}
+    MWCAS_TEST_THREAD_NUM=${MWCAS_TEST_THREAD_NUM}
   )
   target_include_directories(${MWCAS_TEST_TARGET} PRIVATE
     "${MWCAS_SOURCE_DIR}/include"
   )
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
     pthread
-    simple_gc
     gtest_main
-  )
-  add_dependencies(${MWCAS_TEST_TARGET}
-    simple_gc
   )
   add_test(NAME ${MWCAS_TEST_TARGET} COMMAND $<TARGET_FILE:${MWCAS_TEST_TARGET}>)
 endfunction()
 
 # add unit tests to build targets
-ADD_MWCAS_TEST("rdcss_field_test")
-ADD_MWCAS_TEST("rdcss_descriptor_test")
 ADD_MWCAS_TEST("mwcas_field_test")
-ADD_MWCAS_TEST("mwcas_entry_test")
-ADD_MWCAS_TEST("mwcas_manager_test")
+ADD_MWCAS_TEST("mwcas_target_test")
+ADD_MWCAS_TEST("mwcas_descriptor_test")

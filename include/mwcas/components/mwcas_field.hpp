@@ -10,53 +10,55 @@
 namespace dbgroup::atomic::mwcas
 {
 /**
- * @brief A class to represent an RDCSS target word.
+ * @brief A class to represent a MwCAS target field.
  *
  */
-class alignas(kWordSize) RDCSSField
+class alignas(kWordSize) MwCASField
 {
- private:
+ protected:
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
 
+  /// An actual target data
   uint64_t target_bit_arr_ : 63;
 
-  uint64_t rdcss_flag_ : 1;
+  /// Representing whether this field contains a MwCAS descriptor
+  uint64_t mwcas_flag_ : 1;
 
  public:
   /*################################################################################################
    * Public constructors/destructors
    *##############################################################################################*/
 
-  RDCSSField() {}
+  constexpr MwCASField() : target_bit_arr_{0}, mwcas_flag_{0} {}
 
   template <class T>
-  constexpr RDCSSField(  //
+  constexpr MwCASField(  //
       const T target_data,
-      const bool is_rdcss_descriptor = false)
+      const bool is_mwcas_descriptor = false)
       : target_bit_arr_{CASTargetConverter{target_data}.converted_data},
-        rdcss_flag_{is_rdcss_descriptor}
+        mwcas_flag_{is_mwcas_descriptor}
   {
   }
 
-  ~RDCSSField() = default;
+  ~MwCASField() = default;
 
-  RDCSSField(const RDCSSField &) = default;
-  RDCSSField &operator=(const RDCSSField &obj) = default;
-  RDCSSField(RDCSSField &&) = default;
-  RDCSSField &operator=(RDCSSField &&) = default;
+  MwCASField(const MwCASField &) = default;
+  MwCASField &operator=(const MwCASField &obj) = default;
+  MwCASField(MwCASField &&) = default;
+  MwCASField &operator=(MwCASField &&) = default;
 
   constexpr bool
-  operator==(const RDCSSField &obj) const
+  operator==(const MwCASField &obj) const
   {
-    return this->rdcss_flag_ == obj.rdcss_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
+    return this->mwcas_flag_ == obj.mwcas_flag_ && this->target_bit_arr_ == obj.target_bit_arr_;
   }
 
   constexpr bool
-  operator!=(const RDCSSField &obj) const
+  operator!=(const MwCASField &obj) const
   {
-    return this->rdcss_flag_ != obj.rdcss_flag_ || this->target_bit_arr_ != obj.target_bit_arr_;
+    return this->mwcas_flag_ != obj.mwcas_flag_ || this->target_bit_arr_ != obj.target_bit_arr_;
   }
 
   /*################################################################################################
@@ -64,26 +66,20 @@ class alignas(kWordSize) RDCSSField
    *##############################################################################################*/
 
   constexpr bool
-  IsRDCSSDescriptor() const
+  IsMwCASDescriptor() const
   {
-    return rdcss_flag_ > 0;
+    return mwcas_flag_;
   }
 
   template <class T>
   constexpr T
   GetTargetData() const
   {
-    return *reinterpret_cast<const T *>(this);
-  }
-
-  constexpr uintptr_t
-  GetDescAddr() const
-  {
-    return target_bit_arr_;
+    return CASTargetConverter<T>{target_bit_arr_}.target_data;
   }
 };
 
 // CAS target words must be one word
-static_assert(sizeof(RDCSSField) == kWordSize);
+static_assert(sizeof(MwCASField) == kWordSize);
 
 }  // namespace dbgroup::atomic::mwcas

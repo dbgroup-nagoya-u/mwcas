@@ -24,7 +24,8 @@
     "-readability/fn_size",
     "-whitespace/braces",
     "-build/c++11",
-    "-whitespace/newline"
+    "-whitespace/newline",
+    "-runtime/references"
   ],
   "cSpell.words": [
     "CASN",

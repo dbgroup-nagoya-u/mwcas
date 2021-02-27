@@ -1,14 +1,20 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "mwcas/casn/mwcas_field.hpp"
+#include "mwcas/components/mwcas_field.hpp"
 
 #include <gtest/gtest.h>
 
 namespace dbgroup::atomic::mwcas
 {
+using Target = uint64_t;
+
 class CASNFieldFixture : public ::testing::Test
 {
+ public:
+  static constexpr Target data_1 = 1;
+  static constexpr Target data_2 = 2;
+
  protected:
   void
   SetUp() override
@@ -27,94 +33,78 @@ class CASNFieldFixture : public ::testing::Test
 
 TEST_F(CASNFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyInitialized)
 {
-  const auto data_1 = uint64_t{0};
-  const auto target_word_1 = MwCASField(data_1);
+  const auto target_word_1 = MwCASField{data_1, false};
 
   EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
-  EXPECT_EQ(data_1, target_word_1.GetTargetData<uint64_t>());
+  EXPECT_EQ(data_1, target_word_1.GetTargetData<Target>());
 
-  const auto data_2 = uint64_t{10};
-  const auto target_word_2 = MwCASField(data_2);
+  const auto target_word_2 = MwCASField{data_2, false};
 
   EXPECT_FALSE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<uint64_t>());
+  EXPECT_EQ(data_2, target_word_2.GetTargetData<Target>());
 }
 
 TEST_F(CASNFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
 {
-  const auto data_1 = uint64_t{0};
-  const auto target_word_1 = MwCASField(data_1, true);
+  const auto target_word_1 = MwCASField{data_1, true};
 
   EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
-  EXPECT_EQ(data_1, target_word_1.GetDescAddr());
+  EXPECT_EQ(data_1, target_word_1.GetTargetData<Target>());
 
-  const auto data_2 = uint64_t{10};
-  const auto target_word_2 = MwCASField(data_2, true);
+  const auto target_word_2 = MwCASField{data_2, true};
 
   EXPECT_TRUE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetDescAddr());
+  EXPECT_EQ(data_2, target_word_2.GetTargetData<Target>());
 }
 
 TEST_F(CASNFieldFixture, EqualOp_EqualInstances_ReturnTrue)
 {
-  auto data_1 = uint64_t{10};
-  auto data_2 = uint64_t{10};
-  auto target_word_1 = MwCASField(data_1);
-  auto target_word_2 = MwCASField(data_2);
+  auto target_word_1 = MwCASField{data_1, false};
+  auto target_word_2 = MwCASField{data_1, false};
 
   EXPECT_TRUE(target_word_1 == target_word_2);
 
-  target_word_1 = MwCASField(data_1, true);
-  target_word_2 = MwCASField(data_2, true);
+  target_word_1 = MwCASField{data_1, true};
+  target_word_2 = MwCASField{data_1, true};
 
   EXPECT_TRUE(target_word_1 == target_word_2);
 }
 
 TEST_F(CASNFieldFixture, EqualOp_DifferentInstances_ReturnFalse)
 {
-  auto data_1 = uint64_t{10};
-  auto data_2 = uint64_t{1};
-  auto target_word_1 = MwCASField(data_1);
-  auto target_word_2 = MwCASField(data_2);
+  auto target_word_1 = MwCASField{data_1, false};
+  auto target_word_2 = MwCASField{data_2, false};
 
   EXPECT_FALSE(target_word_1 == target_word_2);
 
-  data_1 = uint64_t{10};
-  data_2 = uint64_t{10};
-  target_word_1 = MwCASField(data_1, true);
-  target_word_2 = MwCASField(data_2, false);
+  target_word_1 = MwCASField{data_1, true};
+  target_word_2 = MwCASField{data_1, false};
 
   EXPECT_FALSE(target_word_1 == target_word_2);
 }
 
 TEST_F(CASNFieldFixture, NotEqualOp_EqualInstances_ReturnFalse)
 {
-  auto data_1 = uint64_t{10};
-  auto data_2 = uint64_t{10};
-  auto target_word_1 = MwCASField(data_1);
-  auto target_word_2 = MwCASField(data_2);
+  auto target_word_1 = MwCASField{data_1, false};
+  auto target_word_2 = MwCASField{data_1, false};
 
   EXPECT_FALSE(target_word_1 != target_word_2);
 
-  target_word_1 = MwCASField(data_1, true);
-  target_word_2 = MwCASField(data_2, true);
+  target_word_1 = MwCASField{data_1, true};
+  target_word_2 = MwCASField{data_1, true};
 
   EXPECT_FALSE(target_word_1 != target_word_2);
 }
 
 TEST_F(CASNFieldFixture, NotEqualOp_DifferentInstances_ReturnTrue)
 {
-  auto data_1 = uint64_t{10};
-  auto data_2 = uint64_t{1};
-  auto target_word_1 = MwCASField(data_1);
-  auto target_word_2 = MwCASField(data_2);
+  auto target_word_1 = MwCASField{data_1, false};
+  auto target_word_2 = MwCASField{data_2, false};
 
   EXPECT_TRUE(target_word_1 != target_word_2);
 
-  data_1 = uint64_t{10};
-  data_2 = uint64_t{10};
-  target_word_1 = MwCASField(data_1, true);
-  target_word_2 = MwCASField(data_2, false);
+  target_word_1 = MwCASField{data_1, true};
+  target_word_2 = MwCASField{data_1, false};
 
   EXPECT_TRUE(target_word_1 != target_word_2);
 }
