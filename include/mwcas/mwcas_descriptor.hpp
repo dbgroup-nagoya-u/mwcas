@@ -7,7 +7,7 @@
 #include <atomic>
 #include <utility>
 
-#include "components/mwcas_entry.hpp"
+#include "components/mwcas_target.hpp"
 
 namespace dbgroup::atomic
 {

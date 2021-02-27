@@ -1,9 +1,9 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include <gtest/gtest.h>
+#include "mwcas/components/mwcas_target.hpp"
 
-#include "mwcas/components/mwcas_entry.hpp"
+#include <gtest/gtest.h>
 
 namespace dbgroup::atomic::mwcas
 {
