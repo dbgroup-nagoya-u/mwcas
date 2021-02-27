@@ -58,11 +58,7 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
   )
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
     pthread
-    simple_gc
     gtest_main
-  )
-  add_dependencies(${MWCAS_TEST_TARGET}
-    simple_gc
   )
   add_test(NAME ${MWCAS_TEST_TARGET} COMMAND $<TARGET_FILE:${MWCAS_TEST_TARGET}>)
 endfunction()
