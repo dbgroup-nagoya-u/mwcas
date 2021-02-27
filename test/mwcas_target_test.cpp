@@ -1,14 +1,20 @@
 // Copyright (c) DB Group, Nagoya University. All rights reserved.
 // Licensed under the MIT license.
 
-#include "mwcas/casn/mwcas_entry.hpp"
-
 #include <gtest/gtest.h>
+
+#include "mwcas/components/mwcas_entry.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
-class MwCASEntryFixture : public ::testing::Test
+using Target = uint64_t;
+
+class MwCASTargetFixture : public ::testing::Test
 {
+ public:
+  static constexpr Target old_val = 1;
+  static constexpr Target new_val = 2;
+
  protected:
   void
   SetUp() override
@@ -25,17 +31,15 @@ class MwCASEntryFixture : public ::testing::Test
  * Public utility tests
  *------------------------------------------------------------------------------------------------*/
 
-TEST_F(MwCASEntryFixture, Construct_InitialValues_MemberVariablesCorrectlyInitialized)
+TEST_F(MwCASTargetFixture, Construct_InitialValues_MemberVariablesCorrectlyInitialized)
 {
-  auto target = uint64_t{10};
-  const auto old_val = target;
-  const auto new_val = uint64_t{20};
+  auto target = old_val;
 
   const auto entry = MwCASTarget{&target, old_val, new_val};
 
   EXPECT_EQ(static_cast<void*>(&target), static_cast<void*>(entry.addr));
-  EXPECT_EQ(old_val, entry.old_val.GetTargetData<uint64_t>());
-  EXPECT_EQ(new_val, entry.new_val.GetTargetData<uint64_t>());
+  EXPECT_EQ(old_val, entry.old_val.GetTargetData<Target>());
+  EXPECT_EQ(new_val, entry.new_val.GetTargetData<Target>());
 }
 
 }  // namespace dbgroup::atomic::mwcas
