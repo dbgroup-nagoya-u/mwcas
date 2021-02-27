@@ -10,7 +10,6 @@
 #include "common.hpp"
 #include "mwcas_entry.hpp"
 #include "mwcas_field.hpp"
-#include "rdcss_field.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
@@ -57,7 +56,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     if (word_count_ == kTargetWordNum) {
       return false;
     } else {
-      entries_[word_count_++] = MwCASEntry{addr, old_v, new_v, this};
+      entries_[word_count_++] = MwCASEntry{addr, old_v, new_v};
       return true;
     }
   }
@@ -66,21 +65,23 @@ class alignas(kCacheLineSize) MwCASDescriptor
   CASN()
   {
     const auto desc_addr = reinterpret_cast<uintptr_t>(this);
-    const auto desc_word = RDCSSField{MwCASField{desc_addr, true}};
+    const auto desc_word = MwCASField{desc_addr, true};
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
     size_t embedded_count = 0;
     for (size_t i = 0; i < word_count_; ++i, ++embedded_count) {
       // embed a MwCAS decriptor
-      RDCSSField rdcss_result;
-      MwCASField embedded;
+      MwCASField loaded_word;
       do {
-        rdcss_result = entries_[i].RDCSS();
-        embedded = rdcss_result.GetTargetData<MwCASField>();
-      } while (embedded.IsMwCASDescriptor() && embedded.GetTargetData<uintptr_t>() != desc_addr);
+        loaded_word = entries_[i].old_val;
+        while (!entries_[i].addr->compare_exchange_weak(loaded_word, desc_word, mo_relax)
+               && loaded_word == entries_[i].old_val) {
+          // weak CAS may fail although it can perform
+        }
+      } while (loaded_word.IsMwCASDescriptor());
 
-      if (!embedded.IsMwCASDescriptor() && rdcss_result != entries_[i].old_val) {
+      if (loaded_word != entries_[i].old_val) {
         // if a target filed has been already updated, MwCAS is failed
         mwcas_success = false;
         break;
@@ -88,10 +89,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
     }
 
     // complete MwCAS
-    for (size_t index = 0; index < embedded_count; ++index) {
-      const auto desired = (mwcas_success) ? entries_[index].new_val : entries_[index].old_val;
+    for (size_t i = 0; i < embedded_count; ++i) {
+      const auto desired = (mwcas_success) ? entries_[i].new_val : entries_[i].old_val;
       auto desc = desc_word;
-      while (!entries_[index].addr->compare_exchange_weak(desc, desired, mo_relax)
+      while (!entries_[i].addr->compare_exchange_weak(desc, desired, mo_relax)
              && desc == desc_word) {
         // weak CAS may fail although it can perform
       }

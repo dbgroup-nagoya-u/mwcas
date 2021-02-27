@@ -20,7 +20,7 @@ class alignas(kWordSize) MwCASField
    * Internal member variables
    *##############################################################################################*/
 
-  uint64_t target_bit_arr_ : 62;
+  uint64_t target_bit_arr_ : 63;
 
   uint64_t mwcas_flag_ : 1;
 

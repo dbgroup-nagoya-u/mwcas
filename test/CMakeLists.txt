@@ -59,7 +59,6 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
 endfunction()
 
 # add unit tests to build targets
-ADD_MWCAS_TEST("rdcss_field_test")
 ADD_MWCAS_TEST("mwcas_field_test")
 ADD_MWCAS_TEST("mwcas_entry_test")
 ADD_MWCAS_TEST("mwcas_manager_test")
