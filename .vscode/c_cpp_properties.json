@@ -7,8 +7,7 @@
       "cppStandard": "gnu++17",
       "intelliSenseMode": "linux-gcc-x64",
       "includePath": [
-        "${workspaceFolder}/include",
-        "${workspaceFolder}/external/simple-garbage-collectors/include"
+        "${workspaceFolder}/include"
       ],
       "configurationProvider": "ms-vscode.cmake-tools"
     }

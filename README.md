@@ -8,7 +8,7 @@ An open source implementation of MwCAS (multi-words compare and swap) for resear
 
 ## Build
 
-Note: this library is a header only. You can use this as just a submodule.
+**Note**: this is a header only library. You can use this without pre-build.
 
 ### Prerequisites
 
@@ -18,7 +18,9 @@ sudo apt update && sudo apt install -y build-essential cmake
 
 ### Build Options
 
-- `MWCAS_BUILD_TESTS`: build unit tests for MwCAS if `on`.
+- `MWCAS_CAPACITY`: the number of maximum target fields of MwCAS: default `4`.
+- `MWCAS_BUILD_TESTS`: build unit tests for MwCAS if `on`: default `off`.
+- `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests: default `8`.
 
 ### Build and Run Unit Tests
 
