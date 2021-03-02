@@ -9,7 +9,7 @@
 
 #include "components/mwcas_target.hpp"
 
-namespace dbgroup::atomic
+namespace dbgroup::atomic::mwcas
 {
 /**
  * @brief Read a value from a given memory address.
@@ -24,11 +24,11 @@ template <class T>
 static T
 ReadMwCASField(const void *addr)
 {
-  const auto target_addr = static_cast<const std::atomic<mwcas::MwCASField> *>(addr);
+  const auto target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
 
-  mwcas::MwCASField target_word;
+  MwCASField target_word;
   do {
-    target_word = target_addr->load(mwcas::mo_relax);
+    target_word = target_addr->load(mo_relax);
   } while (target_word.IsMwCASDescriptor());
 
   return target_word.GetTargetData<T>();
@@ -38,7 +38,7 @@ ReadMwCASField(const void *addr)
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
-class alignas(mwcas::kCacheLineSize) MwCASDescriptor
+class alignas(kCacheLineSize) MwCASDescriptor
 {
  private:
   /*################################################################################################
@@ -46,7 +46,7 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
    *##############################################################################################*/
 
   /// Target entries of MwCAS
-  mwcas::MwCASTarget targets_[mwcas::kMwCASCapacity];
+  MwCASTarget targets_[kMwCASCapacity];
 
   /// The number of registered MwCAS targets
   size_t target_count_;
@@ -99,10 +99,10 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
       const T old_val,
       const T new_val)
   {
-    if (target_count_ == mwcas::kMwCASCapacity) {
+    if (target_count_ == kMwCASCapacity) {
       return false;
     } else {
-      targets_[target_count_++] = mwcas::MwCASTarget{addr, old_val, new_val};
+      targets_[target_count_++] = MwCASTarget{addr, old_val, new_val};
       return true;
     }
   }
@@ -117,17 +117,17 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
   MwCAS()
   {
     const auto desc_addr = reinterpret_cast<uintptr_t>(this);
-    const auto desc_word = mwcas::MwCASField{desc_addr, true};
+    const auto desc_word = MwCASField{desc_addr, true};
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
     size_t embedded_count = 0;
     for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
       // embed a MwCAS decriptor
-      mwcas::MwCASField loaded_word;
+      MwCASField loaded_word;
       do {
         loaded_word = targets_[i].old_val;
-        while (!targets_[i].addr->compare_exchange_weak(loaded_word, desc_word, mwcas::mo_relax)
+        while (!targets_[i].addr->compare_exchange_weak(loaded_word, desc_word, mo_relax)
                && loaded_word == targets_[i].old_val) {
           // weak CAS may fail although it can perform
         }
@@ -144,7 +144,7 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
     for (size_t i = 0; i < embedded_count; ++i) {
       const auto new_val = (mwcas_success) ? targets_[i].new_val : targets_[i].old_val;
       auto old_val = desc_word;
-      while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mwcas::mo_relax)
+      while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mo_relax)
              && old_val == desc_word) {
         // weak CAS may fail although it can perform
       }
@@ -154,4 +154,4 @@ class alignas(mwcas::kCacheLineSize) MwCASDescriptor
   }
 };
 
-}  // namespace dbgroup::atomic
+}  // namespace dbgroup::atomic::mwcas

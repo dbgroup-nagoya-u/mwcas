@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace dbgroup::atomic
+namespace dbgroup::atomic::mwcas
 {
 using Target = uint64_t;
 
@@ -27,12 +27,12 @@ class MwCASDescriptorFixture : public ::testing::Test
   static constexpr size_t kThreadNum = 8;
 #endif
 
-  Target targets[mwcas::kMwCASCapacity];
+  Target targets[kMwCASCapacity];
 
   static void
-  InitializeTargetArray(Target arr[mwcas::kMwCASCapacity])
+  InitializeTargetArray(Target arr[kMwCASCapacity])
   {
-    for (size_t i = 0; i < mwcas::kMwCASCapacity; ++i) {
+    for (size_t i = 0; i < kMwCASCapacity; ++i) {
       arr[i] = kInitVal;
     }
   }
@@ -47,7 +47,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       auto desc = MwCASDescriptor{};
 
       // prepare MwCAS targets
-      Target old_values[mwcas::kMwCASCapacity];
+      Target old_values[kMwCASCapacity];
       InitializeTargetArray(old_values);
       for (size_t i = 0; i < target_num; ++i) {
         old_values[i] = ReadMwCASField<Target>(&targets[i]);
@@ -58,7 +58,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       const auto mwcas_success = desc.MwCAS();
 
       // read current values
-      Target read_values[mwcas::kMwCASCapacity];
+      Target read_values[kMwCASCapacity];
       InitializeTargetArray(read_values);
       for (size_t i = 0; i < target_num; ++i) {
         read_values[i] = ReadMwCASField<Target>(&targets[i]);
@@ -80,7 +80,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       const size_t target_num,
       const size_t thread_num)
   {
-    assert(0 < target_num && target_num <= mwcas::kMwCASCapacity);
+    assert(0 < target_num && target_num <= kMwCASCapacity);
     assert(0 < thread_num && thread_num <= kThreadNum);
 
     for (size_t count = 0; count < kOuterLoopNum; ++count) {
@@ -131,12 +131,12 @@ TEST_F(MwCASDescriptorFixture, MwCAS_OneFieldMultiThreads_ReadValidValues)
 
 TEST_F(MwCASDescriptorFixture, MwCAS_MultiFieldsSingleThread_ReadValidValues)
 {
-  PerformMwCAS(mwcas::kMwCASCapacity, 1);
+  PerformMwCAS(kMwCASCapacity, 1);
 }
 
 TEST_F(MwCASDescriptorFixture, MwCAS_MultiFieldsMultiThreads_ReadValidValues)
 {
-  PerformMwCAS(mwcas::kMwCASCapacity, kThreadNum);
+  PerformMwCAS(kMwCASCapacity, kThreadNum);
 }
 
-}  // namespace dbgroup::atomic
+}  // namespace dbgroup::atomic::mwcas
