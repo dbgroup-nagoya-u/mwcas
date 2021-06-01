@@ -21,7 +21,7 @@ namespace dbgroup::atomic::mwcas
  * @return a read value
  */
 template <class T>
-static T
+static constexpr T
 ReadMwCASField(const void *addr)
 {
   const auto target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
@@ -60,10 +60,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   ~MwCASDescriptor() = default;
 
-  MwCASDescriptor(const MwCASDescriptor &) = default;
-  MwCASDescriptor &operator=(const MwCASDescriptor &obj) = default;
-  MwCASDescriptor(MwCASDescriptor &&) = default;
-  MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
+  constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
+  constexpr MwCASDescriptor &operator=(const MwCASDescriptor &obj) = default;
+  constexpr MwCASDescriptor(MwCASDescriptor &&) = default;
+  constexpr MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
 
   /*################################################################################################
    * Public getters/setters
@@ -93,7 +93,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @retval false if this descriptor is already full
    */
   template <class T>
-  bool
+  constexpr bool
   AddMwCASTarget(  //
       void *addr,
       const T old_val,
@@ -113,7 +113,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @retval true if a MwCAS operation succeeds
    * @retval false if a MwCAS operation fails
    */
-  bool
+  constexpr bool
   MwCAS()
   {
     const auto desc_addr = reinterpret_cast<uintptr_t>(this);

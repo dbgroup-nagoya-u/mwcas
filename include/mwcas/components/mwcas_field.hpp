@@ -44,10 +44,10 @@ class alignas(kWordSize) MwCASField
 
   ~MwCASField() = default;
 
-  MwCASField(const MwCASField &) = default;
-  MwCASField &operator=(const MwCASField &obj) = default;
-  MwCASField(MwCASField &&) = default;
-  MwCASField &operator=(MwCASField &&) = default;
+  constexpr MwCASField(const MwCASField &) = default;
+  constexpr MwCASField &operator=(const MwCASField &obj) = default;
+  constexpr MwCASField(MwCASField &&) = default;
+  constexpr MwCASField &operator=(MwCASField &&) = default;
 
   constexpr bool
   operator==(const MwCASField &obj) const

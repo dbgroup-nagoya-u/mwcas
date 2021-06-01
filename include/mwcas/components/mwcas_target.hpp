@@ -46,10 +46,10 @@ class MwCASTarget
 
   ~MwCASTarget() = default;
 
-  MwCASTarget(const MwCASTarget &) = default;
-  MwCASTarget &operator=(const MwCASTarget &obj) = default;
-  MwCASTarget(MwCASTarget &&) = default;
-  MwCASTarget &operator=(MwCASTarget &&) = default;
+  constexpr MwCASTarget(const MwCASTarget &) = default;
+  constexpr MwCASTarget &operator=(const MwCASTarget &obj) = default;
+  constexpr MwCASTarget(MwCASTarget &&) = default;
+  constexpr MwCASTarget &operator=(MwCASTarget &&) = default;
 };
 
 }  // namespace dbgroup::atomic::mwcas
