@@ -63,30 +63,30 @@ ctest -C Release
 ```cpp
 #include "mwcas/mwcas_descriptor.hpp"
 
-#...
-  # consider double-word CAS with the follwing target fields
+//...
+  // consider double-word CAS with the follwing target fields
   uint64_t word1 = 0, word2 = 0;
 
-#...
-  # continue until a MwCAS operation succeeds
+//...
+  // continue until a MwCAS operation succeeds
   while (true) {
-    # prepare a MwCAS descriptor
+    // prepare a MwCAS descriptor
     dbgroup::atomic::mwcas::MwCASDescriptor desc;
 
-    # read current values of every target word
+    // read current values of every target word
     const auto old_1 = dbgroup::atomic::mwcas::ReadMwCASField<uint64_t>(&word1);
     const auto old_2 = dbgroup::atomic::mwcas::ReadMwCASField<uint64_t>(&word2);
 
-    # generate desired values
+    // generate desired values
     const auto new_1 = old_1 + 1;
     const auto new_2 = old_2 + 1;
 
-    # add the target words to the descriptor
+    // add the target words to the descriptor
     desc.AddMwCASTarget(&word1, old_1, new_1);
     desc.AddMwCASTarget(&word1, old_2, new_2);
 
-    # try MwCAS
+    // try MwCAS
     if (desc.MwCAS()) break;
   }
-#...
+//...
 ```
