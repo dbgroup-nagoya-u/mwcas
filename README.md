@@ -83,7 +83,7 @@ ctest -C Release
 
     // add the target words to the descriptor
     desc.AddMwCASTarget(&word1, old_1, new_1);
-    desc.AddMwCASTarget(&word1, old_2, new_2);
+    desc.AddMwCASTarget(&word2, old_2, new_2);
 
     // try MwCAS
     if (desc.MwCAS()) break;
