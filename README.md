@@ -90,3 +90,7 @@ ctest -C Release
   }
 //...
 ```
+
+## Acknowledgments
+
+This work is based on results obtained from project JPNP16007 commissioned by the New Energy and Industrial Technology Development Organization (NEDO). In addition, this work was supported partly by KAKENHI (16H01722 and 20K19804).
