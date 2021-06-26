@@ -6,7 +6,8 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 endif()
 
 # project information
-project(mwcas
+project(
+  mwcas
   VERSION "0.1.0"
   DESCRIPTION "An open-source MwCAS library."
   LANGUAGES "CXX"
@@ -15,7 +16,10 @@ project(mwcas
 # define source directories
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-# set compile options
+#--------------------------------------------------------------------------------------#
+# Set Compile Options
+#--------------------------------------------------------------------------------------#
+
 set(
   MWCAS_CAPACITY
   "4"
@@ -23,27 +27,40 @@ set(
   "The maximum number of target words of MwCAS."
 )
 
-# build MwCAS as a header-only library
+#--------------------------------------------------------------------------------------#
+# Build targets
+#--------------------------------------------------------------------------------------#
+
 add_library(mwcas INTERFACE)
-target_compile_features(mwcas INTERFACE "cxx_std_17")
-target_compile_options(mwcas INTERFACE
+target_compile_features(
+  mwcas INTERFACE
+  "cxx_std_17"
+)
+target_compile_options(
+  mwcas INTERFACE
   -Wall
   -Wextra
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Release">:"-O2 -march=native">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
 )
-target_compile_definitions(mwcas INTERFACE
+target_compile_definitions(
+  mwcas INTERFACE
   MWCAS_CAPACITY=${MWCAS_CAPACITY}
 )
-target_include_directories(mwcas INTERFACE
+target_include_directories(
+  mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/include"
 )
-target_link_libraries(mwcas INTERFACE
+target_link_libraries(
+  mwcas INTERFACE
   pthread
 )
 
-# build unit tests if required
+#--------------------------------------------------------------------------------------#
+# Build Unit Tests
+#--------------------------------------------------------------------------------------#
+
 option(MWCAS_BUILD_TESTS, "Build unit tests for a MwCAS library" OFF)
 if(${MWCAS_BUILD_TESTS})
   enable_testing()
