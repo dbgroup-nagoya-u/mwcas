@@ -16,6 +16,8 @@ jobs:
 
     - name: Clone Main Repository
       uses: actions/checkout@v2
+      with:
+        submodules: true
 
     - name: Create Build Environment
       shell: bash
