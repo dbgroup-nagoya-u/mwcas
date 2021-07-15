@@ -19,6 +19,9 @@ sudo apt update && sudo apt install -y build-essential cmake
 ### Build Options
 
 - `MWCAS_CAPACITY`: the maximum number of target words of MwCAS: default `4`.
+
+### Build Options for Unit Testing
+
 - `MWCAS_BUILD_TESTS`: build unit tests for MwCAS if `on`: default `off`.
 - `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests: default `8`.
 

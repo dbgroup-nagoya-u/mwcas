@@ -17,17 +17,6 @@ project(
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 #--------------------------------------------------------------------------------------#
-# Set Compile Options
-#--------------------------------------------------------------------------------------#
-
-set(
-  MWCAS_CAPACITY
-  "4"
-  CACHE STRING
-  "The maximum number of target words of MwCAS."
-)
-
-#--------------------------------------------------------------------------------------#
 # Build targets
 #--------------------------------------------------------------------------------------#
 
@@ -44,10 +33,6 @@ target_compile_options(
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
 )
-target_compile_definitions(
-  mwcas INTERFACE
-  MWCAS_CAPACITY=${MWCAS_CAPACITY}
-)
 target_include_directories(
   mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/include"
@@ -56,6 +41,17 @@ target_link_libraries(
   mwcas INTERFACE
   pthread
 )
+
+#--------------------------------------------------------------------------------------#
+# Set Compile Options
+#--------------------------------------------------------------------------------------#
+
+if(DEFINED MWCAS_CAPACITY)
+  target_compile_definitions(
+    mwcas INTERFACE
+    MWCAS_CAPACITY=${MWCAS_CAPACITY}
+  )
+endif()
 
 #--------------------------------------------------------------------------------------#
 # Build Unit Tests
