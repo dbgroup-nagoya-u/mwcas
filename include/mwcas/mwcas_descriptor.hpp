@@ -134,7 +134,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
-    size_t embedded_count = 0;
+    int64_t embedded_count = 0;
     for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
       // embed a MwCAS decriptor
       MwCASField loaded_word;
@@ -154,7 +154,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     }
 
     // complete MwCAS
-    for (size_t i = 0; i < embedded_count; ++i) {
+    for (int64_t i = embedded_count - 1; i >= 0; --i) {
       const auto new_val = (mwcas_success) ? targets_[i].new_val : targets_[i].old_val;
       auto old_val = desc_word;
       while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mo_relax)
