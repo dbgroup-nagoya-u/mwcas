@@ -34,7 +34,7 @@ namespace dbgroup::atomic::mwcas
  * @return a read value
  */
 template <class T>
-static constexpr T
+static T
 ReadMwCASField(const void *addr)
 {
   const auto target_addr = static_cast<const std::atomic<component::MwCASField> *>(addr);
@@ -132,7 +132,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * @retval true if a MwCAS operation succeeds
    * @retval false if a MwCAS operation fails
    */
-  constexpr bool
+  bool
   MwCAS()
   {
     const auto desc_addr = reinterpret_cast<uintptr_t>(this);

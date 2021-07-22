@@ -26,7 +26,7 @@ namespace dbgroup::atomic::mwcas::component
  * @brief A class to represent a MwCAS target field.
  *
  */
-class alignas(kWordSize) MwCASField
+class MwCASField
 {
  protected:
   /*################################################################################################
@@ -44,7 +44,7 @@ class alignas(kWordSize) MwCASField
    * Public constructors/destructors
    *##############################################################################################*/
 
-  constexpr MwCASField() : target_bit_arr_{0}, mwcas_flag_{0} {}
+  constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{} {}
 
   template <class T>
   constexpr MwCASField(  //
