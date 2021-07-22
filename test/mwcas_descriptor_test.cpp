@@ -23,13 +23,14 @@
 #include <utility>
 #include <vector>
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::test
 {
 using Target = uint64_t;
 
 class MwCASDescriptorFixture : public ::testing::Test
 {
- public:
+ protected:
+  static constexpr auto kMwCASCapacity = component::kMwCASCapacity;
   static constexpr size_t kInnerLoopNum = 10000;
   static constexpr size_t kOuterLoopNum = 100;
   static constexpr size_t kInitVal = 999999;
@@ -115,7 +116,6 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
   }
 
- protected:
   void
   SetUp() override
   {
@@ -152,4 +152,4 @@ TEST_F(MwCASDescriptorFixture, MwCAS_MultiFieldsMultiThreads_ReadValidValues)
   PerformMwCAS(kMwCASCapacity, kThreadNum);
 }
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::test

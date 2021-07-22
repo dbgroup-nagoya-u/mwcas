@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::component::test
 {
 using Target = uint64_t;
 
@@ -55,4 +55,4 @@ TEST_F(MwCASTargetFixture, Construct_InitialValues_MemberVariablesCorrectlyIniti
   EXPECT_EQ(new_val, entry.new_val.GetTargetData<Target>());
 }
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::component::test

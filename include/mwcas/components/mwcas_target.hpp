@@ -20,7 +20,7 @@
 
 #include "mwcas_field.hpp"
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::component
 {
 /**
  * @brief A class to represent a MwCAS target.
@@ -65,4 +65,4 @@ class MwCASTarget
   constexpr MwCASTarget &operator=(MwCASTarget &&) = default;
 };
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::component

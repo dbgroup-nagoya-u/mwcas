@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::component::test
 {
 using Target = uint64_t;
 
@@ -122,4 +122,4 @@ TEST_F(CASNFieldFixture, NotEqualOp_DifferentInstances_ReturnTrue)
   EXPECT_TRUE(target_word_1 != target_word_2);
 }
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::component::test
