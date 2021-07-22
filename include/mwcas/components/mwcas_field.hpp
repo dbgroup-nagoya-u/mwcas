@@ -20,7 +20,7 @@
 
 #include "common.hpp"
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::component
 {
 /**
  * @brief A class to represent a MwCAS target field.
@@ -95,4 +95,4 @@ class alignas(kWordSize) MwCASField
 // CAS target words must be one word
 static_assert(sizeof(MwCASField) == kWordSize);
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::component

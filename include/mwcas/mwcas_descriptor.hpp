@@ -37,11 +37,11 @@ template <class T>
 static constexpr T
 ReadMwCASField(const void *addr)
 {
-  const auto target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
+  const auto target_addr = static_cast<const std::atomic<component::MwCASField> *>(addr);
 
-  MwCASField target_word;
+  component::MwCASField target_word;
   do {
-    target_word = target_addr->load(mo_relax);
+    target_word = target_addr->load(component::mo_relax);
   } while (target_word.IsMwCASDescriptor());
 
   return target_word.GetTargetData<T>();
@@ -51,8 +51,14 @@ ReadMwCASField(const void *addr)
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
-class alignas(kCacheLineSize) MwCASDescriptor
+class alignas(component::kCacheLineSize) MwCASDescriptor
 {
+  using MwCASTarget = component::MwCASTarget;
+  using MwCASField = component::MwCASField;
+
+  static constexpr auto mo_relax = component::mo_relax;
+  static constexpr auto kMwCASCapacity = component::kMwCASCapacity;
+
  private:
   /*################################################################################################
    * Internal member variables

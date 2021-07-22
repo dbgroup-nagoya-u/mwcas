@@ -20,7 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::component
 {
 /*##################################################################################################
  * Global enum and constants
@@ -77,4 +77,4 @@ union CASTargetConverter<uint64_t> {
   explicit constexpr CASTargetConverter(const uint64_t target) : target_data{target} {}
 };
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::component
