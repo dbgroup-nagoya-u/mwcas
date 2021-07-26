@@ -34,7 +34,7 @@ namespace dbgroup::atomic::mwcas
  * @return a read value
  */
 template <class T>
-static T
+T
 ReadMwCASField(const void *addr)
 {
   const auto target_addr = static_cast<const std::atomic<component::MwCASField> *>(addr);
@@ -140,7 +140,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
-    int64_t embedded_count = 0;
+    size_t embedded_count = 0;
     for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
       // embed a MwCAS decriptor
       MwCASField loaded_word;
@@ -160,7 +160,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     }
 
     // complete MwCAS
-    for (int64_t i = embedded_count - 1; i >= 0; --i) {
+    for (size_t i = 0; i < embedded_count; ++i) {
       const auto new_val = (mwcas_success) ? targets_[i].new_val : targets_[i].old_val;
       auto old_val = desc_word;
       while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mo_relax)
