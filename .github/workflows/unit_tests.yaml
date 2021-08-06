@@ -28,7 +28,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{github.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DMWCAS_BUILD_TESTS=on -DMWCAS_TEST_THREAD_NUM=2
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DMWCAS_BUILD_TESTS=ON -DMWCAS_TEST_THREAD_NUM=2
 
     - name: Build
       shell: bash

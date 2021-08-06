@@ -22,14 +22,14 @@ sudo apt update && sudo apt install -y build-essential cmake
 
 ### Build Options for Unit Testing
 
-- `MWCAS_BUILD_TESTS`: build unit tests for MwCAS if `on`: default `off`.
+- `MWCAS_BUILD_TESTS`: build unit tests for MwCAS if `ON`: default `OFF`.
 - `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests: default `8`.
 
 ### Build and Run Unit Tests
 
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DMWCAS_BUILD_TESTS=on ..
+cmake -DCMAKE_BUILD_TYPE=Release -DMWCAS_BUILD_TESTS=ON ..
 make -j
 ctest -C Release
 ```
