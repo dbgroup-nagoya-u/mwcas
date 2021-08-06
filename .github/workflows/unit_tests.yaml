@@ -1,4 +1,4 @@
-name: Unit Tests
+name: Ubuntu-20.04
 
 on:
   push:

@@ -1,6 +1,6 @@
 # MwCAS
 
-![Unit Tests](https://github.com/dbgroup-nagoya-u/mwcas/workflows/Unit%20Tests/badge.svg?branch=main)
+![Ubuntu-20.04](https://github.com/dbgroup-nagoya-u/mwcas/workflows/Ubuntu-20.04/badge.svg?branch=main)
 
 This repository is an open source implementation of a multi-word compare-and-swap (MwCAS) operation for research use. This implementation is based on Harris et al.'s CASN operation [1] with some optimizations.
 
