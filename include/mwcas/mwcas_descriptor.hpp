@@ -172,7 +172,6 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    *##############################################################################################*/
 
   static constexpr auto mo_relax = component::mo_relax;
-  static constexpr auto kMwCASCapacity = component::kMwCASCapacity;
 
   /*################################################################################################
    * Internal member variables

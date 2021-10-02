@@ -30,7 +30,6 @@ using Target = uint64_t;
 class MwCASDescriptorFixture : public ::testing::Test
 {
  protected:
-  static constexpr auto kMwCASCapacity = component::kMwCASCapacity;
   static constexpr size_t kInnerLoopNum = 10000;
   static constexpr size_t kOuterLoopNum = 100;
   static constexpr size_t kInitVal = 999999;

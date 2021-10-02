@@ -16,9 +16,7 @@
 
 #pragma once
 
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
+#include "../utility.hpp"
 
 namespace dbgroup::atomic::mwcas::component
 {
@@ -34,14 +32,6 @@ constexpr size_t kWordSize = 8;
 
 /// Assumes that the size of one cache line is 64 bytes
 constexpr size_t kCacheLineSize = 64;
-
-#ifdef MWCAS_CAPACITY
-/// The maximum number of target words of MwCAS
-constexpr size_t kMwCASCapacity = MWCAS_CAPACITY;
-#else
-/// The maximum number of target words of MwCAS
-constexpr size_t kMwCASCapacity = 4;
-#endif
 
 /*##################################################################################################
  * Global utility structs
