@@ -33,14 +33,14 @@ class MwCASTarget
    * Public constructors and assignment operators
    *##############################################################################################*/
 
-  constexpr MwCASTarget() : addr{}, old_val{}, new_val{} {}
+  constexpr MwCASTarget() : addr_{}, old_val_{}, new_val_{} {}
 
   template <class T>
   constexpr MwCASTarget(  //
       void *addr,
-      const T old_v,
-      const T new_v)
-      : addr{static_cast<std::atomic<MwCASField> *>(addr)}, old_val{old_v}, new_val{new_v}
+      const T old_val,
+      const T new_val)
+      : addr_{static_cast<std::atomic<MwCASField> *>(addr)}, old_val_{old_val}, new_val_{new_val}
   {
   }
 
@@ -56,17 +56,51 @@ class MwCASTarget
   ~MwCASTarget() = default;
 
   /*################################################################################################
-   * Public member variables
+   * Public getters/setters
+   *##############################################################################################*/
+
+  constexpr MwCASField
+  GetOldVal() const
+  {
+    return old_val_;
+  }
+
+  constexpr MwCASField
+  GetCompleteVal(const bool mwcas_success) const
+  {
+    return (mwcas_success) ? new_val_ : old_val_;
+  }
+
+  /*################################################################################################
+   * Public utility functions
+   *##############################################################################################*/
+
+  MwCASField
+  CAS(  //
+      const MwCASField expected,
+      const MwCASField desired)
+  {
+    MwCASField current = expected;
+    while (!addr_->compare_exchange_weak(current, desired, mo_relax) && current == expected) {
+      // weak CAS may fail even if it can perform
+    }
+
+    return current;
+  }
+
+ private:
+  /*################################################################################################
+   * Internal member variables
    *##############################################################################################*/
 
   /// A target memory address
-  std::atomic<MwCASField> *addr;
+  std::atomic<MwCASField> *addr_;
 
   /// An expected value of a target field
-  MwCASField old_val;
+  MwCASField old_val_;
 
   /// An inserting value into a target field
-  MwCASField new_val;
+  MwCASField new_val_;
 };
 
 }  // namespace dbgroup::atomic::mwcas::component

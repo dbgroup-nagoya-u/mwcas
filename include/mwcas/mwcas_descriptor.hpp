@@ -128,18 +128,19 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     auto mwcas_success = true;
     size_t embedded_count = 0;
     for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
-      // embed a MwCAS decriptor
-      MwCASField loaded_word;
-      do {
-        loaded_word = targets_[i].old_val;
-        while (!targets_[i].addr->compare_exchange_weak(loaded_word, desc_addr, mo_relax)
-               && loaded_word == targets_[i].old_val) {
-          // weak CAS may fail although it can perform
-        }
-      } while (loaded_word.IsMwCASDescriptor());
+      const MwCASField old_val = targets_[i].GetOldVal();
+      MwCASField expected = old_val;
+      while (true) {
+        // try to embed a MwCAS decriptor
+        expected = targets_[i].CAS(expected, desc_addr);
+        if (!expected.IsMwCASDescriptor()) break;
 
-      if (loaded_word != targets_[i].old_val) {
-        // if a target filed has been already updated, MwCAS is failed
+        // retry if another desctiptor is embedded
+        expected = old_val;
+      }
+
+      if (expected != old_val) {
+        // if a target field has been already updated, MwCAS is failed
         mwcas_success = false;
         break;
       }
@@ -147,11 +148,8 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     // complete MwCAS
     for (size_t i = 0; i < embedded_count; ++i) {
-      const auto new_val = (mwcas_success) ? targets_[i].new_val : targets_[i].old_val;
-      auto old_val = desc_addr;
-      while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mo_relax)
-             && old_val == desc_addr) {
-      }
+      const MwCASField desired = targets_[i].GetCompleteVal(mwcas_success);
+      targets_[i].CAS(desc_addr, desired);
     }
 
     return mwcas_success;
@@ -164,12 +162,6 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
   using MwCASTarget = component::MwCASTarget;
   using MwCASField = component::MwCASField;
-
-  /*################################################################################################
-   * Internal constants
-   *##############################################################################################*/
-
-  static constexpr auto mo_relax = component::mo_relax;
 
   /*################################################################################################
    * Internal member variables
