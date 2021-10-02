@@ -122,8 +122,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   bool
   MwCAS()
   {
-    const auto desc_addr = reinterpret_cast<uintptr_t>(this);
-    const auto desc_word = MwCASField{desc_addr, true};
+    const MwCASField desc_addr{this, true};
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
@@ -133,7 +132,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
       MwCASField loaded_word;
       do {
         loaded_word = targets_[i].old_val;
-        while (!targets_[i].addr->compare_exchange_weak(loaded_word, desc_word, mo_relax)
+        while (!targets_[i].addr->compare_exchange_weak(loaded_word, desc_addr, mo_relax)
                && loaded_word == targets_[i].old_val) {
           // weak CAS may fail although it can perform
         }
@@ -149,10 +148,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     // complete MwCAS
     for (size_t i = 0; i < embedded_count; ++i) {
       const auto new_val = (mwcas_success) ? targets_[i].new_val : targets_[i].old_val;
-      auto old_val = desc_word;
+      auto old_val = desc_addr;
       while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mo_relax)
-             && old_val == desc_word) {
-        // weak CAS may fail although it can perform
+             && old_val == desc_addr) {
       }
     }
 

@@ -34,4 +34,26 @@ constexpr size_t kMwCASCapacity = MWCAS_CAPACITY;
 constexpr size_t kMwCASCapacity = 4;
 #endif
 
+/*##################################################################################################
+ * Global utility functions
+ *################################################################################################*/
+
+/**
+ * @tparam T a MwCAS target class.
+ * @retval true if a target class can be updated by MwCAS.
+ * @retval false otherwise.
+ */
+template <class T>
+constexpr bool
+CanMwCAS()
+{
+  if constexpr (std::is_same_v<T, uint64_t>) {
+    return true;
+  } else if constexpr (std::is_pointer_v<T>) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace dbgroup::atomic::mwcas

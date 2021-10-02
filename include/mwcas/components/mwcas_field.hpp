@@ -35,6 +35,13 @@ class MwCASField
 
   constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{} {}
 
+  constexpr MwCASField(  //
+      const uint64_t target_data,
+      const bool is_mwcas_descriptor = false)
+      : target_bit_arr_{target_data}, mwcas_flag_{is_mwcas_descriptor}
+  {
+  }
+
   template <class T>
   constexpr MwCASField(  //
       const T target_data,
@@ -85,7 +92,11 @@ class MwCASField
   constexpr T
   GetTargetData() const
   {
-    return CASTargetConverter<T>{target_bit_arr_}.target_data;
+    if constexpr (std::is_same_v<T, uint64_t>) {
+      return target_bit_arr_;
+    } else {
+      return CASTargetConverter<T>{target_bit_arr_}.target_data;
+    }
   }
 
  private:
