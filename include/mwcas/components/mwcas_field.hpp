@@ -28,20 +28,9 @@ namespace dbgroup::atomic::mwcas::component
  */
 class MwCASField
 {
- protected:
-  /*################################################################################################
-   * Internal member variables
-   *##############################################################################################*/
-
-  /// An actual target data
-  uint64_t target_bit_arr_ : 63;
-
-  /// Representing whether this field contains a MwCAS descriptor
-  uint64_t mwcas_flag_ : 1;
-
  public:
   /*################################################################################################
-   * Public constructors/destructors
+   * Public constructors and assignment operators
    *##############################################################################################*/
 
   constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{} {}
@@ -55,12 +44,20 @@ class MwCASField
   {
   }
 
-  ~MwCASField() = default;
-
   constexpr MwCASField(const MwCASField &) = default;
   constexpr MwCASField &operator=(const MwCASField &obj) = default;
   constexpr MwCASField(MwCASField &&) = default;
   constexpr MwCASField &operator=(MwCASField &&) = default;
+
+  /*################################################################################################
+   * Public destructor
+   *##############################################################################################*/
+
+  ~MwCASField() = default;
+
+  /*################################################################################################
+   * Public operators
+   *##############################################################################################*/
 
   constexpr bool
   operator==(const MwCASField &obj) const
@@ -90,6 +87,17 @@ class MwCASField
   {
     return CASTargetConverter<T>{target_bit_arr_}.target_data;
   }
+
+ private:
+  /*################################################################################################
+   * Internal member variables
+   *##############################################################################################*/
+
+  /// An actual target data
+  uint64_t target_bit_arr_ : 63;
+
+  /// Representing whether this field contains a MwCAS descriptor
+  uint64_t mwcas_flag_ : 1;
 };
 
 // CAS target words must be one word

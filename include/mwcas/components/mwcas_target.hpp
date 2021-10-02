@@ -30,6 +30,32 @@ class MwCASTarget
 {
  public:
   /*################################################################################################
+   * Public constructors and assignment operators
+   *##############################################################################################*/
+
+  constexpr MwCASTarget() : addr{}, old_val{}, new_val{} {}
+
+  template <class T>
+  constexpr MwCASTarget(  //
+      void *addr,
+      const T old_v,
+      const T new_v)
+      : addr{static_cast<std::atomic<MwCASField> *>(addr)}, old_val{old_v}, new_val{new_v}
+  {
+  }
+
+  constexpr MwCASTarget(const MwCASTarget &) = default;
+  constexpr MwCASTarget &operator=(const MwCASTarget &obj) = default;
+  constexpr MwCASTarget(MwCASTarget &&) = default;
+  constexpr MwCASTarget &operator=(MwCASTarget &&) = default;
+
+  /*################################################################################################
+   * Public destructor
+   *##############################################################################################*/
+
+  ~MwCASTarget() = default;
+
+  /*################################################################################################
    * Public member variables
    *##############################################################################################*/
 
@@ -41,28 +67,6 @@ class MwCASTarget
 
   /// An inserting value into a target field
   MwCASField new_val;
-
-  /*################################################################################################
-   * Public constructors/destructors
-   *##############################################################################################*/
-
-  constexpr MwCASTarget() : addr{nullptr} {}
-
-  template <class T>
-  constexpr MwCASTarget(  //
-      void *addr,
-      const T old_v,
-      const T new_v)
-      : addr{static_cast<std::atomic<MwCASField> *>(addr)}, old_val{old_v}, new_val{new_v}
-  {
-  }
-
-  ~MwCASTarget() = default;
-
-  constexpr MwCASTarget(const MwCASTarget &) = default;
-  constexpr MwCASTarget &operator=(const MwCASTarget &obj) = default;
-  constexpr MwCASTarget(MwCASTarget &&) = default;
-  constexpr MwCASTarget &operator=(MwCASTarget &&) = default;
 };
 
 }  // namespace dbgroup::atomic::mwcas::component
