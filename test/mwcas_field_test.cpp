@@ -18,108 +18,127 @@
 
 #include <gtest/gtest.h>
 
+#include "common.hpp"
+
 namespace dbgroup::atomic::mwcas::component::test
 {
-using Target = uint64_t;
-
-class CASNFieldFixture : public ::testing::Test
+template <class Target>
+class MwCASFieldFixture : public ::testing::Test
 {
- public:
-  static constexpr Target data_1 = 1;
-  static constexpr Target data_2 = 2;
-
  protected:
+  /*################################################################################################
+   * Internal member variables
+   *##############################################################################################*/
+
+  Target data_1;
+  Target data_2;
+
+  /*################################################################################################
+   * Setup/Teardown
+   *##############################################################################################*/
+
   void
   SetUp() override
   {
+    if constexpr (std::is_same_v<Target, uint64_t*>) {
+      data_1 = new uint64_t{1};
+      data_2 = new uint64_t{2};
+    } else {
+      data_1 = 1;
+      data_2 = 2;
+    }
   }
 
   void
   TearDown() override
   {
+    if constexpr (std::is_same_v<Target, uint64_t*>) {
+      delete data_1;
+      delete data_2;
+    }
+  }
+
+  /*################################################################################################
+   * Functions for verification
+   *##############################################################################################*/
+
+  void
+  VerifyConstructor(const bool is_mwcas_desc)
+  {
+    const auto target_word_1 = MwCASField{data_1, is_mwcas_desc};
+
+    if (is_mwcas_desc) {
+      EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
+    } else {
+      EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
+    }
+    EXPECT_EQ(data_1, target_word_1.GetTargetData<Target>());
+  }
+
+  void
+  VerifyEQ()
+  {
+    MwCASField field_a{data_1, false};
+    MwCASField field_b{data_1, false};
+    EXPECT_TRUE(field_a == field_b);
+
+    field_b = MwCASField{data_2, false};
+    EXPECT_FALSE(field_a == field_b);
+
+    field_a = MwCASField{data_2, true};
+    EXPECT_FALSE(field_a == field_b);
+
+    field_b = MwCASField{data_2, true};
+    EXPECT_TRUE(field_a == field_b);
+  }
+
+  void
+  VerifyNE()
+  {
+    MwCASField field_a{data_1, false};
+    MwCASField field_b{data_1, false};
+    EXPECT_FALSE(field_a != field_b);
+
+    field_b = MwCASField{data_2, false};
+    EXPECT_TRUE(field_a != field_b);
+
+    field_a = MwCASField{data_2, true};
+    EXPECT_TRUE(field_a != field_b);
+
+    field_b = MwCASField{data_2, true};
+    EXPECT_FALSE(field_a != field_b);
   }
 };
 
-/*--------------------------------------------------------------------------------------------------
- * Public utility tests
- *------------------------------------------------------------------------------------------------*/
+/*##################################################################################################
+ * Preparation for typed testing
+ *################################################################################################*/
 
-TEST_F(CASNFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyInitialized)
+using Targets = ::testing::Types<uint64_t, uint64_t*, MyClass>;
+TYPED_TEST_CASE(MwCASFieldFixture, Targets);
+
+/*##################################################################################################
+ * Unit test definitions
+ *################################################################################################*/
+
+TYPED_TEST(MwCASFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyInitialized)
 {
-  const auto target_word_1 = MwCASField{data_1, false};
-
-  EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
-  EXPECT_EQ(data_1, target_word_1.GetTargetData<Target>());
-
-  const auto target_word_2 = MwCASField{data_2, false};
-
-  EXPECT_FALSE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<Target>());
+  TestFixture::VerifyConstructor(false);
 }
 
-TEST_F(CASNFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
+TYPED_TEST(MwCASFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
 {
-  const auto target_word_1 = MwCASField{data_1, true};
-
-  EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
-  EXPECT_EQ(data_1, target_word_1.GetTargetData<Target>());
-
-  const auto target_word_2 = MwCASField{data_2, true};
-
-  EXPECT_TRUE(target_word_2.IsMwCASDescriptor());
-  EXPECT_EQ(data_2, target_word_2.GetTargetData<Target>());
+  TestFixture::VerifyConstructor(true);
 }
 
-TEST_F(CASNFieldFixture, EqualOp_EqualInstances_ReturnTrue)
+TYPED_TEST(MwCASFieldFixture, EQ_AllCombinationOfInstances_ReturnCorrectBool)
 {
-  auto target_word_1 = MwCASField{data_1, false};
-  auto target_word_2 = MwCASField{data_1, false};
-
-  EXPECT_TRUE(target_word_1 == target_word_2);
-
-  target_word_1 = MwCASField{data_1, true};
-  target_word_2 = MwCASField{data_1, true};
-
-  EXPECT_TRUE(target_word_1 == target_word_2);
+  TestFixture::VerifyEQ();
 }
 
-TEST_F(CASNFieldFixture, EqualOp_DifferentInstances_ReturnFalse)
+TYPED_TEST(MwCASFieldFixture, NE_AllCombinationOfInstances_ReturnCorrectBool)
 {
-  auto target_word_1 = MwCASField{data_1, false};
-  auto target_word_2 = MwCASField{data_2, false};
-
-  EXPECT_FALSE(target_word_1 == target_word_2);
-
-  target_word_1 = MwCASField{data_1, true};
-  target_word_2 = MwCASField{data_1, false};
-
-  EXPECT_FALSE(target_word_1 == target_word_2);
-}
-
-TEST_F(CASNFieldFixture, NotEqualOp_EqualInstances_ReturnFalse)
-{
-  auto target_word_1 = MwCASField{data_1, false};
-  auto target_word_2 = MwCASField{data_1, false};
-
-  EXPECT_FALSE(target_word_1 != target_word_2);
-
-  target_word_1 = MwCASField{data_1, true};
-  target_word_2 = MwCASField{data_1, true};
-
-  EXPECT_FALSE(target_word_1 != target_word_2);
-}
-
-TEST_F(CASNFieldFixture, NotEqualOp_DifferentInstances_ReturnTrue)
-{
-  auto target_word_1 = MwCASField{data_1, false};
-  auto target_word_2 = MwCASField{data_2, false};
-
-  EXPECT_TRUE(target_word_1 != target_word_2);
-
-  target_word_1 = MwCASField{data_1, true};
-  target_word_2 = MwCASField{data_1, false};
-
-  EXPECT_TRUE(target_word_1 != target_word_2);
+  TestFixture::VerifyNE();
 }
 
 }  // namespace dbgroup::atomic::mwcas::component::test

@@ -60,8 +60,7 @@ class MwCASTarget
    *##############################################################################################*/
 
   bool
-  EmbedDescriptor(  //
-      const MwCASField desc_addr)
+  EmbedDescriptor(const MwCASField desc_addr)
   {
     MwCASField expected = old_val_;
     while (true) {
