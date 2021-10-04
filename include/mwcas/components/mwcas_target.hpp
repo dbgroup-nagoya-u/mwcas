@@ -56,36 +56,38 @@ class MwCASTarget
   ~MwCASTarget() = default;
 
   /*################################################################################################
-   * Public getters/setters
-   *##############################################################################################*/
-
-  constexpr MwCASField
-  GetOldVal() const
-  {
-    return old_val_;
-  }
-
-  constexpr MwCASField
-  GetCompleteVal(const bool mwcas_success) const
-  {
-    return (mwcas_success) ? new_val_ : old_val_;
-  }
-
-  /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
 
-  MwCASField
-  CAS(  //
-      const MwCASField expected,
-      const MwCASField desired)
+  bool
+  EmbedDescriptor(  //
+      const MwCASField desc_addr)
   {
-    MwCASField current = expected;
-    while (!addr_->compare_exchange_weak(current, desired, mo_relax) && current == expected) {
-      // weak CAS may fail even if it can perform
+    MwCASField expected = old_val_;
+    while (true) {
+      // try to embed a MwCAS decriptor
+      while (!addr_->compare_exchange_weak(expected, desc_addr, mo_relax) && expected == old_val_) {
+        // weak CAS may fail even if it can perform
+      }
+      if (!expected.IsMwCASDescriptor()) break;
+
+      // retry if another desctiptor is embedded
+      expected = old_val_;
     }
 
-    return current;
+    return expected == old_val_;
+  }
+
+  void
+  CompleteMwCAS(  //
+      const MwCASField desc_addr,
+      const bool mwcas_success)
+  {
+    const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
+    MwCASField current = desc_addr;
+    while (!addr_->compare_exchange_weak(current, desired, mo_relax) && current == desc_addr) {
+      // weak CAS may fail even if it can perform
+    }
   }
 
  private:

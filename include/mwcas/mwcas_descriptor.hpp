@@ -128,19 +128,8 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     auto mwcas_success = true;
     size_t embedded_count = 0;
     for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
-      const MwCASField old_val = targets_[i].GetOldVal();
-      MwCASField expected = old_val;
-      while (true) {
-        // try to embed a MwCAS decriptor
-        expected = targets_[i].CAS(expected, desc_addr);
-        if (!expected.IsMwCASDescriptor()) break;
-
-        // retry if another desctiptor is embedded
-        expected = old_val;
-      }
-
-      if (expected != old_val) {
-        // if a target field has been already updated, MwCAS is failed
+      if (!targets_[i].EmbedDescriptor(desc_addr)) {
+        // if a target field has been already updated, MwCAS fails
         mwcas_success = false;
         break;
       }
@@ -148,8 +137,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     // complete MwCAS
     for (size_t i = 0; i < embedded_count; ++i) {
-      const MwCASField desired = targets_[i].GetCompleteVal(mwcas_success);
-      targets_[i].CAS(desc_addr, desired);
+      targets_[i].CompleteMwCAS(desc_addr, mwcas_success);
     }
 
     return mwcas_success;
