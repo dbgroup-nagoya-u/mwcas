@@ -41,6 +41,10 @@ class MwCASField
       const bool is_mwcas_descriptor = false)
       : target_bit_arr_{ConvertToUint64(target_data)}, mwcas_flag_{is_mwcas_descriptor}
   {
+    // static check to validate MwCAS targets
+    static_assert(sizeof(T) == kWordSize);
+    static_assert(std::is_trivially_copyable_v<T>);
+    static_assert(CanMwCAS<T>());
   }
 
   constexpr MwCASField(const MwCASField &) = default;
