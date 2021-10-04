@@ -33,21 +33,13 @@ class MwCASField
    * Public constructors and assignment operators
    *##############################################################################################*/
 
-  constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{} {}
-
-  constexpr MwCASField(  //
-      const uint64_t target_data,
-      const bool is_mwcas_descriptor = false)
-      : target_bit_arr_{target_data}, mwcas_flag_{is_mwcas_descriptor}
-  {
-  }
+  constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{false} {}
 
   template <class T>
   constexpr MwCASField(  //
       const T target_data,
       const bool is_mwcas_descriptor = false)
-      : target_bit_arr_{CASTargetConverter{target_data}.converted_data},
-        mwcas_flag_{is_mwcas_descriptor}
+      : target_bit_arr_{ConvertToUint64(target_data)}, mwcas_flag_{is_mwcas_descriptor}
   {
   }
 
@@ -94,12 +86,31 @@ class MwCASField
   {
     if constexpr (std::is_same_v<T, uint64_t>) {
       return target_bit_arr_;
+    } else if constexpr (std::is_pointer_v<T>) {
+      return reinterpret_cast<T>(target_bit_arr_);
     } else {
       return CASTargetConverter<T>{target_bit_arr_}.target_data;
     }
   }
 
  private:
+  /*################################################################################################
+   * Internal utility functions
+   *##############################################################################################*/
+
+  template <class T>
+  constexpr uint64_t
+  ConvertToUint64(const T data)
+  {
+    if constexpr (std::is_same_v<T, uint64_t>) {
+      return data;
+    } else if constexpr (std::is_pointer_v<T>) {
+      return reinterpret_cast<uint64_t>(data);
+    } else {
+      return CASTargetConverter{data}.converted_data;
+    }
+  }
+
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
