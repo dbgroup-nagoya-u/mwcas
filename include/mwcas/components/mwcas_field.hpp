@@ -55,6 +55,10 @@ class MwCASField
     // static check to validate MwCAS targets
     static_assert(sizeof(T) == kWordSize);
     static_assert(std::is_trivially_copyable_v<T>);
+    static_assert(std::is_copy_constructible_v<T>);
+    static_assert(std::is_move_constructible_v<T>);
+    static_assert(std::is_copy_assignable_v<T>);
+    static_assert(std::is_move_assignable_v<T>);
     static_assert(CanMwCAS<T>());
   }
 
