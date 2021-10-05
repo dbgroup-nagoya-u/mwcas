@@ -53,36 +53,31 @@ ReadMwCASField(const void *addr)
  */
 class alignas(component::kCacheLineSize) MwCASDescriptor
 {
-  using MwCASTarget = component::MwCASTarget;
-  using MwCASField = component::MwCASField;
-
-  static constexpr auto mo_relax = component::mo_relax;
-  static constexpr auto kMwCASCapacity = component::kMwCASCapacity;
-
- private:
-  /*################################################################################################
-   * Internal member variables
-   *##############################################################################################*/
-
-  /// Target entries of MwCAS
-  MwCASTarget targets_[kMwCASCapacity];
-
-  /// The number of registered MwCAS targets
-  size_t target_count_;
-
  public:
   /*################################################################################################
-   * Public constructors/destructors
+   * Public constructors and assignment operators
    *##############################################################################################*/
 
+  /**
+   * @brief Construct an empty descriptor for MwCAS operations.
+   *
+   */
   constexpr MwCASDescriptor() : target_count_{0} {}
-
-  ~MwCASDescriptor() = default;
 
   constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
   constexpr MwCASDescriptor &operator=(const MwCASDescriptor &obj) = default;
   constexpr MwCASDescriptor(MwCASDescriptor &&) = default;
   constexpr MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
+
+  /*################################################################################################
+   * Public destructors
+   *##############################################################################################*/
+
+  /**
+   * @brief Destroy the MwCASDescriptor object.
+   *
+   */
+  ~MwCASDescriptor() = default;
 
   /*################################################################################################
    * Public getters/setters
@@ -135,25 +130,14 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   bool
   MwCAS()
   {
-    const auto desc_addr = reinterpret_cast<uintptr_t>(this);
-    const auto desc_word = MwCASField{desc_addr, true};
+    const MwCASField desc_addr{this, true};
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
     size_t embedded_count = 0;
     for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
-      // embed a MwCAS decriptor
-      MwCASField loaded_word;
-      do {
-        loaded_word = targets_[i].old_val;
-        while (!targets_[i].addr->compare_exchange_weak(loaded_word, desc_word, mo_relax)
-               && loaded_word == targets_[i].old_val) {
-          // weak CAS may fail although it can perform
-        }
-      } while (loaded_word.IsMwCASDescriptor());
-
-      if (loaded_word != targets_[i].old_val) {
-        // if a target filed has been already updated, MwCAS is failed
+      if (!targets_[i].EmbedDescriptor(desc_addr)) {
+        // if a target field has been already updated, MwCAS fails
         mwcas_success = false;
         break;
       }
@@ -161,16 +145,29 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     // complete MwCAS
     for (size_t i = 0; i < embedded_count; ++i) {
-      const auto new_val = (mwcas_success) ? targets_[i].new_val : targets_[i].old_val;
-      auto old_val = desc_word;
-      while (!targets_[i].addr->compare_exchange_weak(old_val, new_val, mo_relax)
-             && old_val == desc_word) {
-        // weak CAS may fail although it can perform
-      }
+      targets_[i].CompleteMwCAS(desc_addr, mwcas_success);
     }
 
     return mwcas_success;
   }
+
+ private:
+  /*################################################################################################
+   * Internal type aliases
+   *##############################################################################################*/
+
+  using MwCASTarget = component::MwCASTarget;
+  using MwCASField = component::MwCASField;
+
+  /*################################################################################################
+   * Internal member variables
+   *##############################################################################################*/
+
+  /// Target entries of MwCAS
+  MwCASTarget targets_[kMwCASCapacity];
+
+  /// The number of registered MwCAS targets
+  size_t target_count_;
 };
 
 }  // namespace dbgroup::atomic::mwcas

@@ -16,52 +16,44 @@
 
 #pragma once
 
-#include "../utility.hpp"
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 
-namespace dbgroup::atomic::mwcas::component
+namespace dbgroup::atomic::mwcas
 {
 /*##################################################################################################
  * Global enum and constants
  *################################################################################################*/
 
-/// A short name of std::memory_order_relaxed
-constexpr std::memory_order mo_relax = std::memory_order_relaxed;
-
-/// Assumes that the length of one word is 8 bytes
-constexpr size_t kWordSize = 8;
-
-/// Assumes that the size of one cache line is 64 bytes
-constexpr size_t kCacheLineSize = 64;
+#ifdef MWCAS_CAPACITY
+/// The maximum number of target words of MwCAS
+constexpr size_t kMwCASCapacity = MWCAS_CAPACITY;
+#else
+/// The maximum number of target words of MwCAS
+constexpr size_t kMwCASCapacity = 4;
+#endif
 
 /*##################################################################################################
- * Global utility structs
+ * Global utility functions
  *################################################################################################*/
 
 /**
- * @brief An union to convert MwCAS target data into uint64_t.
- *
- * @tparam T a type of target data
+ * @tparam T a MwCAS target class.
+ * @retval true if a target class can be updated by MwCAS.
+ * @retval false otherwise.
  */
 template <class T>
-union CASTargetConverter {
-  const T target_data;
-  const uint64_t converted_data;
+constexpr bool
+CanMwCAS()
+{
+  if constexpr (std::is_same_v<T, uint64_t>) {
+    return true;
+  } else if constexpr (std::is_pointer_v<T>) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-  explicit constexpr CASTargetConverter(const uint64_t converted) : converted_data{converted} {}
-
-  explicit constexpr CASTargetConverter(const T target) : target_data{target} {}
-};
-
-/**
- * @brief Specialization for unsigned long type.
- *
- */
-template <>
-union CASTargetConverter<uint64_t> {
-  const uint64_t target_data;
-  const uint64_t converted_data;
-
-  explicit constexpr CASTargetConverter(const uint64_t target) : target_data{target} {}
-};
-
-}  // namespace dbgroup::atomic::mwcas::component
+}  // namespace dbgroup::atomic::mwcas

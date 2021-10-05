@@ -18,11 +18,14 @@ sudo apt update && sudo apt install -y build-essential cmake
 
 ### Build Options
 
+#### Tuning Parameters
+
 - `MWCAS_CAPACITY`: the maximum number of target words of MwCAS: default `4`.
+    - In order to maximize performance, it is desirable to specify the minimum number needed. Otherwise, the extra space will pollute the CPU cache.
 
-### Build Options for Unit Testing
+#### Parameters for Unit Testing
 
-- `MWCAS_BUILD_TESTS`: build unit tests for MwCAS if `ON`: default `OFF`.
+- `MWCAS_BUILD_TESTS`: build unit tests if `ON`: default `OFF`.
 - `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests: default `8`.
 
 ### Build and Run Unit Tests
@@ -61,37 +64,127 @@ ctest -C Release
     )
     ```
 
-### Example Codes
+### MwCAS APIs
+
+The following code shows the basic usage of this library. Note that you need to use a `ReadMwCASField` API to read a current value from a MwCAS target address. Otherwise, you may read an inconsistent data (e.g., an embedded MwCAS descriptor).
 
 ```cpp
+#include <iostream>
+#include <thread>
+#include <vector>
+
 #include "mwcas/mwcas_descriptor.hpp"
 
-//...
-  // consider double-word CAS with the follwing target fields
-  uint64_t word1 = 0, word2 = 0;
+// use four threads for a multi-threading example
+constexpr size_t kThreadNum = 4;
 
-//...
-  // continue until a MwCAS operation succeeds
-  while (true) {
-    // prepare a MwCAS descriptor
-    dbgroup::atomic::mwcas::MwCASDescriptor desc;
+// the number of MwCAS operations in each thread
+constexpr size_t kExecNum = 1e6;
 
-    // read current values of every target word
-    const auto old_1 = dbgroup::atomic::mwcas::ReadMwCASField<uint64_t>(&word1);
-    const auto old_2 = dbgroup::atomic::mwcas::ReadMwCASField<uint64_t>(&word2);
+// use an unsigned long type as MwCAS targets
+using Target = uint64_t;
 
-    // generate desired values
-    const auto new_1 = old_1 + 1;
-    const auto new_2 = old_2 + 1;
+// aliases for simplicity
+using dbgroup::atomic::mwcas::MwCASDescriptor;
+using dbgroup::atomic::mwcas::ReadMwCASField;
 
-    // add the target words to the descriptor
-    desc.AddMwCASTarget(&word1, old_1, new_1);
-    desc.AddMwCASTarget(&word2, old_2, new_2);
+int
+main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
+{
+  // targets of a 2wCAS example
+  Target word_1 = 0;
+  Target word_2 = 0;
 
-    // try MwCAS
-    if (desc.MwCAS()) break;
+  // a lambda function for multi-threading
+  auto f = [&]() {
+    for (size_t i = 0; i < kExecNum; ++i) {
+      // continue until a MwCAS operation succeeds
+      while (true) {
+        // create a MwCAS descriptor
+        MwCASDescriptor desc{};
+
+        // prepare expected/desired values
+        const auto old_1 = ReadMwCASField<Target>(&word_1);
+        const auto new_1 = old_1 + 1;
+        const auto old_2 = ReadMwCASField<Target>(&word_2);
+        const auto new_2 = old_2 + 1;
+
+        // register MwCAS targets with the descriptor
+        desc.AddMwCASTarget(&word_1, old_1, new_1);
+        desc.AddMwCASTarget(&word_2, old_2, new_2);
+
+        // try MwCAS
+        if (desc.MwCAS()) break;
+      }
+    }
+  };
+
+  // perform MwCAS operations with multi-threads
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kThreadNum; ++i) threads.emplace_back(f);
+  for (auto&& thread : threads) thread.join();
+
+  // check whether MwCAS operations are performed consistently
+  std::cout << "1st field: " << word_1 << std::endl  //
+            << "2nd field: " << word_2 << std::endl;
+
+  return 0;
+}
+```
+
+This code will output the following results.
+
+```txt
+1st field: 4000000
+2nd field: 4000000
+```
+
+### Swapping Your Own Classes with MwCAS
+
+By default, this library only deal with `unsigned long` and pointer types as MwCAS targets. To make your own class the target of MwCAS operations, it must satisfy the following conditions:
+
+1. the byte length of the class is `8` (i.e., `static_assert(sizeof(<your_class>) == 8)`),
+2. at least the last one bit is reserved for MwCAS and initialized by zeros,
+3. the class satisfies [the conditions of the std::atomic template](https://en.cppreference.com/w/cpp/atomic/atomic#Primary_template), and
+4. a specialized `CanMwCAS` function is implemented in `dbgroup::atomic::mwcas` namespace and returns `true`.
+
+The following snippet is an example implementation of a class that can be processed by MwCAS operations.
+
+```cpp
+struct MyClass {
+  /// an actual data
+  uint64_t data : 63;
+
+  /// reserve at least one bit for MwCAS operations
+  uint64_t control_bits : 1;
+
+  // control bits must be initialzed by zeros
+  constexpr MyClass() : data{}, control_bits{0} {
+    // ... some initializations ...
   }
-//...
+
+  // target class must satisfy conditions of the std::atomic template
+  ~MyClass() = default;
+  constexpr MyClass(const MyClass &) = default;
+  constexpr MyClass &operator=(const MyClass &) = default;
+  constexpr MyClass(MyClass &&) = default;
+  constexpr MyClass &operator=(MyClass &&) = default;
+};
+
+namespace dbgroup::atomic::mwcas
+{
+/**
+ * @brief Specialization to enable MwCAS to swap our sample class.
+ *
+ */
+template <>
+constexpr bool
+CanMwCAS<MyClass>()
+{
+  return true;
+}
+
+}  // namespace dbgroup::atomic::mwcas
 ```
 
 ## Acknowledgments
