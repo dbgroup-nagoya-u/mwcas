@@ -58,6 +58,10 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * Public constructors and assignment operators
    *##############################################################################################*/
 
+  /**
+   * @brief Construct an empty descriptor for MwCAS operations.
+   *
+   */
   constexpr MwCASDescriptor() : target_count_{0} {}
 
   constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
@@ -69,6 +73,10 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * Public destructors
    *##############################################################################################*/
 
+  /**
+   * @brief Destroy the MwCASDescriptor object.
+   *
+   */
   ~MwCASDescriptor() = default;
 
   /*################################################################################################

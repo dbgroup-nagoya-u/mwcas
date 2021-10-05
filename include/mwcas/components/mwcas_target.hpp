@@ -33,8 +33,20 @@ class MwCASTarget
    * Public constructors and assignment operators
    *##############################################################################################*/
 
+  /**
+   * @brief Construct an empty MwCAS target.
+   *
+   */
   constexpr MwCASTarget() : addr_{}, old_val_{}, new_val_{} {}
 
+  /**
+   * @brief Construct a new MwCAS target based on given information.
+   *
+   * @tparam T a class of MwCAS targets.
+   * @param addr a target memory address.
+   * @param old_val an expected value of the target address.
+   * @param new_val an desired value of the target address.
+   */
   template <class T>
   constexpr MwCASTarget(  //
       void *addr,
@@ -53,12 +65,23 @@ class MwCASTarget
    * Public destructor
    *##############################################################################################*/
 
+  /**
+   * @brief Destroy the MwCASTarget object.
+   *
+   */
   ~MwCASTarget() = default;
 
   /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
 
+  /**
+   * @brief Embed a descriptor into this target address to linearlize MwCAS operations.
+   *
+   * @param desc_addr a memory address of a target descriptor.
+   * @retval true if the descriptor address is successfully embedded.
+   * @retval false otherwise.
+   */
   bool
   EmbedDescriptor(const MwCASField desc_addr)
   {
@@ -77,6 +100,12 @@ class MwCASTarget
     return expected == old_val_;
   }
 
+  /**
+   * @brief Update/revert a value of this target address.
+   *
+   * @param desc_addr an embedded descriptor in this target address.
+   * @param mwcas_success a flag to indicate a target will be updated or reverted.
+   */
   void
   CompleteMwCAS(  //
       const MwCASField desc_addr,

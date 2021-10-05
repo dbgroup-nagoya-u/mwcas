@@ -28,19 +28,20 @@
     "-runtime/references"
   ],
   "cSpell.words": [
+    "alignas",
     "CASN",
+    "ctest",
     "DCMAKE",
     "DMWCAS",
+    "gtest",
     "JPNP",
     "KAKENHI",
-    "NCAS",
-    "RDCSS",
-    "Wextra",
-    "alignas",
-    "ctest",
-    "gtest",
+    "linearlize",
     "mwcas",
-    "pthread"
+    "NCAS",
+    "pthread",
+    "RDCSS",
+    "Wextra"
   ],
   "files.associations": {
     "fstream": "cpp",

@@ -33,8 +33,19 @@ class MwCASField
    * Public constructors and assignment operators
    *##############################################################################################*/
 
+  /**
+   * @brief Construct an empty field for MwCAS.
+   *
+   */
   constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{false} {}
 
+  /**
+   * @brief Construct a MwCAS field with given data.
+   *
+   * @tparam T a target class to be embedded.
+   * @param target_data target data to be embedded.
+   * @param is_mwcas_descriptor a flag to indicate this field contains a descriptor.
+   */
   template <class T>
   constexpr MwCASField(  //
       const T target_data,
@@ -56,6 +67,10 @@ class MwCASField
    * Public destructor
    *##############################################################################################*/
 
+  /**
+   * @brief Destroy the MwCASField object.
+   *
+   */
   ~MwCASField() = default;
 
   /*################################################################################################
@@ -78,12 +93,20 @@ class MwCASField
    * Public getters/setters
    *##############################################################################################*/
 
+  /**
+   * @retval true if this field contains a descriptor.
+   * @retval false otherwise.
+   */
   constexpr bool
   IsMwCASDescriptor() const
   {
     return mwcas_flag_;
   }
 
+  /**
+   * @tparam T an expected class of data.
+   * @return data retained in this field.
+   */
   template <class T>
   constexpr T
   GetTargetData() const
@@ -102,6 +125,13 @@ class MwCASField
    * Internal utility functions
    *##############################################################################################*/
 
+  /**
+   * @brief Conver given data into uint64_t.
+   *
+   * @tparam T a class of given data.
+   * @param data data to be converted.
+   * @return data converted to uint64_t.
+   */
   template <class T>
   constexpr uint64_t
   ConvertToUint64(const T data)
