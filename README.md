@@ -145,9 +145,8 @@ By default, this library only deal with `unsigned long` and pointer types as MwC
 
 1. the byte length of the class is `8` (i.e., `static_assert(sizeof(<your_class>) == 8)`),
 2. at least the last one bit is reserved for MwCAS and initialized by zeros,
-3. the class satisfies [the conditions of the std::atomic template](https://en.cppreference.com/w/cpp/atomic/atomic#Primary_template),
-4. `==` and `!=` operators are implemented to check whether instances of the class are equal, and
-5. a specialized `CanMwCAS` function is implemented in `dbgroup::atomic::mwcas` namespace and returns `true`.
+3. the class satisfies [the conditions of the std::atomic template](https://en.cppreference.com/w/cpp/atomic/atomic#Primary_template), and
+4. a specialized `CanMwCAS` function is implemented in `dbgroup::atomic::mwcas` namespace and returns `true`.
 
 The following snippet is an example implementation of a class that can be processed by MwCAS operations.
 
@@ -170,19 +169,6 @@ struct MyClass {
   constexpr MyClass &operator=(const MyClass &) = default;
   constexpr MyClass(MyClass &&) = default;
   constexpr MyClass &operator=(MyClass &&) = default;
-
-  // define operators to check equality
-  constexpr bool
-  operator==(const MyClass &comp) const
-  {
-    return data == comp.data;
-  }
-
-  constexpr bool
-  operator!=(const MyClass &comp) const
-  {
-    return !(*this == comp);
-  }
 };
 
 namespace dbgroup::atomic::mwcas
