@@ -25,7 +25,8 @@
     "-whitespace/braces",
     "-build/c++11",
     "-whitespace/newline",
-    "-runtime/references"
+    "-runtime/references",
+    "-build/header_guard"
   ],
   "cSpell.words": [
     "alignas",

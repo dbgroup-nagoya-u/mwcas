@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef MWCAS_MWCAS_COMPONENT_MWCAS_FIELD_H_
+#define MWCAS_MWCAS_COMPONENT_MWCAS_FIELD_H_
 
 #include <atomic>
 
@@ -164,3 +165,5 @@ class MwCASField
 static_assert(sizeof(MwCASField) == kWordSize);
 
 }  // namespace dbgroup::atomic::mwcas::component
+
+#endif  // MWCAS_MWCAS_COMPONENT_MWCAS_FIELD_H_

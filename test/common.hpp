@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef MWCAS_TEST_COMMON_H_
+#define MWCAS_TEST_COMMON_H_
 
 #include <functional>
 
@@ -75,3 +76,5 @@ CanMwCAS<MyClass>()
 }
 
 }  // namespace dbgroup::atomic::mwcas
+
+#endif  // MWCAS_TEST_COMMON_H_

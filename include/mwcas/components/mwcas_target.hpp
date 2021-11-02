@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef MWCAS_MWCAS_COMPONENT_MWCAS_TARGET_H_
+#define MWCAS_MWCAS_COMPONENT_MWCAS_TARGET_H_
 
 #include <atomic>
 
@@ -134,3 +135,5 @@ class MwCASTarget
 };
 
 }  // namespace dbgroup::atomic::mwcas::component
+
+#endif  // MWCAS_MWCAS_COMPONENT_MWCAS_TARGET_H_

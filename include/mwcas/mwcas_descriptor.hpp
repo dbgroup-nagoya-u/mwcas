@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef MWCAS_MWCAS_MWCAS_DESCRIPTOR_H_
+#define MWCAS_MWCAS_MWCAS_DESCRIPTOR_H_
 
 #include <array>
 #include <atomic>
@@ -171,3 +172,5 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 };
 
 }  // namespace dbgroup::atomic::mwcas
+
+#endif  // MWCAS_MWCAS_MWCAS_DESCRIPTOR_H_

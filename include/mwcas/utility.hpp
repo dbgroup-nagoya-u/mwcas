@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef MWCAS_MWCAS_UTILITY_H_
+#define MWCAS_MWCAS_UTILITY_H_
 
 #include <cassert>
 #include <cstddef>
@@ -57,3 +58,5 @@ CanMwCAS()
 }
 
 }  // namespace dbgroup::atomic::mwcas
+
+#endif  // MWCAS_MWCAS_UTILITY_H_
