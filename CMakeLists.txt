@@ -21,24 +21,21 @@ set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 #--------------------------------------------------------------------------------------#
 
 add_library(mwcas INTERFACE)
-target_compile_features(
-  mwcas INTERFACE
+add_library(mwcas::mwcas ALIAS mwcas)
+target_compile_features(mwcas INTERFACE
   "cxx_std_17"
 )
-target_compile_options(
-  mwcas INTERFACE
+target_compile_options(mwcas INTERFACE
   -Wall
   -Wextra
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Release">:"-O2 -march=native">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
   $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
 )
-target_include_directories(
-  mwcas INTERFACE
+target_include_directories(mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/include"
 )
-target_link_libraries(
-  mwcas INTERFACE
+target_link_libraries(mwcas INTERFACE
   pthread
 )
 
@@ -47,8 +44,7 @@ target_link_libraries(
 #--------------------------------------------------------------------------------------#
 
 if(DEFINED MWCAS_CAPACITY)
-  target_compile_definitions(
-    mwcas INTERFACE
+  target_compile_definitions(mwcas INTERFACE
     MWCAS_CAPACITY=${MWCAS_CAPACITY}
   )
 endif()

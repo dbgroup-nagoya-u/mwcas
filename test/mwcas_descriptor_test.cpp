@@ -151,7 +151,7 @@ class MwCASDescriptorFixture : public ::testing::Test
           MwCASDescriptor desc{};
           for (auto &&idx : targets) {
             auto addr = &(target_fields[idx]);
-            const auto cur_val = ReadMwCASField<Target>(addr);
+            const auto cur_val = MwCASDescriptor::Read<Target>(addr);
             const auto new_val = cur_val + 1;
             desc.AddMwCASTarget(addr, cur_val, new_val);
           }

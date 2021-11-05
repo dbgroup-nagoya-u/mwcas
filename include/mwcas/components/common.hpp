@@ -26,7 +26,7 @@ namespace dbgroup::atomic::mwcas::component
  *################################################################################################*/
 
 /// A short name of std::memory_order_relaxed
-constexpr std::memory_order mo_relax = std::memory_order_relaxed;
+constexpr std::memory_order kMORelax = std::memory_order_relaxed;
 
 /// Assumes that the length of one word is 8 bytes
 constexpr size_t kWordSize = 8;
