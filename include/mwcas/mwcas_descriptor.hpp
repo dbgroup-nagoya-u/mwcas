@@ -26,34 +26,18 @@
 namespace dbgroup::atomic::mwcas
 {
 /**
- * @brief Read a value from a given memory address.
- * \e NOTE: if a memory address is included in MwCAS target fields, it must be read via
- * this function.
- *
- * @tparam T an expected class of a target field
- * @param addr a target memory address to read
- * @return a read value
- */
-template <class T>
-T
-ReadMwCASField(const void *addr)
-{
-  const auto target_addr = static_cast<const std::atomic<component::MwCASField> *>(addr);
-
-  component::MwCASField target_word;
-  do {
-    target_word = target_addr->load(component::mo_relax);
-  } while (target_word.IsMwCASDescriptor());
-
-  return target_word.GetTargetData<T>();
-}
-
-/**
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
 class alignas(component::kCacheLineSize) MwCASDescriptor
 {
+  /*################################################################################################
+   * Type aliases
+   *##############################################################################################*/
+
+  using MwCASTarget = component::MwCASTarget;
+  using MwCASField = component::MwCASField;
+
  public:
   /*################################################################################################
    * Public constructors and assignment operators
@@ -96,6 +80,29 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   /*################################################################################################
    * Public utility functions
    *##############################################################################################*/
+
+  /**
+   * @brief Read a value from a given memory address.
+   * \e NOTE: if a memory address is included in MwCAS target fields, it must be read
+   * via this function.
+   *
+   * @tparam T an expected class of a target field
+   * @param addr a target memory address to read
+   * @return a read value
+   */
+  template <class T>
+  static T
+  Read(const void *addr)
+  {
+    const auto target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
+
+    MwCASField target_word;
+    do {
+      target_word = target_addr->load(component::mo_relax);
+    } while (target_word.IsMwCASDescriptor());
+
+    return target_word.GetTargetData<T>();
+  }
 
   /**
    * @brief Add a new MwCAS target to this descriptor.
@@ -153,13 +160,6 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   }
 
  private:
-  /*################################################################################################
-   * Internal type aliases
-   *##############################################################################################*/
-
-  using MwCASTarget = component::MwCASTarget;
-  using MwCASField = component::MwCASField;
-
   /*################################################################################################
    * Internal member variables
    *##############################################################################################*/
