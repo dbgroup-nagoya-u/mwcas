@@ -1,6 +1,6 @@
 # MwCAS
 
-![Ubuntu-20.04](https://github.com/dbgroup-nagoya-u/mwcas/workflows/Ubuntu-20.04/badge.svg?branch=main)
+[![Ubuntu-20.04](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/unit_tests.yaml/badge.svg)](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/unit_tests.yaml)
 
 This repository is an open source implementation of a multi-word compare-and-swap (MwCAS) operation for research use. This implementation is based on Harris et al.'s CASN operation [1] with some optimizations.
 
@@ -14,19 +14,22 @@ This repository is an open source implementation of a multi-word compare-and-swa
 
 ```bash
 sudo apt update && sudo apt install -y build-essential cmake
+cd <your_workspace_dir>
+git clone https://github.com/dbgroup-nagoya-u/mwcas.git
+cd mwcas
 ```
 
 ### Build Options
 
 #### Tuning Parameters
 
-- `MWCAS_CAPACITY`: the maximum number of target words of MwCAS: default `4`.
+- `MWCAS_CAPACITY`: the maximum number of target words of MwCAS (default: `4`).
     - In order to maximize performance, it is desirable to specify the minimum number needed. Otherwise, the extra space will pollute the CPU cache.
 
 #### Parameters for Unit Testing
 
-- `MWCAS_BUILD_TESTS`: build unit tests if `ON`: default `OFF`.
-- `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests: default `8`.
+- `MWCAS_BUILD_TESTS`: build unit tests if `ON` (default: `OFF`).
+- `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests (default: `8`).
 
 ### Build and Run Unit Tests
 
@@ -58,15 +61,14 @@ ctest -C Release
       <target_bin_name>
       [<source> ...]
     )
-    target_link_libraries(
-      <target_bin_name> PRIVATE
-      mwcas
+    target_link_libraries(<target_bin_name> PRIVATE
+      mwcas::mwcas
     )
     ```
 
 ### MwCAS APIs
 
-The following code shows the basic usage of this library. Note that you need to use a `ReadMwCASField` API to read a current value from a MwCAS target address. Otherwise, you may read an inconsistent data (e.g., an embedded MwCAS descriptor).
+The following code shows the basic usage of this library. Note that you need to use a `MwCASDescriptor::Read` API to read a current value from a MwCAS target address. Otherwise, you may read an inconsistent data (e.g., an embedded MwCAS descriptor).
 
 ```cpp
 #include <iostream>
@@ -86,7 +88,6 @@ using Target = uint64_t;
 
 // aliases for simplicity
 using dbgroup::atomic::mwcas::MwCASDescriptor;
-using dbgroup::atomic::mwcas::ReadMwCASField;
 
 int
 main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -104,9 +105,9 @@ main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         MwCASDescriptor desc{};
 
         // prepare expected/desired values
-        const auto old_1 = ReadMwCASField<Target>(&word_1);
+        const auto old_1 = MwCASDescriptor::Read<Target>(&word_1);
         const auto new_1 = old_1 + 1;
-        const auto old_2 = ReadMwCASField<Target>(&word_2);
+        const auto old_2 = MwCASDescriptor::Read<Target>(&word_2);
         const auto new_2 = old_2 + 1;
 
         // register MwCAS targets with the descriptor
