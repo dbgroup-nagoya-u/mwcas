@@ -89,7 +89,7 @@ class MwCASTarget
     MwCASField expected = old_val_;
     while (true) {
       // try to embed a MwCAS decriptor
-      addr_->compare_exchange_strong(expected, desc_addr, mo_relax);
+      addr_->compare_exchange_strong(expected, desc_addr, kMORelax);
       if (!expected.IsMwCASDescriptor()) break;
 
       // retry if another desctiptor is embedded
@@ -112,7 +112,7 @@ class MwCASTarget
   {
     const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
     MwCASField current = desc_addr;
-    addr_->compare_exchange_strong(current, desired, mo_relax);
+    addr_->compare_exchange_strong(current, desired, kMORelax);
   }
 
  private:
