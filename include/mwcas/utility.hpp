@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_UTILITY_H_
-#define MWCAS_MWCAS_UTILITY_H_
+#ifndef MWCAS_UTILITY_HPP
+#define MWCAS_UTILITY_HPP
 
 #include <cassert>
 #include <cstddef>
@@ -49,9 +49,7 @@ template <class T>
 constexpr bool
 CanMwCAS()
 {
-  if constexpr (std::is_same_v<T, uint64_t>) {
-    return true;
-  } else if constexpr (std::is_pointer_v<T>) {
+  if constexpr (std::is_same_v<T, uint64_t> || std::is_pointer_v<T>) {
     return true;
   } else {
     return false;
@@ -60,4 +58,4 @@ CanMwCAS()
 
 }  // namespace dbgroup::atomic::mwcas
 
-#endif  // MWCAS_MWCAS_UTILITY_H_
+#endif  // MWCAS_UTILITY_HPP

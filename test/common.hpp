@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_TEST_COMMON_H_
-#define MWCAS_TEST_COMMON_H_
+#ifndef TEST_COMMON_HPP  // NOLINT
+#define TEST_COMMON_HPP
 
 #include <functional>
 
@@ -31,11 +31,10 @@ constexpr size_t kThreadNum = 8;
  * @brief An example class to represent CAS-updatable data.
  *
  */
-struct MyClass {
-  uint64_t data : 63;
-  uint64_t control_bits : 1;
-
-  constexpr MyClass() : data{}, control_bits{0} {}
+class MyClass
+{
+ public:
+  constexpr MyClass() : data_{}, control_bits_{0} {}
   ~MyClass() = default;
 
   constexpr MyClass(const MyClass &) = default;
@@ -43,16 +42,17 @@ struct MyClass {
   constexpr MyClass(MyClass &&) = default;
   constexpr MyClass &operator=(MyClass &&) = default;
 
-  constexpr void
+  constexpr MyClass &
   operator=(const uint64_t value)
   {
-    data = value;
+    data_ = value;
+    return *this;
   }
 
   constexpr bool
   operator==(const MyClass &comp) const
   {
-    return data == comp.data;
+    return data_ == comp.data_;
   }
 
   constexpr bool
@@ -60,6 +60,10 @@ struct MyClass {
   {
     return !(*this == comp);
   }
+
+ private:
+  uint64_t data_ : 63;
+  uint64_t control_bits_ : 1;  // NOLINT
 };
 
 namespace dbgroup::atomic::mwcas
@@ -77,4 +81,4 @@ CanMwCAS<MyClass>()
 
 }  // namespace dbgroup::atomic::mwcas
 
-#endif  // MWCAS_TEST_COMMON_H_
+#endif  // TEST_COMMON_HPP

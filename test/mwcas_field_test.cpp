@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mwcas/components/mwcas_field.hpp"
+#include "mwcas/component/mwcas_field.hpp"
 
 #include "common.hpp"
 #include "gtest/gtest.h"
@@ -33,11 +33,11 @@ class MwCASFieldFixture : public ::testing::Test
   SetUp() override
   {
     if constexpr (std::is_same_v<Target, uint64_t*>) {
-      data_1 = new uint64_t{1};
-      data_2 = new uint64_t{2};
+      data_1_ = new uint64_t{1};
+      data_2_ = new uint64_t{2};
     } else {
-      data_1 = 1;
-      data_2 = 2;
+      data_1_ = 1;
+      data_2_ = 2;
     }
   }
 
@@ -45,8 +45,8 @@ class MwCASFieldFixture : public ::testing::Test
   TearDown() override
   {
     if constexpr (std::is_same_v<Target, uint64_t*>) {
-      delete data_1;
-      delete data_2;
+      delete data_1_;
+      delete data_2_;
     }
   }
 
@@ -57,47 +57,47 @@ class MwCASFieldFixture : public ::testing::Test
   void
   VerifyConstructor(const bool is_mwcas_desc)
   {
-    const auto target_word_1 = MwCASField{data_1, is_mwcas_desc};
+    const auto target_word_1 = MwCASField{data_1_, is_mwcas_desc};
 
     if (is_mwcas_desc) {
       EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
     } else {
       EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
     }
-    EXPECT_EQ(data_1, target_word_1.GetTargetData<Target>());
+    EXPECT_EQ(data_1_, target_word_1.GetTargetData<Target>());
   }
 
   void
   VerifyEQ()
   {
-    MwCASField field_a{data_1, false};
-    MwCASField field_b{data_1, false};
+    MwCASField field_a{data_1_, false};
+    MwCASField field_b{data_1_, false};
     EXPECT_TRUE(field_a == field_b);
 
-    field_b = MwCASField{data_2, false};
+    field_b = MwCASField{data_2_, false};
     EXPECT_FALSE(field_a == field_b);
 
-    field_a = MwCASField{data_2, true};
+    field_a = MwCASField{data_2_, true};
     EXPECT_FALSE(field_a == field_b);
 
-    field_b = MwCASField{data_2, true};
+    field_b = MwCASField{data_2_, true};
     EXPECT_TRUE(field_a == field_b);
   }
 
   void
   VerifyNE()
   {
-    MwCASField field_a{data_1, false};
-    MwCASField field_b{data_1, false};
+    MwCASField field_a{data_1_, false};
+    MwCASField field_b{data_1_, false};
     EXPECT_FALSE(field_a != field_b);
 
-    field_b = MwCASField{data_2, false};
+    field_b = MwCASField{data_2_, false};
     EXPECT_TRUE(field_a != field_b);
 
-    field_a = MwCASField{data_2, true};
+    field_a = MwCASField{data_2_, true};
     EXPECT_TRUE(field_a != field_b);
 
-    field_b = MwCASField{data_2, true};
+    field_b = MwCASField{data_2_, true};
     EXPECT_FALSE(field_a != field_b);
   }
 
@@ -106,8 +106,8 @@ class MwCASFieldFixture : public ::testing::Test
    * Internal member variables
    *##############################################################################################*/
 
-  Target data_1;
-  Target data_2;
+  Target data_1_{};
+  Target data_2_{};
 };
 
 /*##################################################################################################
@@ -121,22 +121,22 @@ TYPED_TEST_SUITE(MwCASFieldFixture, Targets);
  * Unit test definitions
  *################################################################################################*/
 
-TYPED_TEST(MwCASFieldFixture, Construct_DescriptorFlagOff_MemberVariablesCorrectlyInitialized)
+TYPED_TEST(MwCASFieldFixture, ConstructorWithoutDescriptorFlagCreateValueField)
 {
   TestFixture::VerifyConstructor(false);
 }
 
-TYPED_TEST(MwCASFieldFixture, Construct_DescriptorFlagOn_MemberVariablesCorrectlyInitialized)
+TYPED_TEST(MwCASFieldFixture, ConstructorWithDescriptorFlagCreateDescriptorField)
 {
   TestFixture::VerifyConstructor(true);
 }
 
-TYPED_TEST(MwCASFieldFixture, EQ_AllCombinationOfInstances_ReturnCorrectBool)
+TYPED_TEST(MwCASFieldFixture, EQWithAllCombinationOfInstancesReturnCorrectBool)
 {
   TestFixture::VerifyEQ();
 }
 
-TYPED_TEST(MwCASFieldFixture, NE_AllCombinationOfInstances_ReturnCorrectBool)
+TYPED_TEST(MwCASFieldFixture, NEWithAllCombinationOfInstancesReturnCorrectBool)
 {
   TestFixture::VerifyNE();
 }

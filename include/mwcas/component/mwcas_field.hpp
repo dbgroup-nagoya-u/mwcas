@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_COMPONENT_MWCAS_FIELD_H_
-#define MWCAS_MWCAS_COMPONENT_MWCAS_FIELD_H_
+#ifndef MWCAS_COMPONENT_MWCAS_FIELD_HPP
+#define MWCAS_COMPONENT_MWCAS_FIELD_HPP
 
 #include <atomic>
 
@@ -38,7 +38,7 @@ class MwCASField
    * @brief Construct an empty field for MwCAS.
    *
    */
-  constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{false} {}
+  constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{0} {}
 
   /**
    * @brief Construct a MwCAS field with given data.
@@ -48,13 +48,13 @@ class MwCASField
    * @param is_mwcas_descriptor a flag to indicate this field contains a descriptor.
    */
   template <class T>
-  constexpr MwCASField(  //
-      const T target_data,
-      const bool is_mwcas_descriptor = false)
+  explicit constexpr MwCASField(  //
+      T target_data,
+      bool is_mwcas_descriptor = false)
       : target_bit_arr_{ConvertToUint64(target_data)}, mwcas_flag_{is_mwcas_descriptor}
   {
     // static check to validate MwCAS targets
-    static_assert(sizeof(T) == kWordSize);
+    static_assert(sizeof(T) == kWordSize);  // NOLINT
     static_assert(std::is_trivially_copyable_v<T>);
     static_assert(std::is_copy_constructible_v<T>);
     static_assert(std::is_move_constructible_v<T>);
@@ -102,7 +102,7 @@ class MwCASField
    * @retval true if this field contains a descriptor.
    * @retval false otherwise.
    */
-  constexpr bool
+  [[nodiscard]] constexpr bool
   IsMwCASDescriptor() const
   {
     return mwcas_flag_;
@@ -113,7 +113,7 @@ class MwCASField
    * @return data retained in this field.
    */
   template <class T>
-  constexpr T
+  [[nodiscard]] constexpr T
   GetTargetData() const
   {
     if constexpr (std::is_same_v<T, uint64_t>) {
@@ -121,7 +121,7 @@ class MwCASField
     } else if constexpr (std::is_pointer_v<T>) {
       return reinterpret_cast<T>(target_bit_arr_);
     } else {
-      return CASTargetConverter<T>{target_bit_arr_}.target_data;
+      return CASTargetConverter<T>{target_bit_arr_}.target_data;  // NOLINT
     }
   }
 
@@ -146,7 +146,7 @@ class MwCASField
     } else if constexpr (std::is_pointer_v<T>) {
       return reinterpret_cast<uint64_t>(data);
     } else {
-      return CASTargetConverter<T>{data}.converted_data;
+      return CASTargetConverter<T>{data}.converted_data;  // NOLINT
     }
   }
 
@@ -166,4 +166,4 @@ static_assert(sizeof(MwCASField) == kWordSize);
 
 }  // namespace dbgroup::atomic::mwcas::component
 
-#endif  // MWCAS_MWCAS_COMPONENT_MWCAS_FIELD_H_
+#endif  // MWCAS_COMPONENT_MWCAS_FIELD_HPP

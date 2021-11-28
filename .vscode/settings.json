@@ -38,6 +38,7 @@
     "linearlize",
     "mwcas",
     "NCAS",
+    "NOLINT",
     "pthread",
     "RDCSS",
     "struct",

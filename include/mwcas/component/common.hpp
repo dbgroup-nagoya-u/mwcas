@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_COMPONENT_COMMON_H_
-#define MWCAS_MWCAS_COMPONENT_COMMON_H_
+#ifndef MWCAS_COMPONENT_COMMON_HPP
+#define MWCAS_COMPONENT_COMMON_HPP
 
 #include <atomic>
 
@@ -69,4 +69,4 @@ union CASTargetConverter<uint64_t> {
 
 }  // namespace dbgroup::atomic::mwcas::component
 
-#endif  // MWCAS_MWCAS_COMPONENT_COMMON_H_
+#endif  // MWCAS_COMPONENT_COMMON_HPP

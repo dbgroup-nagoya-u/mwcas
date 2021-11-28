@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_COMPONENT_MWCAS_TARGET_H_
-#define MWCAS_MWCAS_COMPONENT_MWCAS_TARGET_H_
+#ifndef MWCAS_COMPONENT_MWCAS_TARGET_HPP
+#define MWCAS_COMPONENT_MWCAS_TARGET_HPP
 
 #include <atomic>
 
@@ -38,7 +38,7 @@ class MwCASTarget
    * @brief Construct an empty MwCAS target.
    *
    */
-  constexpr MwCASTarget() : addr_{}, old_val_{}, new_val_{} {}
+  constexpr MwCASTarget() = default;
 
   /**
    * @brief Construct a new MwCAS target based on given information.
@@ -121,15 +121,15 @@ class MwCASTarget
    *##############################################################################################*/
 
   /// A target memory address
-  std::atomic<MwCASField> *addr_;
+  std::atomic<MwCASField> *addr_{};
 
   /// An expected value of a target field
-  MwCASField old_val_;
+  MwCASField old_val_{};
 
   /// An inserting value into a target field
-  MwCASField new_val_;
+  MwCASField new_val_{};
 };
 
 }  // namespace dbgroup::atomic::mwcas::component
 
-#endif  // MWCAS_MWCAS_COMPONENT_MWCAS_TARGET_H_
+#endif  // MWCAS_COMPONENT_MWCAS_TARGET_HPP
