@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_MWCAS_DESCRIPTOR_H_
-#define MWCAS_MWCAS_MWCAS_DESCRIPTOR_H_
+#ifndef MWCAS_MWCAS_DESCRIPTOR_HPP
+#define MWCAS_MWCAS_DESCRIPTOR_HPP
 
 #include <array>
 #include <atomic>
 #include <utility>
 
-#include "components/mwcas_target.hpp"
+#include "component/mwcas_target.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
@@ -47,7 +47,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * @brief Construct an empty descriptor for MwCAS operations.
    *
    */
-  constexpr MwCASDescriptor() : target_count_{0} {}
+  constexpr MwCASDescriptor() = default;
 
   constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
   constexpr MwCASDescriptor &operator=(const MwCASDescriptor &obj) = default;
@@ -71,7 +71,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   /**
    * @return the number of registered MwCAS targets
    */
-  constexpr size_t
+  [[nodiscard]] constexpr size_t
   Size() const
   {
     return target_count_;
@@ -94,11 +94,11 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   static T
   Read(const void *addr)
   {
-    const auto target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
+    const auto *target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
 
     MwCASField target_word;
     do {
-      target_word = target_addr->load(component::kMORelax);
+      target_word = target_addr->load(std::memory_order_acquire);
     } while (target_word.IsMwCASDescriptor());
 
     return target_word.GetTargetData<T>();
@@ -123,10 +123,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   {
     if (target_count_ == kMwCASCapacity) {
       return false;
-    } else {
-      targets_[target_count_++] = MwCASTarget{addr, old_val, new_val};
-      return true;
     }
+    targets_[target_count_++] = MwCASTarget{addr, old_val, new_val};
+    return true;
   }
 
   /**
@@ -168,9 +167,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   MwCASTarget targets_[kMwCASCapacity];
 
   /// The number of registered MwCAS targets
-  size_t target_count_;
+  size_t target_count_{0};
 };
 
 }  // namespace dbgroup::atomic::mwcas
 
-#endif  // MWCAS_MWCAS_MWCAS_DESCRIPTOR_H_
+#endif  // MWCAS_MWCAS_DESCRIPTOR_HPP

@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-#include "mwcas/components/mwcas_target.hpp"
-
-#include <gtest/gtest.h>
+#include "mwcas/component/mwcas_target.hpp"
 
 #include "common.hpp"
+#include "gtest/gtest.h"
 
 namespace dbgroup::atomic::mwcas::component::test
 {
 template <class Target>
-
 class MwCASTargetFixture : public ::testing::Test
 {
  protected:
@@ -35,24 +33,24 @@ class MwCASTargetFixture : public ::testing::Test
   SetUp() override
   {
     if constexpr (std::is_same_v<Target, uint64_t*>) {
-      old_val = new uint64_t{1};
-      new_val = new uint64_t{2};
+      old_val_ = new uint64_t{1};
+      new_val_ = new uint64_t{2};
     } else {
-      old_val = 1;
-      new_val = 2;
+      old_val_ = 1;
+      new_val_ = 2;
     }
-    target = old_val;
+    target_ = old_val_;
 
-    mwcas_target = MwCASTarget{&target, old_val, new_val};
-    desc = MwCASField{0UL, true};
+    mwcas_target_ = MwCASTarget{&target_, old_val_, new_val_};
+    desc_ = MwCASField{0UL, true};
   }
 
   void
   TearDown() override
   {
     if constexpr (std::is_same_v<Target, uint64_t*>) {
-      delete old_val;
-      delete new_val;
+      delete old_val_;
+      delete new_val_;
     }
   }
 
@@ -64,31 +62,33 @@ class MwCASTargetFixture : public ::testing::Test
   VerifyEmbedDescriptor(const bool expect_fail)
   {
     if (expect_fail) {
-      target = new_val;
+      target_ = new_val_;
     }
 
-    const bool result = mwcas_target.EmbedDescriptor(desc);
+    const bool result = mwcas_target_.EmbedDescriptor(desc_);
 
     if (expect_fail) {
       EXPECT_FALSE(result);
-      EXPECT_NE(CASTargetConverter{desc}.converted_data, CASTargetConverter{target}.converted_data);
+      EXPECT_NE(CASTargetConverter<MwCASField>{desc_}.converted_data,  // NOLINT
+                CASTargetConverter<Target>{target_}.converted_data);   // NOLINT
     } else {
       EXPECT_TRUE(result);
-      EXPECT_EQ(CASTargetConverter{desc}.converted_data, CASTargetConverter{target}.converted_data);
+      EXPECT_EQ(CASTargetConverter<MwCASField>{desc_}.converted_data,  // NOLINT
+                CASTargetConverter<Target>{target_}.converted_data);   // NOLINT
     }
   }
 
   void
   VerifyCompleteMwCAS(const bool mwcas_success)
   {
-    ASSERT_TRUE(mwcas_target.EmbedDescriptor(desc));
+    ASSERT_TRUE(mwcas_target_.EmbedDescriptor(desc_));
 
-    mwcas_target.CompleteMwCAS(desc, mwcas_success);
+    mwcas_target_.CompleteMwCAS(desc_, mwcas_success);
 
     if (mwcas_success) {
-      EXPECT_EQ(new_val, target);
+      EXPECT_EQ(new_val_, target_);
     } else {
-      EXPECT_EQ(old_val, target);
+      EXPECT_EQ(old_val_, target_);
     }
   }
 
@@ -97,12 +97,12 @@ class MwCASTargetFixture : public ::testing::Test
    * Internal member variables
    *##############################################################################################*/
 
-  MwCASTarget mwcas_target;
-  MwCASField desc;
+  MwCASTarget mwcas_target_;
+  MwCASField desc_;
 
-  Target target;
-  Target old_val;
-  Target new_val;
+  Target target_{};
+  Target old_val_{};
+  Target new_val_{};
 };
 
 /*##################################################################################################
@@ -110,28 +110,28 @@ class MwCASTargetFixture : public ::testing::Test
  *################################################################################################*/
 
 using Targets = ::testing::Types<uint64_t, uint64_t*, MyClass>;
-TYPED_TEST_CASE(MwCASTargetFixture, Targets);
+TYPED_TEST_SUITE(MwCASTargetFixture, Targets);
 
 /*##################################################################################################
  * Unit test definitions
  *################################################################################################*/
 
-TYPED_TEST(MwCASTargetFixture, EmbedDescriptor_TargetHasExpectedValue_EmbeddingSucceed)
+TYPED_TEST(MwCASTargetFixture, EmbedDescriptorWithExpectedValueSucceedEmbedding)
 {
   TestFixture::VerifyEmbedDescriptor(false);
 }
 
-TYPED_TEST(MwCASTargetFixture, EmbedDescriptor_TargetHasUnexpectedValue_EmbeddingFail)
+TYPED_TEST(MwCASTargetFixture, EmbedDescriptorWithUnexpectedValueFailEmbedding)
 {
   TestFixture::VerifyEmbedDescriptor(true);
 }
 
-TYPED_TEST(MwCASTargetFixture, CompleteMwCAS_MwCASSucceeded_UpdateToDesiredValue)
+TYPED_TEST(MwCASTargetFixture, CompleteMwCASWithSucceededStatusUpdateToDesiredValue)
 {
   TestFixture::VerifyCompleteMwCAS(true);
 }
 
-TYPED_TEST(MwCASTargetFixture, CompleteMwCAS_MwCASFailed_RevertToExpectedValue)
+TYPED_TEST(MwCASTargetFixture, CompleteMwCASWithFailedStatusRevertToExpectedValue)
 {
   TestFixture::VerifyCompleteMwCAS(false);
 }

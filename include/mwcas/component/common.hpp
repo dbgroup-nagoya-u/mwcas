@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_COMPONENT_COMMON_H_
-#define MWCAS_MWCAS_COMPONENT_COMMON_H_
+#ifndef MWCAS_COMPONENT_COMMON_HPP
+#define MWCAS_COMPONENT_COMMON_HPP
+
+#include <atomic>
 
 #include "../utility.hpp"
 
@@ -24,9 +26,6 @@ namespace dbgroup::atomic::mwcas::component
 /*##################################################################################################
  * Global enum and constants
  *################################################################################################*/
-
-/// A short name of std::memory_order_relaxed
-constexpr std::memory_order kMORelax = std::memory_order_relaxed;
 
 /// Assumes that the length of one word is 8 bytes
 constexpr size_t kWordSize = 8;
@@ -67,4 +66,4 @@ union CASTargetConverter<uint64_t> {
 
 }  // namespace dbgroup::atomic::mwcas::component
 
-#endif  // MWCAS_MWCAS_COMPONENT_COMMON_H_
+#endif  // MWCAS_COMPONENT_COMMON_HPP

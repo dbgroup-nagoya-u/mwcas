@@ -1,4 +1,8 @@
 {
+  // enable formatting
+  "editor.formatOnPaste": false,
+  "editor.formatOnSave": true,
+  // exclusion settings
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,
@@ -13,21 +17,12 @@
     "**/node_modules/*/**": true,
     "**/.hg/store/**": true,
   },
+  // unit testing
   "testMate.cpp.test.runtimeLimit": 60,
   "testMate.cpp.test.executables": "build/**/test/*_test",
-  "[cmake]": {
-    "editor.formatOnPaste": false,
-    "editor.formatOnSave": false,
-  },
-  "cpplint.lineLength": 100,
-  "cpplint.filters": [
-    "-readability/fn_size",
-    "-whitespace/braces",
-    "-build/c++11",
-    "-whitespace/newline",
-    "-runtime/references",
-    "-build/header_guard"
-  ],
+  // using Ninja for buiding
+  "cmake.generator": "Ninja",
+  // extra words for spell checking
   "cSpell.words": [
     "alignas",
     "CASN",
@@ -43,6 +38,7 @@
     "linearlize",
     "mwcas",
     "NCAS",
+    "NOLINT",
     "pthread",
     "RDCSS",
     "struct",

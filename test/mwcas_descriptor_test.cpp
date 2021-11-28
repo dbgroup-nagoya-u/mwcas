@@ -41,7 +41,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   SetUp() override
   {
     for (size_t i = 0; i < kTargetFieldNum; ++i) {
-      target_fields[i] = 0UL;
+      target_fields_[i] = 0UL;
     }
   }
 
@@ -61,7 +61,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     // check the target fields are correctly incremented
     size_t sum = 0;
-    for (auto &&target : target_fields) {
+    for (auto &&target : target_fields_) {
       sum += target;
     }
 
@@ -94,7 +94,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     std::vector<std::thread> threads;
 
     {  // create a lock to prevent workers from executing
-      const std::unique_lock<std::shared_mutex> guard{worker_lock};
+      const std::unique_lock<std::shared_mutex> guard{worker_lock_};
 
       // run a function over multi-threads
       std::mt19937_64 rand_engine(kRandomSeed);
@@ -105,7 +105,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
       // wait for all workers to finish initialization
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      const std::unique_lock<std::shared_mutex> lock{main_lock};
+      const std::unique_lock<std::shared_mutex> lock{main_lock_};
     }
 
     // wait for all workers to finish
@@ -119,7 +119,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     operations.reserve(kExecNum);
 
     {  // create a lock to prevent a main thread
-      const std::shared_lock<std::shared_mutex> guard{main_lock};
+      const std::shared_lock<std::shared_mutex> guard{main_lock_};
 
       // prepare operations to be executed
       std::mt19937_64 rand_engine{rand_seed};
@@ -128,10 +128,10 @@ class MwCASDescriptorFixture : public ::testing::Test
         MwCASTargets targets;
         targets.reserve(kMwCASCapacity);
         while (targets.size() < kMwCASCapacity) {
-          size_t idx = id_dist(rand_engine);
+          size_t idx = id_dist_(rand_engine);
           const auto iter = std::find(targets.begin(), targets.end(), idx);
           if (iter == targets.end()) {
-            targets.emplace_back(std::move(idx));
+            targets.emplace_back(idx);
           }
         }
         std::sort(targets.begin(), targets.end());
@@ -142,7 +142,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
 
     {  // wait for a main thread to release a lock
-      const std::shared_lock<std::shared_mutex> lock{worker_lock};
+      const std::shared_lock<std::shared_mutex> lock{worker_lock_};
 
       for (auto &&targets : operations) {
         // retry until MwCAS succeeds
@@ -150,7 +150,7 @@ class MwCASDescriptorFixture : public ::testing::Test
           // register MwCAS targets
           MwCASDescriptor desc{};
           for (auto &&idx : targets) {
-            auto addr = &(target_fields[idx]);
+            auto *addr = &(target_fields_[idx]);
             const auto cur_val = MwCASDescriptor::Read<Target>(addr);
             const auto new_val = cur_val + 1;
             desc.AddMwCASTarget(addr, cur_val, new_val);
@@ -167,24 +167,24 @@ class MwCASDescriptorFixture : public ::testing::Test
    * Internal member variables
    *##############################################################################################*/
 
-  Target target_fields[kTargetFieldNum];
+  Target target_fields_[kTargetFieldNum]{};
 
-  std::uniform_int_distribution<size_t> id_dist{0, kMwCASCapacity - 1};
+  std::uniform_int_distribution<size_t> id_dist_{0, kMwCASCapacity - 1};
 
-  std::shared_mutex main_lock;
-  std::shared_mutex worker_lock;
+  std::shared_mutex main_lock_;
+  std::shared_mutex worker_lock_;
 };
 
 /*--------------------------------------------------------------------------------------------------
  * Public utility tests
  *------------------------------------------------------------------------------------------------*/
 
-TEST_F(MwCASDescriptorFixture, MwCAS_SingleThread_CorrectlyIncrementTargets)
+TEST_F(MwCASDescriptorFixture, MwCASWithSingleThreadCorrectlyIncrementTargets)
 {  //
   VerifyMwCAS(1);
 }
 
-TEST_F(MwCASDescriptorFixture, MwCAS_MultiThreads_CorrectlyIncrementTargets)
+TEST_F(MwCASDescriptorFixture, MwCASWithMultiThreadsCorrectlyIncrementTargets)
 {
   VerifyMwCAS(kThreadNum);
 }
