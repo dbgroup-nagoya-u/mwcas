@@ -98,7 +98,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     MwCASField target_word;
     do {
-      target_word = target_addr->load(component::kMORelax);
+      target_word = target_addr->load(std::memory_order_acquire);
     } while (target_word.IsMwCASDescriptor());
 
     return target_word.GetTargetData<T>();
