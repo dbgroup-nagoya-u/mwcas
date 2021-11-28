@@ -146,7 +146,7 @@ class MwCASField
     } else if constexpr (std::is_pointer_v<T>) {
       return reinterpret_cast<uint64_t>(data);
     } else {
-      return CASTargetConverter{data}.converted_data;
+      return CASTargetConverter<T>{data}.converted_data;
     }
   }
 

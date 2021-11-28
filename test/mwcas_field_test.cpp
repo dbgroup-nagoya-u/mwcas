@@ -16,9 +16,8 @@
 
 #include "mwcas/components/mwcas_field.hpp"
 
-#include <gtest/gtest.h>
-
 #include "common.hpp"
+#include "gtest/gtest.h"
 
 namespace dbgroup::atomic::mwcas::component::test
 {
@@ -116,7 +115,7 @@ class MwCASFieldFixture : public ::testing::Test
  *################################################################################################*/
 
 using Targets = ::testing::Types<uint64_t, uint64_t*, MyClass>;
-TYPED_TEST_CASE(MwCASFieldFixture, Targets);
+TYPED_TEST_SUITE(MwCASFieldFixture, Targets);
 
 /*##################################################################################################
  * Unit test definitions

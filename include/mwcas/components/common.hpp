@@ -17,6 +17,8 @@
 #ifndef MWCAS_MWCAS_COMPONENT_COMMON_H_
 #define MWCAS_MWCAS_COMPONENT_COMMON_H_
 
+#include <atomic>
+
 #include "../utility.hpp"
 
 namespace dbgroup::atomic::mwcas::component

@@ -16,14 +16,12 @@
 
 #include "mwcas/components/mwcas_target.hpp"
 
-#include <gtest/gtest.h>
-
 #include "common.hpp"
+#include "gtest/gtest.h"
 
 namespace dbgroup::atomic::mwcas::component::test
 {
 template <class Target>
-
 class MwCASTargetFixture : public ::testing::Test
 {
  protected:
@@ -71,10 +69,12 @@ class MwCASTargetFixture : public ::testing::Test
 
     if (expect_fail) {
       EXPECT_FALSE(result);
-      EXPECT_NE(CASTargetConverter{desc}.converted_data, CASTargetConverter{target}.converted_data);
+      EXPECT_NE(CASTargetConverter<MwCASField>{desc}.converted_data,
+                CASTargetConverter<Target>{target}.converted_data);
     } else {
       EXPECT_TRUE(result);
-      EXPECT_EQ(CASTargetConverter{desc}.converted_data, CASTargetConverter{target}.converted_data);
+      EXPECT_EQ(CASTargetConverter<MwCASField>{desc}.converted_data,
+                CASTargetConverter<Target>{target}.converted_data);
     }
   }
 
@@ -110,7 +110,7 @@ class MwCASTargetFixture : public ::testing::Test
  *################################################################################################*/
 
 using Targets = ::testing::Types<uint64_t, uint64_t*, MyClass>;
-TYPED_TEST_CASE(MwCASTargetFixture, Targets);
+TYPED_TEST_SUITE(MwCASTargetFixture, Targets);
 
 /*##################################################################################################
  * Unit test definitions
