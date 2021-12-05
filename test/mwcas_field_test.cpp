@@ -32,7 +32,7 @@ class MwCASFieldFixture : public ::testing::Test
   void
   SetUp() override
   {
-    if constexpr (std::is_same_v<Target, uint64_t*>) {
+    if constexpr (std::is_same_v<Target, uint64_t *>) {
       data_1_ = new uint64_t{1};
       data_2_ = new uint64_t{2};
     } else {
@@ -44,7 +44,7 @@ class MwCASFieldFixture : public ::testing::Test
   void
   TearDown() override
   {
-    if constexpr (std::is_same_v<Target, uint64_t*>) {
+    if constexpr (std::is_same_v<Target, uint64_t *>) {
       delete data_1_;
       delete data_2_;
     }
@@ -114,7 +114,7 @@ class MwCASFieldFixture : public ::testing::Test
  * Preparation for typed testing
  *################################################################################################*/
 
-using Targets = ::testing::Types<uint64_t, uint64_t*, MyClass>;
+using Targets = ::testing::Types<uint64_t, uint64_t *, MyClass>;
 TYPED_TEST_SUITE(MwCASFieldFixture, Targets);
 
 /*##################################################################################################
