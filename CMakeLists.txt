@@ -8,7 +8,7 @@ endif()
 # project information
 project(
   mwcas
-  VERSION "1.0.0"
+  VERSION "1.0.1"
   DESCRIPTION "An open-source MwCAS library."
   LANGUAGES "CXX"
 )
@@ -24,13 +24,6 @@ add_library(mwcas INTERFACE)
 add_library(mwcas::mwcas ALIAS mwcas)
 target_compile_features(mwcas INTERFACE
   "cxx_std_17"
-)
-target_compile_options(mwcas INTERFACE
-  -Wall
-  -Wextra
-  $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Release">:"-O2 -march=native">
-  $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
-  $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
 )
 target_include_directories(mwcas INTERFACE
   "${MWCAS_SOURCE_DIR}/include"
