@@ -71,8 +71,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   /**
    * @return the number of registered MwCAS targets
    */
-  [[nodiscard]] constexpr size_t
-  Size() const
+  [[nodiscard]] constexpr auto
+  Size() const  //
+      -> size_t
   {
     return target_count_;
   }
@@ -91,8 +92,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * @return a read value
    */
   template <class T>
-  static T
-  Read(const void *addr)
+  static auto
+  Read(const void *addr)  //
+      -> T
   {
     const auto *target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
 
@@ -115,11 +117,12 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * @retval false if this descriptor is already full
    */
   template <class T>
-  constexpr bool
+  constexpr auto
   AddMwCASTarget(  //
       void *addr,
       const T old_val,
-      const T new_val)
+      const T new_val)  //
+      -> bool
   {
     if (target_count_ == kMwCASCapacity) {
       return false;
@@ -134,8 +137,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * @retval true if a MwCAS operation succeeds
    * @retval false if a MwCAS operation fails
    */
-  bool
-  MwCAS()
+  auto
+  MwCAS()  //
+      -> bool
   {
     const MwCASField desc_addr{this, true};
 

@@ -83,14 +83,14 @@ class MwCASTarget
    * @retval true if the descriptor address is successfully embedded.
    * @retval false otherwise.
    */
-  bool
-  EmbedDescriptor(const MwCASField desc_addr)
+  auto
+  EmbedDescriptor(const MwCASField desc_addr)  //
+      -> bool
   {
     MwCASField expected = old_val_;
     while (true) {
       // try to embed a MwCAS decriptor
-      addr_->compare_exchange_strong(expected, desc_addr,  //
-                                     std::memory_order_release, std::memory_order_acquire);
+      addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_acq_rel);
       if (!expected.IsMwCASDescriptor()) break;
 
       // retry if another desctiptor is embedded
@@ -113,8 +113,7 @@ class MwCASTarget
   {
     const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
     MwCASField current = desc_addr;
-    addr_->compare_exchange_strong(current, desired,  //
-                                   std::memory_order_release, std::memory_order_acquire);
+    addr_->compare_exchange_strong(current, desired, std::memory_order_acq_rel);
   }
 
  private:
