@@ -90,7 +90,7 @@ class MwCASTarget
     MwCASField expected = old_val_;
     while (true) {
       // try to embed a MwCAS decriptor
-      addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_acq_rel);
+      addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_relaxed);
       if (!expected.IsMwCASDescriptor()) break;
 
       // retry if another desctiptor is embedded
@@ -113,7 +113,7 @@ class MwCASTarget
   {
     const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
     MwCASField current = desc_addr;
-    addr_->compare_exchange_strong(current, desired, std::memory_order_acq_rel);
+    addr_->compare_exchange_strong(current, desired, std::memory_order_relaxed);
   }
 
  private:
