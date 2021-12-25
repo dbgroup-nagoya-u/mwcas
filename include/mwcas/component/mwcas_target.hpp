@@ -30,9 +30,9 @@ namespace dbgroup::atomic::mwcas::component
 class MwCASTarget
 {
  public:
-  /*################################################################################################
+  /*####################################################################################
    * Public constructors and assignment operators
-   *##############################################################################################*/
+   *##################################################################################*/
 
   /**
    * @brief Construct an empty MwCAS target.
@@ -62,9 +62,9 @@ class MwCASTarget
   constexpr MwCASTarget(MwCASTarget &&) = default;
   constexpr MwCASTarget &operator=(MwCASTarget &&) = default;
 
-  /*################################################################################################
+  /*####################################################################################
    * Public destructor
-   *##############################################################################################*/
+   *##################################################################################*/
 
   /**
    * @brief Destroy the MwCASTarget object.
@@ -72,9 +72,9 @@ class MwCASTarget
    */
   ~MwCASTarget() = default;
 
-  /*################################################################################################
+  /*####################################################################################
    * Public utility functions
-   *##############################################################################################*/
+   *##################################################################################*/
 
   /**
    * @brief Embed a descriptor into this target address to linearlize MwCAS operations.
@@ -107,19 +107,16 @@ class MwCASTarget
    * @param mwcas_success a flag to indicate a target will be updated or reverted.
    */
   void
-  CompleteMwCAS(  //
-      const MwCASField desc_addr,
-      const bool mwcas_success)
+  CompleteMwCAS(const bool mwcas_success)
   {
     const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
-    MwCASField current = desc_addr;
-    addr_->compare_exchange_strong(current, desired, std::memory_order_relaxed);
+    addr_->store(desired, std::memory_order_relaxed);
   }
 
  private:
-  /*################################################################################################
+  /*####################################################################################
    * Internal member variables
-   *##############################################################################################*/
+   *##################################################################################*/
 
   /// A target memory address
   std::atomic<MwCASField> *addr_{};
