@@ -156,7 +156,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     // complete MwCAS
     for (size_t i = 0; i < embedded_count; ++i) {
-      targets_[i].CompleteMwCAS(desc_addr, mwcas_success);
+      targets_[i].CompleteMwCAS(mwcas_success);
     }
 
     return mwcas_success;

@@ -83,7 +83,7 @@ class MwCASTargetFixture : public ::testing::Test
   {
     ASSERT_TRUE(mwcas_target_.EmbedDescriptor(desc_));
 
-    mwcas_target_.CompleteMwCAS(desc_, mwcas_success);
+    mwcas_target_.CompleteMwCAS(mwcas_success);
 
     if (mwcas_success) {
       EXPECT_EQ(new_val_, target_);

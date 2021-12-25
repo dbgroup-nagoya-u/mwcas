@@ -107,13 +107,10 @@ class MwCASTarget
    * @param mwcas_success a flag to indicate a target will be updated or reverted.
    */
   void
-  CompleteMwCAS(  //
-      const MwCASField desc_addr,
-      const bool mwcas_success)
+  CompleteMwCAS(const bool mwcas_success)
   {
     const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
-    MwCASField current = desc_addr;
-    addr_->compare_exchange_strong(current, desired, std::memory_order_relaxed);
+    addr_->store(desired, std::memory_order_relaxed);
   }
 
  private:
