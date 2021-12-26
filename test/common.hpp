@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef TEST_COMMON_HPP  // NOLINT
+#ifndef TEST_COMMON_HPP
 #define TEST_COMMON_HPP
 
 #include <functional>
@@ -38,25 +38,28 @@ class MyClass
   ~MyClass() = default;
 
   constexpr MyClass(const MyClass &) = default;
-  constexpr MyClass &operator=(const MyClass &) = default;
+  constexpr auto operator=(const MyClass &) -> MyClass & = default;
   constexpr MyClass(MyClass &&) = default;
-  constexpr MyClass &operator=(MyClass &&) = default;
+  constexpr auto operator=(MyClass &&) -> MyClass & = default;
 
-  constexpr MyClass &
-  operator=(const uint64_t value)
+  constexpr auto
+  operator=(const uint64_t value)  //
+      -> MyClass &
   {
     data_ = value;
     return *this;
   }
 
-  constexpr bool
-  operator==(const MyClass &comp) const
+  constexpr auto
+  operator==(const MyClass &comp) const  //
+      -> bool
   {
     return data_ == comp.data_;
   }
 
-  constexpr bool
-  operator!=(const MyClass &comp) const
+  constexpr auto
+  operator!=(const MyClass &comp) const  //
+      -> bool
   {
     return !(*this == comp);
   }
@@ -73,8 +76,9 @@ namespace dbgroup::atomic::mwcas
  *
  */
 template <>
-constexpr bool
-CanMwCAS<MyClass>()
+constexpr auto
+CanMwCAS<MyClass>()  //
+    -> bool
 {
   return true;
 }

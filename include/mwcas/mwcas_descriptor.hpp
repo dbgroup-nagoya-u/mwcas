@@ -50,9 +50,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   constexpr MwCASDescriptor() = default;
 
   constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
-  constexpr MwCASDescriptor &operator=(const MwCASDescriptor &obj) = default;
+  constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
   constexpr MwCASDescriptor(MwCASDescriptor &&) = default;
-  constexpr MwCASDescriptor &operator=(MwCASDescriptor &&) = default;
+  constexpr auto operator=(MwCASDescriptor &&) -> MwCASDescriptor & = default;
 
   /*####################################################################################
    * Public destructors

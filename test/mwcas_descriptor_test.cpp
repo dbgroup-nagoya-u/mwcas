@@ -16,8 +16,6 @@
 
 #include "mwcas/mwcas_descriptor.hpp"
 
-#include <gtest/gtest.h>
-
 #include <future>
 #include <mutex>
 #include <random>
@@ -27,6 +25,7 @@
 #include <vector>
 
 #include "common.hpp"
+#include "gtest/gtest.h"
 
 namespace dbgroup::atomic::mwcas::test
 {

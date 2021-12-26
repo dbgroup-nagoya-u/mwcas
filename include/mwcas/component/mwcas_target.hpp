@@ -58,9 +58,9 @@ class MwCASTarget
   }
 
   constexpr MwCASTarget(const MwCASTarget &) = default;
-  constexpr MwCASTarget &operator=(const MwCASTarget &obj) = default;
+  constexpr auto operator=(const MwCASTarget &obj) -> MwCASTarget & = default;
   constexpr MwCASTarget(MwCASTarget &&) = default;
-  constexpr MwCASTarget &operator=(MwCASTarget &&) = default;
+  constexpr auto operator=(MwCASTarget &&) -> MwCASTarget & = default;
 
   /*####################################################################################
    * Public destructor

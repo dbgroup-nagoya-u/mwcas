@@ -64,9 +64,9 @@ class MwCASField
   }
 
   constexpr MwCASField(const MwCASField &) = default;
-  constexpr MwCASField &operator=(const MwCASField &obj) = default;
+  constexpr auto operator=(const MwCASField &obj) -> MwCASField & = default;
   constexpr MwCASField(MwCASField &&) = default;
-  constexpr MwCASField &operator=(MwCASField &&) = default;
+  constexpr auto operator=(MwCASField &&) -> MwCASField & = default;
 
   /*####################################################################################
    * Public destructor
@@ -125,7 +125,7 @@ class MwCASField
     if constexpr (std::is_same_v<T, uint64_t>) {
       return target_bit_arr_;
     } else if constexpr (std::is_pointer_v<T>) {
-      return reinterpret_cast<T>(target_bit_arr_);
+      return reinterpret_cast<T>(target_bit_arr_);  // NOLINT
     } else {
       return CASTargetConverter<T>{target_bit_arr_}.target_data;  // NOLINT
     }
@@ -151,7 +151,7 @@ class MwCASField
     if constexpr (std::is_same_v<T, uint64_t>) {
       return data;
     } else if constexpr (std::is_pointer_v<T>) {
-      return reinterpret_cast<uint64_t>(data);
+      return reinterpret_cast<uint64_t>(data);  // NOLINT
     } else {
       return CASTargetConverter<T>{data}.converted_data;  // NOLINT
     }

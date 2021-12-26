@@ -12,7 +12,6 @@ cppcoreguidelines-*,
 -cppcoreguidelines-non-private-member-variables-in-classes,
 -cppcoreguidelines-owning-memory,
 -cppcoreguidelines-pro-bounds-constant-array-index,
--cppcoreguidelines-pro-type-reinterpret-cast,
 concurrency-*,
 google-*,
 hicpp-*,
@@ -25,12 +24,11 @@ misc-*,
 modernize-*,
 -modernize-avoid-c-arrays,
 -modernize-loop-convert,
--modernize-use-trailing-return-type,
 readability-*,
 -readability-braces-around-statements,
 performance-*,'
 WarningsAsErrors: ''
-HeaderFilterRegex: '.*\.hpp$'
+HeaderFilterRegex: '(include|src|test)/.*\.hpp$'
 AnalyzeTemporaryDtors: false
 FormatStyle:     none
 CheckOptions:
