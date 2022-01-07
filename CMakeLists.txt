@@ -20,26 +20,28 @@ set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 # Build targets
 #--------------------------------------------------------------------------------------#
 
-add_library(mwcas INTERFACE)
-add_library(mwcas::mwcas ALIAS mwcas)
-target_compile_features(mwcas INTERFACE
-  "cxx_std_17"
-)
-target_include_directories(mwcas INTERFACE
-  "${MWCAS_SOURCE_DIR}/include"
-)
-target_link_libraries(mwcas INTERFACE
-  pthread
-)
-
-#--------------------------------------------------------------------------------------#
-# Set Compile Options
-#--------------------------------------------------------------------------------------#
-
-if(DEFINED MWCAS_CAPACITY)
-  target_compile_definitions(mwcas INTERFACE
-    MWCAS_CAPACITY=${MWCAS_CAPACITY}
+if(NOT TARGET mwcas::mwcas)
+  add_library(mwcas INTERFACE)
+  add_library(mwcas::mwcas ALIAS mwcas)
+  target_compile_features(mwcas INTERFACE
+    "cxx_std_17"
   )
+  target_include_directories(mwcas INTERFACE
+    "${MWCAS_SOURCE_DIR}/include"
+  )
+  target_link_libraries(mwcas INTERFACE
+    pthread
+  )
+
+  #------------------------------------------------------------------------------------#
+  # Set Compile Options
+  #------------------------------------------------------------------------------------#
+
+  if(DEFINED MWCAS_CAPACITY)
+    target_compile_definitions(mwcas INTERFACE
+      MWCAS_CAPACITY=${MWCAS_CAPACITY}
+    )
+  endif()
 endif()
 
 #--------------------------------------------------------------------------------------#
