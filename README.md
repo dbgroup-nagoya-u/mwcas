@@ -2,9 +2,9 @@
 
 [![Ubuntu-20.04](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/unit_tests.yaml/badge.svg)](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/unit_tests.yaml)
 
-This repository is an open source implementation of a multi-word compare-and-swap (MwCAS) operation for research use. This implementation is based on Harris et al.'s CASN operation [1] with some optimizations.
+This repository is an open source implementation of a multi-word compare-and-swap (MwCAS) operation for research use. This implementation is based on Harris et al.'s CASN operation[^1] with some optimizations. For more information, please refer to the following paper.
 
-> [1] T. L. Harris, K. Fraser, and I. A. Pratt, "A practical multi-word compare-and-swap operation,” In Proc. DISC, pp. 265-279, 2002.
+> K. Sugiura and Y. Ishikawa, "Implementation of a Multi-Word Compare-and-Swap Operation without Garbage Collection," IEICE Transactions on Information and Systems, Vol. E105-D, No.5, May 2022. (DOI: 10.1587/transinf.2021DAP0011)
 
 ## Build
 
@@ -191,3 +191,5 @@ CanMwCAS<MyClass>()
 ## Acknowledgments
 
 This work is based on results obtained from project JPNP16007 commissioned by the New Energy and Industrial Technology Development Organization (NEDO). In addition, this work was supported partly by KAKENHI (16H01722 and 20K19804).
+
+[^1]: T. L. Harris, K. Fraser, and I. A. Pratt, "A practical multi-word compare-and-swap operation,” In Proc. DISC, pp. 265-279, 2002.
