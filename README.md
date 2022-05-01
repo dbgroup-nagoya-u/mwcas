@@ -4,7 +4,7 @@
 
 This repository is an open source implementation of a multi-word compare-and-swap (MwCAS) operation for research use. This implementation is based on Harris et al.'s CASN operation[^1] with some optimizations. For more information, please refer to the following paper.
 
-> K. Sugiura and Y. Ishikawa, "Implementation of a Multi-Word Compare-and-Swap Operation without Garbage Collection," IEICE Transactions on Information and Systems, Vol. E105-D, No.5, May 2022. (DOI: 10.1587/transinf.2021DAP0011)
+> K. Sugiura and Y. Ishikawa, "Implementation of a Multi-Word Compare-and-Swap Operation without Garbage Collection," IEICE Transactions on Information and Systems, Vol. E105-D, No.5, pp. 946-954, May 2022. (DOI: [10.1587/transinf.2021DAP0011](https://doi.org/10.1587/transinf.2021DAP0011))
 
 ## Build
 
