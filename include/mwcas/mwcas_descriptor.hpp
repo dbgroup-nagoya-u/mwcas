@@ -98,10 +98,12 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   {
     const auto *target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
 
-    MwCASField target_word;
-    do {
+    MwCASField target_word{};
+    while (true) {
       target_word = target_addr->load(std::memory_order_relaxed);
-    } while (target_word.IsMwCASDescriptor());
+      if (!target_word.IsMwCASDescriptor()) break;
+      SPINLOCK_HINT
+    }
 
     return target_word.GetTargetData<T>();
   }

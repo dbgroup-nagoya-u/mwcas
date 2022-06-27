@@ -8,13 +8,23 @@ endif()
 # project information
 project(
   mwcas
-  VERSION "1.0.1"
+  VERSION "1.1.0"
   DESCRIPTION "An open-source MwCAS library."
   LANGUAGES "CXX"
 )
 
 # define source directories
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# check SSE support for spinlock hints
+include(CheckIncludeFileCXX)
+CHECK_INCLUDE_FILE_CXX("xmmintrin.h" MWCAS_HAS_SPINLOCK_HINT)
+
+#--------------------------------------------------------------------------------------#
+# BzTree configurations
+#--------------------------------------------------------------------------------------#
+
+set(MWCAS_CAPACITY "4" CACHE STRING "The maximum number of target words for MwCAS.")
 
 #--------------------------------------------------------------------------------------#
 # Build targets
@@ -29,19 +39,13 @@ if(NOT TARGET mwcas::mwcas)
   target_include_directories(mwcas INTERFACE
     "${MWCAS_SOURCE_DIR}/include"
   )
+  target_compile_definitions(mwcas INTERFACE
+    MWCAS_CAPACITY=${MWCAS_CAPACITY}
+    $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
+  )
   target_link_libraries(mwcas INTERFACE
     pthread
   )
-
-  #------------------------------------------------------------------------------------#
-  # Set Compile Options
-  #------------------------------------------------------------------------------------#
-
-  if(DEFINED MWCAS_CAPACITY)
-    target_compile_definitions(mwcas INTERFACE
-      MWCAS_CAPACITY=${MWCAS_CAPACITY}
-    )
-  endif()
 endif()
 
 #--------------------------------------------------------------------------------------#

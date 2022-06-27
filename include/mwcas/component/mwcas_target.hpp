@@ -95,6 +95,7 @@ class MwCASTarget
 
       // retry if another desctiptor is embedded
       expected = old_val_;
+      SPINLOCK_HINT
     }
 
     return expected == old_val_;
