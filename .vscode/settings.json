@@ -68,7 +68,8 @@
     "pthread",
     "RDCSS",
     "struct",
-    "Wextra"
+    "Wextra",
+    "xmmintrin"
   ],
   "files.associations": {
     "fstream": "cpp",
