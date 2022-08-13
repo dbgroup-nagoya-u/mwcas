@@ -105,7 +105,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
       for (size_t i = 0; i < kRetryNum; ++i) {
         target_word = target_addr->load(std::memory_order_relaxed);
         if (!target_word.IsMwCASDescriptor()) return target_word.GetTargetData<T>();
-        SPINLOCK_HINT
+        MWCAS_SPINLOCK_HINT
       }
 
       // wait to prevent busy loop

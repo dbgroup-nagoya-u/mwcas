@@ -17,13 +17,11 @@
 #ifndef MWCAS_COMPONENT_COMMON_HPP
 #define MWCAS_COMPONENT_COMMON_HPP
 
-#ifndef SPINLOCK_HINT
 #ifdef MWCAS_HAS_SPINLOCK_HINT
 #include <xmmintrin.h>
-#define SPINLOCK_HINT _mm_pause();  // NOLINT
+#define MWCAS_SPINLOCK_HINT _mm_pause();  // NOLINT
 #else
-#define SPINLOCK_HINT /* do nothing */
-#endif
+#define MWCAS_SPINLOCK_HINT /* do nothing */
 #endif
 
 #include <atomic>
