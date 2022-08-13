@@ -88,10 +88,10 @@ class MwCASTarget
       -> bool
   {
     MwCASField expected = old_val_;
-    while (true) {
+    for (size_t i = 1; true; ++i) {
       // try to embed a MwCAS decriptor
       addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_relaxed);
-      if (!expected.IsMwCASDescriptor()) break;
+      if (!expected.IsMwCASDescriptor() || i >= kRetryNum) break;
 
       // retry if another desctiptor is embedded
       expected = old_val_;
@@ -115,6 +115,13 @@ class MwCASTarget
   }
 
  private:
+  /*####################################################################################
+   * Internal constants
+   *##################################################################################*/
+
+  /// the maximum number of retries for preventing busy loops.
+  static constexpr size_t kRetryNum = 10UL;
+
   /*####################################################################################
    * Internal member variables
    *##################################################################################*/
