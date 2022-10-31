@@ -25,6 +25,8 @@ CHECK_INCLUDE_FILE_CXX("xmmintrin.h" MWCAS_HAS_SPINLOCK_HINT)
 #--------------------------------------------------------------------------------------#
 
 set(MWCAS_CAPACITY "4" CACHE STRING "The maximum number of target words for MwCAS.")
+set(MWCAS_RETRY_THRESHOLD "10" CACHE STRING "The maximum number of retries for preventing busy loops.")
+set(MWCAS_SLEEP_TIME "10" CACHE STRING "A sleep time for preventing busy loops [us].")
 
 #--------------------------------------------------------------------------------------#
 # Build targets
@@ -41,6 +43,8 @@ if(NOT TARGET mwcas::mwcas)
   )
   target_compile_definitions(mwcas INTERFACE
     MWCAS_CAPACITY=${MWCAS_CAPACITY}
+    MWCAS_RETRY_THRESHOLD=${MWCAS_RETRY_THRESHOLD}
+    MWCAS_SLEEP_TIME=${MWCAS_SLEEP_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
   )
   target_link_libraries(mwcas INTERFACE

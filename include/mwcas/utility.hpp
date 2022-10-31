@@ -18,6 +18,7 @@
 #define MWCAS_UTILITY_HPP
 
 #include <cassert>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -30,6 +31,12 @@ namespace dbgroup::atomic::mwcas
 
 /// The maximum number of target words of MwCAS
 constexpr size_t kMwCASCapacity = MWCAS_CAPACITY;
+
+/// The maximum number of retries for preventing busy loops.
+constexpr size_t kRetryNum = MWCAS_RETRY_THRESHOLD;
+
+/// A sleep time for preventing busy loops [us].
+static constexpr auto kShortSleep = std::chrono::microseconds{MWCAS_SLEEP_TIME};
 
 /*######################################################################################
  * Global utility functions
