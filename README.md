@@ -23,8 +23,10 @@ cd mwcas
 
 #### Tuning Parameters
 
-- `MWCAS_CAPACITY`: the maximum number of target words of MwCAS (default: `4`).
+- `MWCAS_CAPACITY`: The maximum number of target words of MwCAS (default: `4`).
     - In order to maximize performance, it is desirable to specify the minimum number needed. Otherwise, the extra space will pollute the CPU cache.
+- `MWCAS_RETRY_THRESHOLD`: The maximum number of retries for preventing busy loops. (default: `10`).
+- `MWCAS_SLEEP_TIME`: A sleep time for preventing busy loops [us]. (default: `10`).
 
 #### Parameters for Unit Testing
 

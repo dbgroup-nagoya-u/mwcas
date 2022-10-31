@@ -176,16 +176,6 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
  private:
   /*####################################################################################
-   * Internal constants
-   *##################################################################################*/
-
-  /// the maximum number of retries for preventing busy loops.
-  static constexpr size_t kRetryNum = 10UL;
-
-  /// a sleep time for preventing busy loops.
-  static constexpr auto kShortSleep = std::chrono::microseconds{10};
-
-  /*####################################################################################
    * Internal member variables
    *##################################################################################*/
 
