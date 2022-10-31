@@ -41,7 +41,7 @@ class MwCASTargetFixture : public ::testing::Test
     }
     target_ = old_val_;
 
-    mwcas_target_ = MwCASTarget{&target_, old_val_, new_val_};
+    mwcas_target_ = MwCASTarget{&target_, old_val_, new_val_, std::memory_order_relaxed};
     desc_ = MwCASField{0UL, true};
   }
 

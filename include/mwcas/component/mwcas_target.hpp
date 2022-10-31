@@ -52,8 +52,12 @@ class MwCASTarget
   constexpr MwCASTarget(  //
       void *addr,
       const T old_val,
-      const T new_val)
-      : addr_{static_cast<std::atomic<MwCASField> *>(addr)}, old_val_{old_val}, new_val_{new_val}
+      const T new_val,
+      const std::memory_order fence)
+      : addr_{static_cast<std::atomic<MwCASField> *>(addr)},
+        old_val_{old_val},
+        new_val_{new_val},
+        fence_{fence}
   {
   }
 
@@ -110,8 +114,11 @@ class MwCASTarget
   void
   CompleteMwCAS(const bool mwcas_success)
   {
-    const MwCASField desired = (mwcas_success) ? new_val_ : old_val_;
-    addr_->store(desired, std::memory_order_relaxed);
+    if (mwcas_success) {
+      addr_->store(new_val_, fence_);
+    } else {
+      addr_->store(old_val_, std::memory_order_relaxed);
+    }
   }
 
  private:
@@ -134,6 +141,9 @@ class MwCASTarget
 
   /// An inserting value into a target field
   MwCASField new_val_{};
+
+  /// A fence to be inserted when embedding a new value.
+  std::memory_order fence_{std::memory_order_seq_cst};
 };
 
 }  // namespace dbgroup::atomic::mwcas::component
