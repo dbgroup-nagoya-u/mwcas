@@ -167,8 +167,14 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     }
 
     // complete MwCAS
-    for (size_t i = 0; i < embedded_count; ++i) {
-      targets_[i].CompleteMwCAS(mwcas_success);
+    if (mwcas_success) {
+      for (size_t i = 0; i < embedded_count; ++i) {
+        targets_[i].RedoMwCAS();
+      }
+    } else {
+      for (size_t i = 0; i < embedded_count; ++i) {
+        targets_[i].UndoMwCAS();
+      }
     }
 
     return mwcas_success;

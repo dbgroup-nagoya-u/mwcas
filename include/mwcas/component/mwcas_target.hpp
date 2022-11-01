@@ -106,19 +106,23 @@ class MwCASTarget
   }
 
   /**
-   * @brief Update/revert a value of this target address.
+   * @brief Update a value of this target address.
    *
-   * @param desc_addr an embedded descriptor in this target address.
-   * @param mwcas_success a flag to indicate a target will be updated or reverted.
    */
   void
-  CompleteMwCAS(const bool mwcas_success)
+  RedoMwCAS()
   {
-    if (mwcas_success) {
-      addr_->store(new_val_, fence_);
-    } else {
-      addr_->store(old_val_, std::memory_order_relaxed);
-    }
+    addr_->store(new_val_, fence_);
+  }
+
+  /**
+   * @brief Revert a value of this target address.
+   *
+   */
+  void
+  UndoMwCAS()
+  {
+    addr_->store(old_val_, std::memory_order_relaxed);
   }
 
  private:
