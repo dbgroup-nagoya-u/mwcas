@@ -105,9 +105,10 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     MwCASField target_word{};
     while (true) {
-      for (size_t i = 0; i < kRetryNum; ++i) {
+      for (size_t i = 1; true; ++i) {
         target_word = target_addr->load(fence);
         if (!target_word.IsMwCASDescriptor()) return target_word.GetTargetData<T>();
+        if (i > kRetryNum) break;
         MWCAS_SPINLOCK_HINT
       }
 
@@ -124,23 +125,18 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    * @param old_val an expected value of a target field
    * @param new_val an inserting value into a target field
    * @param fence a flag for controling std::memory_order.
-   * @retval true if target registration succeeds
-   * @retval false if this descriptor is already full
    */
   template <class T>
-  constexpr auto
+  constexpr void
   AddMwCASTarget(  //
       void *addr,
       const T old_val,
       const T new_val,
-      const std::memory_order fence = std::memory_order_seq_cst)  //
-      -> bool
+      const std::memory_order fence = std::memory_order_seq_cst)
   {
-    if (target_count_ == kMwCASCapacity) {
-      return false;
-    }
+    assert(target_count_ < kMwCASCapacity);
+
     targets_[target_count_++] = MwCASTarget{addr, old_val, new_val, fence};
-    return true;
   }
 
   /**
@@ -167,8 +163,14 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     }
 
     // complete MwCAS
-    for (size_t i = 0; i < embedded_count; ++i) {
-      targets_[i].CompleteMwCAS(mwcas_success);
+    if (mwcas_success) {
+      for (size_t i = 0; i < embedded_count; ++i) {
+        targets_[i].RedoMwCAS();
+      }
+    } else {
+      for (size_t i = 0; i < embedded_count; ++i) {
+        targets_[i].UndoMwCAS();
+      }
     }
 
     return mwcas_success;
