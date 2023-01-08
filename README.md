@@ -64,7 +64,7 @@ ctest -C Release
       [<source> ...]
     )
     target_link_libraries(<target_bin_name> PRIVATE
-      mwcas::mwcas
+      dbgroup::mwcas
     )
     ```
 

@@ -17,8 +17,10 @@
 #ifndef MWCAS_COMPONENT_MWCAS_TARGET_HPP
 #define MWCAS_COMPONENT_MWCAS_TARGET_HPP
 
+// C++ standard libraries
 #include <atomic>
 
+// local sources
 #include "mwcas_field.hpp"
 
 namespace dbgroup::atomic::mwcas::component
@@ -62,8 +64,9 @@ class MwCASTarget
   }
 
   constexpr MwCASTarget(const MwCASTarget &) = default;
-  constexpr auto operator=(const MwCASTarget &obj) -> MwCASTarget & = default;
   constexpr MwCASTarget(MwCASTarget &&) = default;
+
+  constexpr auto operator=(const MwCASTarget &obj) -> MwCASTarget & = default;
   constexpr auto operator=(MwCASTarget &&) -> MwCASTarget & = default;
 
   /*####################################################################################

@@ -17,8 +17,11 @@
 #ifndef MWCAS_COMPONENT_MWCAS_FIELD_HPP
 #define MWCAS_COMPONENT_MWCAS_FIELD_HPP
 
+// C++ standard libraries
 #include <atomic>
+#include <cstring>
 
+// local sources
 #include "common.hpp"
 
 namespace dbgroup::atomic::mwcas::component
@@ -64,8 +67,9 @@ class MwCASField
   }
 
   constexpr MwCASField(const MwCASField &) = default;
-  constexpr auto operator=(const MwCASField &obj) -> MwCASField & = default;
   constexpr MwCASField(MwCASField &&) = default;
+
+  constexpr auto operator=(const MwCASField &obj) -> MwCASField & = default;
   constexpr auto operator=(MwCASField &&) -> MwCASField & = default;
 
   /*####################################################################################
@@ -82,20 +86,18 @@ class MwCASField
    * Public operators
    *##################################################################################*/
 
-  constexpr auto
+  auto
   operator==(const MwCASField &obj) const  //
       -> bool
   {
-    return this->mwcas_flag_ == obj.mwcas_flag_  //
-           && this->target_bit_arr_ == obj.target_bit_arr_;
+    return memcmp(this, &obj, sizeof(MwCASField)) == 0;
   }
 
-  constexpr auto
+  auto
   operator!=(const MwCASField &obj) const  //
       -> bool
   {
-    return this->mwcas_flag_ != obj.mwcas_flag_  //
-           || this->target_bit_arr_ != obj.target_bit_arr_;
+    return memcmp(this, &obj, sizeof(MwCASField)) != 0;
   }
 
   /*####################################################################################

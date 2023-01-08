@@ -46,7 +46,7 @@ function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
   )
   target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
-    mwcas
+    dbgroup::mwcas
     gtest_main
   )
 

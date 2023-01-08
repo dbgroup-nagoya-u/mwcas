@@ -17,12 +17,14 @@
 #ifndef MWCAS_MWCAS_DESCRIPTOR_HPP
 #define MWCAS_MWCAS_DESCRIPTOR_HPP
 
+// C++ standard libraries
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <thread>
 #include <utility>
 
+// local sources
 #include "component/mwcas_target.hpp"
 
 namespace dbgroup::atomic::mwcas
@@ -52,8 +54,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   constexpr MwCASDescriptor() = default;
 
   constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
-  constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
   constexpr MwCASDescriptor(MwCASDescriptor &&) = default;
+
+  constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
   constexpr auto operator=(MwCASDescriptor &&) -> MwCASDescriptor & = default;
 
   /*####################################################################################

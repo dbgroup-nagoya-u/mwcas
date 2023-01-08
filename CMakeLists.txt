@@ -8,13 +8,16 @@ endif()
 # project information
 project(
   mwcas
-  VERSION "1.1.0"
+  VERSION "1.1.1"
   DESCRIPTION "An open-source MwCAS library."
   LANGUAGES "CXX"
 )
 
 # define source directories
 set(MWCAS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# this library uses multi-threads
+find_package(Threads)
 
 # check SSE support for spinlock hints
 include(CheckIncludeFileCXX)
@@ -32,9 +35,9 @@ set(MWCAS_SLEEP_TIME "10" CACHE STRING "A sleep time for preventing busy loops [
 # Build targets
 #--------------------------------------------------------------------------------------#
 
-if(NOT TARGET mwcas::mwcas)
+if(NOT TARGET dbgroup::mwcas)
   add_library(mwcas INTERFACE)
-  add_library(mwcas::mwcas ALIAS mwcas)
+  add_library(dbgroup::mwcas ALIAS mwcas)
   target_compile_features(mwcas INTERFACE
     "cxx_std_17"
   )
@@ -48,7 +51,7 @@ if(NOT TARGET mwcas::mwcas)
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
   )
   target_link_libraries(mwcas INTERFACE
-    pthread
+    Threads::Threads
   )
 endif()
 
