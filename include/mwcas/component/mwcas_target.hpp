@@ -94,18 +94,18 @@ class MwCASTarget
   EmbedDescriptor(const MwCASField desc_addr)  //
       -> bool
   {
-    MwCASField expected = old_val_;
     for (size_t i = 1; true; ++i) {
       // try to embed a MwCAS decriptor
-      addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_relaxed);
-      if (!expected.IsMwCASDescriptor() || i >= kRetryNum) break;
+      auto expected = addr_->load(std::memory_order_relaxed);
+      if (expected == old_val_
+          && addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_relaxed)) {
+        return true;
+      }
+      if (!expected.IsMwCASDescriptor() || i >= kRetryNum) return false;
 
       // retry if another desctiptor is embedded
-      expected = old_val_;
       MWCAS_SPINLOCK_HINT
     }
-
-    return expected == old_val_;
   }
 
   /**
