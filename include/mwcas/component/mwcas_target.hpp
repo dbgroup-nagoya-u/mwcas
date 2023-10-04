@@ -96,9 +96,8 @@ class MwCASTarget
   {
     for (size_t i = 1; true; ++i) {
       // try to embed a MwCAS decriptor
-      auto expected = addr_->load(std::memory_order_relaxed);
-      if (expected == old_val_
-          && addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_relaxed)) {
+      auto expected = addr_->load();
+      if (expected == old_val_ && addr_->compare_exchange_strong(expected, desc_addr)) {
         return true;
       }
       if (!expected.IsMwCASDescriptor() || i >= kRetryNum) return false;
@@ -115,7 +114,7 @@ class MwCASTarget
   void
   RedoMwCAS()
   {
-    addr_->store(new_val_, fence_);
+    addr_->store(new_val_);
   }
 
   /**
@@ -125,7 +124,7 @@ class MwCASTarget
   void
   UndoMwCAS()
   {
-    addr_->store(old_val_, std::memory_order_relaxed);
+    addr_->store(old_val_);
   }
 
  private:
@@ -143,7 +142,7 @@ class MwCASTarget
   MwCASField new_val_{};
 
   /// A fence to be inserted when embedding a new value.
-  std::memory_order fence_{std::memory_order_seq_cst};
+  std::memory_order fence_{};
 };
 
 }  // namespace dbgroup::atomic::mwcas::component

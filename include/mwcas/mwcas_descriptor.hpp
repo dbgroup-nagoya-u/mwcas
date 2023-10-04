@@ -109,7 +109,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     MwCASField target_word{};
     while (true) {
       for (size_t i = 1; true; ++i) {
-        target_word = target_addr->load(fence);
+        target_word = target_addr->load();
         if (!target_word.IsMwCASDescriptor()) return target_word.GetTargetData<T>();
         if (i > kRetryNum) break;
         MWCAS_SPINLOCK_HINT
@@ -167,7 +167,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
 
     // complete MwCAS
     if (mwcas_success) {
-      for (size_t i = 0; i < embedded_count; ++i) {
+      for (int64_t i = embedded_count - 1; i >= 0; --i) {
         targets_[i].RedoMwCAS();
       }
     } else {
