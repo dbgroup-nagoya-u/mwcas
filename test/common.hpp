@@ -18,15 +18,11 @@
 #define TEST_COMMON_HPP
 
 // C++ standard libraries
+#include <cstdint>
 #include <functional>
 
+// target library
 #include "mwcas/utility.hpp"
-
-#ifdef MWCAS_TEST_THREAD_NUM
-constexpr size_t kThreadNum = MWCAS_TEST_THREAD_NUM;
-#else
-constexpr size_t kThreadNum = 8;
-#endif
 
 /**
  * @brief An example class to represent CAS-updatable data.

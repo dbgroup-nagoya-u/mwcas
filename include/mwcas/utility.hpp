@@ -18,6 +18,7 @@
 #define MWCAS_UTILITY_HPP
 
 // C++ standard libraries
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -25,22 +26,35 @@
 
 namespace dbgroup::atomic::mwcas
 {
-/*######################################################################################
+/*##############################################################################
  * Global enum and constants
- *####################################################################################*/
+ *############################################################################*/
 
-/// The maximum number of target words of MwCAS
-constexpr size_t kMwCASCapacity = MWCAS_CAPACITY;
+/// @brief An alias of the relaxed memory order.
+constexpr std::memory_order kRelaxed = std::memory_order_relaxed;
 
-/// The maximum number of retries for preventing busy loops.
-constexpr size_t kRetryNum = MWCAS_RETRY_THRESHOLD;
+/// @brief The last significant bit indicates MwCAS descriptors.
+constexpr uint64_t kMwCASFlag = 1UL << 63UL;
 
-/// A sleep time for preventing busy loops [us].
-static constexpr auto kShortSleep = std::chrono::microseconds{MWCAS_SLEEP_TIME};
+/*##############################################################################
+ * Tuning parameters
+ *############################################################################*/
 
-/*######################################################################################
+/// @brief Assumes that the size of one cache line is 64 bytes
+constexpr size_t kCacheLineSize = 64;
+
+/// @brief The maximum number of target words of MwCAS
+constexpr size_t kMwCASCapacity = (MWCAS_CAPACITY);
+
+/// @brief The maximum number of retries for preventing busy loops.
+constexpr size_t kRetryNum = (MWCAS_RETRY_THRESHOLD);
+
+/// @brief A sleep time for preventing busy loops [us].
+constexpr std::chrono::microseconds kBackOffTime{MWCAS_BACKOFF_TIME};
+
+/*##############################################################################
  * Global utility functions
- *####################################################################################*/
+ *############################################################################*/
 
 /**
  * @tparam T a MwCAS target class.

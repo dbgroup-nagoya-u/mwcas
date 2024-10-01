@@ -19,12 +19,17 @@
 
 // C++ standard libraries
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <cstddef>
 #include <thread>
 
+// external libraries
+#include "dbgroup/lock/common.hpp"
+
 // local sources
-#include "component/mwcas_target.hpp"
+#include "mwcas/component/mwcas_target.hpp"
+#include "mwcas/utility.hpp"
 
 namespace dbgroup::atomic::mwcas
 {
@@ -32,19 +37,18 @@ namespace dbgroup::atomic::mwcas
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
-class alignas(component::kCacheLineSize) MwCASDescriptor
+class alignas(kCacheLineSize) MwCASDescriptor
 {
-  /*####################################################################################
+  /*############################################################################
    * Type aliases
-   *##################################################################################*/
+   *##########################################################################*/
 
   using MwCASTarget = component::MwCASTarget;
-  using MwCASField = component::MwCASField;
 
  public:
-  /*####################################################################################
+  /*############################################################################
    * Public constructors and assignment operators
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @brief Construct an empty descriptor for MwCAS operations.
@@ -58,9 +62,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
   constexpr auto operator=(MwCASDescriptor &&) noexcept -> MwCASDescriptor & = default;
 
-  /*####################################################################################
+  /*############################################################################
    * Public destructors
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @brief Destroy the MwCASDescriptor object.
@@ -68,9 +72,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    */
   ~MwCASDescriptor() = default;
 
-  /*####################################################################################
+  /*############################################################################
    * Public getters/setters
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @return the number of registered MwCAS targets
@@ -82,9 +86,9 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
     return target_count_;
   }
 
-  /*####################################################################################
+  /*############################################################################
    * Public utility functions
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @brief Read a value from a given memory address.
@@ -103,19 +107,19 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
-    const auto *target_addr = static_cast<const std::atomic<MwCASField> *>(addr);
+    const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
 
-    MwCASField target_word{};
+    uint64_t word{};
     while (true) {
       for (size_t i = 1; true; ++i) {
-        target_word = target_addr->load(fence);
-        if (!target_word.IsMwCASDescriptor()) return target_word.GetTargetData<T>();
+        word = target_addr->load(fence);
+        if ((word & kMwCASFlag) == 0) return std::bit_cast<T>(word);
         if (i > kRetryNum) break;
-        MWCAS_SPINLOCK_HINT
+        CPP_UTILITY_SPINLOCK_HINT
       }
 
       // wait to prevent busy loop
-      std::this_thread::sleep_for(kShortSleep);
+      std::this_thread::sleep_for(kBackOffTime);
     }
   }
 
@@ -151,7 +155,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   MwCAS()  //
       -> bool
   {
-    const MwCASField desc_addr{this, true};
+    const uint64_t desc_addr{std::bit_cast<uint64_t>(this) | kMwCASFlag};
 
     // serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
@@ -179,14 +183,14 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   }
 
  private:
-  /*####################################################################################
+  /*############################################################################
    * Internal member variables
-   *##################################################################################*/
+   *##########################################################################*/
 
-  /// Target entries of MwCAS
+  /// @brief Target entries of MwCAS
   MwCASTarget targets_[kMwCASCapacity] = {};
 
-  /// The number of registered MwCAS targets
+  /// @brief The number of registered MwCAS targets
   size_t target_count_{0};
 };
 

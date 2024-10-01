@@ -19,9 +19,13 @@
 
 // C++ standard libraries
 #include <atomic>
+#include <bit>
+
+// external libraries
+#include "dbgroup/lock/common.hpp"
 
 // local sources
-#include "mwcas_field.hpp"
+#include "mwcas/utility.hpp"
 
 namespace dbgroup::atomic::mwcas::component
 {
@@ -32,9 +36,9 @@ namespace dbgroup::atomic::mwcas::component
 class MwCASTarget
 {
  public:
-  /*####################################################################################
+  /*############################################################################
    * Public constructors and assignment operators
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @brief Construct an empty MwCAS target.
@@ -56,9 +60,9 @@ class MwCASTarget
       const T old_val,
       const T new_val,
       const std::memory_order fence)
-      : addr_{static_cast<std::atomic<MwCASField> *>(addr)},
-        old_val_{old_val},
-        new_val_{new_val},
+      : addr_{static_cast<std::atomic_uint64_t *>(addr)},
+        old_val_{std::bit_cast<uint64_t>(old_val)},
+        new_val_{std::bit_cast<uint64_t>(new_val)},
         fence_{fence}
   {
   }
@@ -69,9 +73,9 @@ class MwCASTarget
   constexpr auto operator=(const MwCASTarget &obj) -> MwCASTarget & = default;
   constexpr auto operator=(MwCASTarget &&) noexcept -> MwCASTarget & = default;
 
-  /*####################################################################################
+  /*############################################################################
    * Public destructor
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @brief Destroy the MwCASTarget object.
@@ -79,9 +83,9 @@ class MwCASTarget
    */
   ~MwCASTarget() = default;
 
-  /*####################################################################################
+  /*############################################################################
    * Public utility functions
-   *##################################################################################*/
+   *##########################################################################*/
 
   /**
    * @brief Embed a descriptor into this target address to linearlize MwCAS operations.
@@ -91,21 +95,21 @@ class MwCASTarget
    * @retval false otherwise.
    */
   auto
-  EmbedDescriptor(                 //
-      const MwCASField desc_addr)  //
+  EmbedDescriptor(               //
+      const uint64_t desc_addr)  //
       -> bool
   {
     for (size_t i = 1; true; ++i) {
       // try to embed a MwCAS decriptor
-      auto expected = addr_->load(std::memory_order_relaxed);
+      auto expected = addr_->load(kRelaxed);
       if (expected == old_val_
-          && addr_->compare_exchange_strong(expected, desc_addr, std::memory_order_relaxed)) {
+          && addr_->compare_exchange_strong(expected, desc_addr, kRelaxed, kRelaxed)) {
         return true;
       }
-      if (!expected.IsMwCASDescriptor() || i >= kRetryNum) return false;
+      if ((expected & kMwCASFlag) == 0 || i >= kRetryNum) return false;
 
       // retry if another desctiptor is embedded
-      MWCAS_SPINLOCK_HINT
+      CPP_UTILITY_SPINLOCK_HINT
     }
   }
 
@@ -126,24 +130,24 @@ class MwCASTarget
   void
   UndoMwCAS()
   {
-    addr_->store(old_val_, std::memory_order_relaxed);
+    addr_->store(old_val_, kRelaxed);
   }
 
  private:
-  /*####################################################################################
+  /*############################################################################
    * Internal member variables
-   *##################################################################################*/
+   *##########################################################################*/
 
-  /// A target memory address
-  std::atomic<MwCASField> *addr_{};
+  /// @brief A target memory address
+  std::atomic_uint64_t *addr_{};
 
-  /// An expected value of a target field
-  MwCASField old_val_{};
+  /// @brief An expected value of a target field
+  uint64_t old_val_{};
 
-  /// An inserting value into a target field
-  MwCASField new_val_{};
+  /// @brief An inserting value into a target field
+  uint64_t new_val_{};
 
-  /// A fence to be inserted when embedding a new value.
+  /// @brief A fence to be inserted when embedding a new value.
   std::memory_order fence_{std::memory_order_seq_cst};
 };
 

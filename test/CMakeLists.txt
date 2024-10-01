@@ -1,6 +1,6 @@
-#--------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 # Configure GoogleTest
-#--------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 
 include(FetchContent)
 FetchContent_Declare(
@@ -10,40 +10,53 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-#--------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
+# Build parameters
+#------------------------------------------------------------------------------#
+
+set(
+  DBGROUP_TEST_THREAD_NUM
+  "2" CACHE STRING
+  "The number of worker threads for testing."
+)
+
+set(
+  DBGROUP_TEST_RANDOM_SEED
+  "0" CACHE STRING
+  "A fixed seed value to reproduce unit tests."
+)
+
+#------------------------------------------------------------------------------#
 # Build Unit Tests
-#--------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------#
 
 # define function to add unit tests in the same format
-function(ADD_MWCAS_TEST MWCAS_TEST_TARGET)
-  add_executable(${MWCAS_TEST_TARGET}
-    "${CMAKE_CURRENT_SOURCE_DIR}/${MWCAS_TEST_TARGET}.cpp"
+function(ADD_DBGROUP_TEST DBGROUP_TEST_TARGET)
+  add_executable(${DBGROUP_TEST_TARGET}
+    "${CMAKE_CURRENT_SOURCE_DIR}/${DBGROUP_TEST_TARGET}.cpp"
   )
-  target_compile_features(${MWCAS_TEST_TARGET} PRIVATE
-    "cxx_std_17"
+  target_compile_features(${DBGROUP_TEST_TARGET} PRIVATE
+    "cxx_std_20"
   )
-  target_compile_options(${MWCAS_TEST_TARGET} PRIVATE
+  target_compile_options(${DBGROUP_TEST_TARGET} PRIVATE
     -Wall
     -Wextra
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Release">:"-O2 -march=native">
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"RelWithDebInfo">:"-g3 -Og -pg">
     $<$<STREQUAL:${CMAKE_BUILD_TYPE},"Debug">:"-g3 -O0 -pg">
   )
-  target_link_libraries(${MWCAS_TEST_TARGET} PRIVATE
+  target_compile_definitions(${DBGROUP_TEST_TARGET} PRIVATE
+    DBGROUP_TEST_THREAD_NUM=${DBGROUP_TEST_THREAD_NUM}
+    DBGROUP_TEST_RANDOM_SEED=${DBGROUP_TEST_RANDOM_SEED}
+  )
+  target_link_libraries(${DBGROUP_TEST_TARGET} PRIVATE
     dbgroup::mwcas
     GTest::gtest_main
   )
 
-  if(DEFINED MWCAS_TEST_THREAD_NUM)
-    target_compile_definitions(${MWCAS_TEST_TARGET} PRIVATE
-      MWCAS_TEST_THREAD_NUM=${MWCAS_TEST_THREAD_NUM}
-    )
-  endif()
-
-  add_test(NAME ${MWCAS_TEST_TARGET} COMMAND $<TARGET_FILE:${MWCAS_TEST_TARGET}>)
+  add_test(NAME ${DBGROUP_TEST_TARGET} COMMAND $<TARGET_FILE:${DBGROUP_TEST_TARGET}>)
 endfunction()
 
 # add unit tests to build targets
-ADD_MWCAS_TEST("mwcas_field_test")
-ADD_MWCAS_TEST("mwcas_target_test")
-ADD_MWCAS_TEST("mwcas_descriptor_test")
+ADD_DBGROUP_TEST("mwcas_target_test")
+ADD_DBGROUP_TEST("mwcas_descriptor_test")

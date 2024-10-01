@@ -29,6 +29,9 @@
   // C/C++ settings
   "C_Cpp.codeAnalysis.runAutomatically": true,
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+  "C_Cpp.codeAnalysis.exclude": {
+    "**/test": true,
+  },
   "C_Cpp.codeAnalysis.clangTidy.path": "/usr/bin/clang-tidy",
   "C_Cpp.codeAnalysis.clangTidy.useBuildPath": true,
   // "C_Cpp.default.compileCommands": "build/vscode/compile_commands.json",

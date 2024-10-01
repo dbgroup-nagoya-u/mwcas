@@ -26,12 +26,13 @@ cd mwcas
 - `MWCAS_CAPACITY`: The maximum number of target words of MwCAS (default: `4`).
     - In order to maximize performance, it is desirable to specify the minimum number needed. Otherwise, the extra space will pollute the CPU cache.
 - `MWCAS_RETRY_THRESHOLD`: The maximum number of retries for preventing busy loops. (default: `10`).
-- `MWCAS_SLEEP_TIME`: A sleep time for preventing busy loops [us]. (default: `10`).
+- `MWCAS_BACKOFF_TIME`: A back-off time for preventing busy loops [us]. (default: `10`).
 
 #### Parameters for Unit Testing
 
 - `MWCAS_BUILD_TESTS`: build unit tests if `ON` (default: `OFF`).
-- `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests (default: `8`).
+- `DBGROUP_TEST_THREAD_NUM`: The number of threads to run unit tests (default `2`).
+- `DBGROUP_TEST_RANDOM_SEED`: A fixed seed value to reproduce the results of unit tests (default `0`).
 
 ### Build and Run Unit Tests
 
