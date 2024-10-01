@@ -64,10 +64,10 @@ class MwCASTarget
   }
 
   constexpr MwCASTarget(const MwCASTarget &) = default;
-  constexpr MwCASTarget(MwCASTarget &&) = default;
+  constexpr MwCASTarget(MwCASTarget &&) noexcept = default;
 
   constexpr auto operator=(const MwCASTarget &obj) -> MwCASTarget & = default;
-  constexpr auto operator=(MwCASTarget &&) -> MwCASTarget & = default;
+  constexpr auto operator=(MwCASTarget &&) noexcept -> MwCASTarget & = default;
 
   /*####################################################################################
    * Public destructor
@@ -91,7 +91,8 @@ class MwCASTarget
    * @retval false otherwise.
    */
   auto
-  EmbedDescriptor(const MwCASField desc_addr)  //
+  EmbedDescriptor(                 //
+      const MwCASField desc_addr)  //
       -> bool
   {
     for (size_t i = 1; true; ++i) {

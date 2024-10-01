@@ -17,6 +17,7 @@
 #ifndef TEST_COMMON_HPP
 #define TEST_COMMON_HPP
 
+// C++ standard libraries
 #include <functional>
 
 #include "mwcas/utility.hpp"
@@ -34,16 +35,18 @@ constexpr size_t kThreadNum = 8;
 class MyClass
 {
  public:
-  constexpr MyClass() : data_{}, control_bits_{0} {}
+  constexpr MyClass() = default;
   ~MyClass() = default;
 
   constexpr MyClass(const MyClass &) = default;
+  constexpr MyClass(MyClass &&) noexcept = default;
+
   constexpr auto operator=(const MyClass &) -> MyClass & = default;
-  constexpr MyClass(MyClass &&) = default;
-  constexpr auto operator=(MyClass &&) -> MyClass & = default;
+  constexpr auto operator=(MyClass &&) noexcept -> MyClass & = default;
 
   constexpr auto
-  operator=(const uint64_t value)  //
+  operator=(                 //
+      const uint64_t value)  //
       -> MyClass &
   {
     data_ = value;
@@ -51,22 +54,24 @@ class MyClass
   }
 
   constexpr auto
-  operator==(const MyClass &comp) const  //
+  operator==(                     //
+      const MyClass &comp) const  //
       -> bool
   {
     return data_ == comp.data_;
   }
 
   constexpr auto
-  operator!=(const MyClass &comp) const  //
+  operator!=(                     //
+      const MyClass &comp) const  //
       -> bool
   {
     return !(*this == comp);
   }
 
  private:
-  uint64_t data_ : 63;
-  uint64_t control_bits_ : 1;  // NOLINT
+  uint64_t data_ : 63 {};
+  uint64_t control_bits_ : 1 {};  // NOLINT
 };
 
 namespace dbgroup::atomic::mwcas

@@ -17,7 +17,7 @@
 #ifndef MWCAS_UTILITY_HPP
 #define MWCAS_UTILITY_HPP
 
-#include <cassert>
+// C++ standard libraries
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -52,11 +52,7 @@ constexpr auto
 CanMwCAS()  //
     -> bool
 {
-  if constexpr (std::is_same_v<T, uint64_t> || std::is_pointer_v<T>) {
-    return true;
-  } else {
-    return false;
-  }
+  return std::is_same_v<T, uint64_t> || std::is_pointer_v<T>;
 }
 
 }  // namespace dbgroup::atomic::mwcas

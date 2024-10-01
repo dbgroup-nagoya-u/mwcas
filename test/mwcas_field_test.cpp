@@ -55,11 +55,12 @@ class MwCASFieldFixture : public ::testing::Test
    *##################################################################################*/
 
   void
-  VerifyConstructor(const bool is_mwcas_desc)
+  VerifyConstructor(  //
+      const bool is_mwcas_desc)
   {
     const auto target_word_1 = MwCASField{data_1_, is_mwcas_desc};
 
-    if (is_mwcas_desc) {
+    if (is_mwcas_desc) {  // NOLINT
       EXPECT_TRUE(target_word_1.IsMwCASDescriptor());
     } else {
       EXPECT_FALSE(target_word_1.IsMwCASDescriptor());
@@ -70,8 +71,8 @@ class MwCASFieldFixture : public ::testing::Test
   void
   VerifyEQ()
   {
-    MwCASField field_a{data_1_, false};
-    MwCASField field_b{data_1_, false};
+    auto &&field_a = MwCASField{data_1_, false};
+    auto &&field_b = MwCASField{data_1_, false};
     EXPECT_TRUE(field_a == field_b);
 
     field_b = MwCASField{data_2_, false};
@@ -87,8 +88,8 @@ class MwCASFieldFixture : public ::testing::Test
   void
   VerifyNE()
   {
-    MwCASField field_a{data_1_, false};
-    MwCASField field_b{data_1_, false};
+    auto &&field_a = MwCASField{data_1_, false};
+    auto &&field_b = MwCASField{data_1_, false};
     EXPECT_FALSE(field_a != field_b);
 
     field_b = MwCASField{data_2_, false};
@@ -107,6 +108,7 @@ class MwCASFieldFixture : public ::testing::Test
    *##################################################################################*/
 
   Target data_1_{};
+
   Target data_2_{};
 };
 

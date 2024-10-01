@@ -18,11 +18,10 @@
 #define MWCAS_MWCAS_DESCRIPTOR_HPP
 
 // C++ standard libraries
-#include <array>
 #include <atomic>
-#include <chrono>
+#include <cassert>
+#include <cstddef>
 #include <thread>
-#include <utility>
 
 // local sources
 #include "component/mwcas_target.hpp"
@@ -54,10 +53,10 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
   constexpr MwCASDescriptor() = default;
 
   constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
-  constexpr MwCASDescriptor(MwCASDescriptor &&) = default;
+  constexpr MwCASDescriptor(MwCASDescriptor &&) noexcept = default;
 
   constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
-  constexpr auto operator=(MwCASDescriptor &&) -> MwCASDescriptor & = default;
+  constexpr auto operator=(MwCASDescriptor &&) noexcept -> MwCASDescriptor & = default;
 
   /*####################################################################################
    * Public destructors
@@ -185,7 +184,7 @@ class alignas(component::kCacheLineSize) MwCASDescriptor
    *##################################################################################*/
 
   /// Target entries of MwCAS
-  MwCASTarget targets_[kMwCASCapacity];
+  MwCASTarget targets_[kMwCASCapacity] = {};
 
   /// The number of registered MwCAS targets
   size_t target_count_{0};

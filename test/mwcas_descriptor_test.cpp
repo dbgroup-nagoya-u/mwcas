@@ -16,6 +16,8 @@
 
 #include "mwcas/mwcas_descriptor.hpp"
 
+// C++ standard libraries
+#include <cstddef>
 #include <future>
 #include <mutex>
 #include <random>
@@ -24,8 +26,11 @@
 #include <utility>
 #include <vector>
 
-#include "common.hpp"
+// external libraries
 #include "gtest/gtest.h"
+
+// local sources
+#include "common.hpp"
 
 namespace dbgroup::atomic::mwcas::test
 {
@@ -54,7 +59,8 @@ class MwCASDescriptorFixture : public ::testing::Test
    *##################################################################################*/
 
   void
-  VerifyMwCAS(const size_t thread_num)
+  VerifyMwCAS(  //
+      const size_t thread_num)
   {
     RunMwCAS(thread_num);
 
@@ -73,7 +79,9 @@ class MwCASDescriptorFixture : public ::testing::Test
    *##################################################################################*/
 
   static constexpr size_t kExecNum = 1e6;
+
   static constexpr size_t kTargetFieldNum = kMwCASCapacity * kThreadNum;
+
   static constexpr size_t kRandomSeed = 20;
 
   /*####################################################################################
@@ -88,9 +96,10 @@ class MwCASDescriptorFixture : public ::testing::Test
    *##################################################################################*/
 
   void
-  RunMwCAS(const size_t thread_num)
+  RunMwCAS(  //
+      const size_t thread_num)
   {
-    std::vector<std::thread> threads;
+    std::vector<std::thread> threads{};
 
     {  // create a lock to prevent workers from executing
       const std::unique_lock<std::shared_mutex> guard{worker_lock_};
@@ -112,9 +121,10 @@ class MwCASDescriptorFixture : public ::testing::Test
   }
 
   void
-  MwCASRandomly(const size_t rand_seed)
+  MwCASRandomly(  //
+      const size_t rand_seed)
   {
-    std::vector<MwCASTargets> operations;
+    std::vector<MwCASTargets> operations{};
     operations.reserve(kExecNum);
 
     {  // create a lock to prevent a main thread
@@ -124,7 +134,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       std::mt19937_64 rand_engine{rand_seed};
       for (size_t i = 0; i < kExecNum; ++i) {
         // select MwCAS target fields randomly
-        MwCASTargets targets;
+        MwCASTargets targets{};
         targets.reserve(kMwCASCapacity);
         while (targets.size() < kMwCASCapacity) {
           size_t idx = id_dist_(rand_engine);
@@ -170,8 +180,9 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   std::uniform_int_distribution<size_t> id_dist_{0, kMwCASCapacity - 1};
 
-  std::shared_mutex main_lock_;
-  std::shared_mutex worker_lock_;
+  std::shared_mutex main_lock_{};
+
+  std::shared_mutex worker_lock_{};
 };
 
 /*######################################################################################

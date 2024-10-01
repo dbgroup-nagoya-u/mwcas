@@ -39,7 +39,7 @@ if(NOT TARGET dbgroup::mwcas)
   add_library(mwcas INTERFACE)
   add_library(dbgroup::mwcas ALIAS mwcas)
   target_compile_features(mwcas INTERFACE
-    "cxx_std_17"
+    "cxx_std_20"
   )
   target_include_directories(mwcas INTERFACE
     "${MWCAS_SOURCE_DIR}/include"

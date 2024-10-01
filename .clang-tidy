@@ -3,6 +3,7 @@ Checks: '
 -*,
 clang-diagnostic-*,
 bugprone-*,
+-bugprone-easily-swappable-parameters,
 cert-*,
 -cert-err58-cpp,
 -cert-msc32-c,
@@ -27,6 +28,7 @@ modernize-*,
 -modernize-use-trailing-return-type,
 readability-*,
 -readability-braces-around-statements,
+-readability-function-cognitive-complexity,
 performance-*,'
 WarningsAsErrors: ''
 HeaderFilterRegex: '(include|src|test)/.*\.hpp$'

@@ -19,7 +19,10 @@
 
 // C++ standard libraries
 #include <atomic>
+#include <bit>
+#include <cstdint>
 #include <cstring>
+#include <type_traits>
 
 // local sources
 #include "common.hpp"
@@ -41,7 +44,7 @@ class MwCASField
    * @brief Construct an empty field for MwCAS.
    *
    */
-  constexpr MwCASField() : target_bit_arr_{}, mwcas_flag_{0} {}
+  constexpr MwCASField() = default;
 
   /**
    * @brief Construct a MwCAS field with given data.
@@ -51,26 +54,20 @@ class MwCASField
    * @param is_mwcas_descriptor a flag to indicate this field contains a descriptor.
    */
   template <class T>
-  explicit constexpr MwCASField(  //
+  constexpr explicit MwCASField(  //
       T target_data,
       bool is_mwcas_descriptor = false)
-      : target_bit_arr_{ConvertToUint64(target_data)}, mwcas_flag_{is_mwcas_descriptor}
+      : target_bit_arr_{std::bit_cast<uint64_t>(target_data)}, mwcas_flag_{is_mwcas_descriptor}
   {
     // static check to validate MwCAS targets
-    static_assert(sizeof(T) == kWordSize);  // NOLINT
-    static_assert(std::is_trivially_copyable_v<T>);
-    static_assert(std::is_copy_constructible_v<T>);
-    static_assert(std::is_move_constructible_v<T>);
-    static_assert(std::is_copy_assignable_v<T>);
-    static_assert(std::is_move_assignable_v<T>);
     static_assert(CanMwCAS<T>());
   }
 
   constexpr MwCASField(const MwCASField &) = default;
-  constexpr MwCASField(MwCASField &&) = default;
+  constexpr MwCASField(MwCASField &&) noexcept = default;
 
   constexpr auto operator=(const MwCASField &obj) -> MwCASField & = default;
-  constexpr auto operator=(MwCASField &&) -> MwCASField & = default;
+  constexpr auto operator=(MwCASField &&) noexcept -> MwCASField & = default;
 
   /*####################################################################################
    * Public destructor
@@ -86,18 +83,20 @@ class MwCASField
    * Public operators
    *##################################################################################*/
 
-  auto
-  operator==(const MwCASField &obj) const  //
+  constexpr auto
+  operator==(                       //
+      const MwCASField &obj) const  //
       -> bool
   {
-    return memcmp(this, &obj, sizeof(MwCASField)) == 0;
+    return std::bit_cast<uint64_t>(*this) == std::bit_cast<uint64_t>(obj);
   }
 
-  auto
-  operator!=(const MwCASField &obj) const  //
+  constexpr auto
+  operator!=(                       //
+      const MwCASField &obj) const  //
       -> bool
   {
-    return memcmp(this, &obj, sizeof(MwCASField)) != 0;
+    return std::bit_cast<uint64_t>(*this) != std::bit_cast<uint64_t>(obj);
   }
 
   /*####################################################################################
@@ -126,10 +125,8 @@ class MwCASField
   {
     if constexpr (std::is_same_v<T, uint64_t>) {
       return target_bit_arr_;
-    } else if constexpr (std::is_pointer_v<T>) {
-      return reinterpret_cast<T>(target_bit_arr_);  // NOLINT
     } else {
-      return CASTargetConverter<T>{target_bit_arr_}.target_data;  // NOLINT
+      return std::bit_cast<T>(target_bit_arr_);
     }
   }
 
@@ -147,15 +144,14 @@ class MwCASField
    */
   template <class T>
   constexpr auto
-  ConvertToUint64(const T data)  //
+  ConvertToUint64(   //
+      const T data)  //
       -> uint64_t
   {
     if constexpr (std::is_same_v<T, uint64_t>) {
       return data;
-    } else if constexpr (std::is_pointer_v<T>) {
-      return reinterpret_cast<uint64_t>(data);  // NOLINT
     } else {
-      return CASTargetConverter<T>{data}.converted_data;  // NOLINT
+      return std::bit_cast<uint64_t>(data);
     }
   }
 
@@ -164,10 +160,10 @@ class MwCASField
    *##################################################################################*/
 
   /// An actual target data
-  uint64_t target_bit_arr_ : 63;
+  uint64_t target_bit_arr_ : 63 {};
 
   /// Representing whether this field contains a MwCAS descriptor
-  uint64_t mwcas_flag_ : 1;
+  uint64_t mwcas_flag_ : 1 {};
 };
 
 // CAS target words must be one word

@@ -16,8 +16,15 @@
 
 #include "mwcas/component/mwcas_target.hpp"
 
-#include "common.hpp"
+// C++ standard libraries
+#include <cstdint>
+#include <type_traits>
+
+// external libraries
 #include "gtest/gtest.h"
+
+// local sources
+#include "common.hpp"
 
 namespace dbgroup::atomic::mwcas::component::test
 {
@@ -59,31 +66,31 @@ class MwCASTargetFixture : public ::testing::Test
    *##################################################################################*/
 
   void
-  VerifyEmbedDescriptor(const bool expect_fail)
+  VerifyEmbedDescriptor(  //
+      const bool expect_fail)
   {
     if (expect_fail) {
       target_ = new_val_;
     }
 
-    const bool result = mwcas_target_.EmbedDescriptor(desc_);
+    const auto result = mwcas_target_.EmbedDescriptor(desc_);
 
-    if (expect_fail) {
+    if (expect_fail) {  // NOLINT
       EXPECT_FALSE(result);
-      EXPECT_NE(CASTargetConverter<MwCASField>{desc_}.converted_data,  // NOLINT
-                CASTargetConverter<Target>{target_}.converted_data);   // NOLINT
+      EXPECT_NE(std::bit_cast<uint64_t>(desc_), std::bit_cast<uint64_t>(target_));
     } else {
       EXPECT_TRUE(result);
-      EXPECT_EQ(CASTargetConverter<MwCASField>{desc_}.converted_data,  // NOLINT
-                CASTargetConverter<Target>{target_}.converted_data);   // NOLINT
+      EXPECT_EQ(std::bit_cast<uint64_t>(desc_), std::bit_cast<uint64_t>(target_));
     }
   }
 
   void
-  VerifyCompleteMwCAS(const bool mwcas_success)
+  VerifyCompleteMwCAS(  //
+      const bool mwcas_success)
   {
     ASSERT_TRUE(mwcas_target_.EmbedDescriptor(desc_));
 
-    if (mwcas_success) {
+    if (mwcas_success) {  // NOLINT
       mwcas_target_.RedoMwCAS();
       EXPECT_EQ(new_val_, target_);
     } else {
@@ -97,11 +104,14 @@ class MwCASTargetFixture : public ::testing::Test
    * Internal member variables
    *##################################################################################*/
 
-  MwCASTarget mwcas_target_;
-  MwCASField desc_;
+  MwCASTarget mwcas_target_{};
+
+  MwCASField desc_{};
 
   Target target_{};
+
   Target old_val_{};
+
   Target new_val_{};
 };
 
