@@ -55,21 +55,23 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   # Build targets
   #----------------------------------------------------------------------------#
 
-  add_library(${PROJECT_NAME} INTERFACE)
+  add_library(${PROJECT_NAME} STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/deadlock_free/mwcas_descriptor.cpp"
+  )
   add_library(dbgroup::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-  target_compile_features(${PROJECT_NAME} INTERFACE
+  target_compile_features(${PROJECT_NAME} PUBLIC
     "cxx_std_20"
   )
-  target_include_directories(${PROJECT_NAME} INTERFACE
+  target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
   )
-  target_compile_definitions(${PROJECT_NAME} INTERFACE
+  target_compile_definitions(${PROJECT_NAME} PUBLIC
     MWCAS_CAPACITY=${MWCAS_CAPACITY}
     MWCAS_RETRY_THRESHOLD=${MWCAS_RETRY_THRESHOLD}
     MWCAS_BACKOFF_TIME=${MWCAS_BACKOFF_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
   )
-  target_link_libraries(${PROJECT_NAME} INTERFACE
+  target_link_libraries(${PROJECT_NAME} PUBLIC
     dbgroup::cpp_utility
   )
 

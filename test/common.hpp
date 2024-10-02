@@ -14,15 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef TEST_COMMON_HPP
-#define TEST_COMMON_HPP
+#ifndef TEST_COMMON_HPP_
+#define TEST_COMMON_HPP_
 
 // C++ standard libraries
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 
 // target library
-#include "mwcas/utility.hpp"
+#include "dbgroup/atomic/mwcas/utility.hpp"
+
+/*##############################################################################
+ * Global constants
+ *############################################################################*/
+
+constexpr size_t kTestThreadNum = (DBGROUP_TEST_THREAD_NUM);
+
+constexpr size_t kRandomSeed = (DBGROUP_TEST_RANDOM_SEED);
+
+/*##############################################################################
+ * Global utility classes
+ *############################################################################*/
 
 /**
  * @brief An example class to represent CAS-updatable data.
@@ -86,4 +99,4 @@ CanMwCAS<MyClass>()  //
 
 }  // namespace dbgroup::atomic::mwcas
 
-#endif  // TEST_COMMON_HPP
+#endif  // TEST_COMMON_HPP_

@@ -58,5 +58,4 @@ function(ADD_DBGROUP_TEST DBGROUP_TEST_TARGET)
 endfunction()
 
 # add unit tests to build targets
-ADD_DBGROUP_TEST("mwcas_target_test")
 ADD_DBGROUP_TEST("mwcas_descriptor_test")

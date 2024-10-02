@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_UTILITY_HPP
-#define MWCAS_UTILITY_HPP
+#ifndef DBGROUP_ATOMIC_MWCAS_UTILITY_HPP_
+#define DBGROUP_ATOMIC_MWCAS_UTILITY_HPP_
 
 // C++ standard libraries
 #include <atomic>
@@ -40,10 +40,10 @@ constexpr uint64_t kMwCASFlag = 1UL << 63UL;
  * Tuning parameters
  *############################################################################*/
 
-/// @brief Assumes that the size of one cache line is 64 bytes
+/// @brief Assumes that the size of one cache line is 64 bytes.
 constexpr size_t kCacheLineSize = 64;
 
-/// @brief The maximum number of target words of MwCAS
+/// @brief The maximum number of target words of MwCAS.
 constexpr size_t kMwCASCapacity = (MWCAS_CAPACITY);
 
 /// @brief The maximum number of retries for preventing busy loops.
@@ -57,9 +57,10 @@ constexpr std::chrono::microseconds kBackOffTime{MWCAS_BACKOFF_TIME};
  *############################################################################*/
 
 /**
- * @tparam T a MwCAS target class.
+ * @tparam T A MwCAS target class.
  * @retval true if a target class can be updated by MwCAS.
  * @retval false otherwise.
+ * @note Specialize this function to swap your own classes by MwCAS.
  */
 template <class T>
 constexpr auto
@@ -71,4 +72,4 @@ CanMwCAS()  //
 
 }  // namespace dbgroup::atomic::mwcas
 
-#endif  // MWCAS_UTILITY_HPP
+#endif  // DBGROUP_ATOMIC_MWCAS_UTILITY_HPP_

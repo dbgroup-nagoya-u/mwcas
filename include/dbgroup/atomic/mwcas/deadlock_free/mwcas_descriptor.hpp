@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-#ifndef MWCAS_MWCAS_DESCRIPTOR_HPP
-#define MWCAS_MWCAS_DESCRIPTOR_HPP
+#ifndef DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_
+#define DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_
 
 // C++ standard libraries
+#include <array>
 #include <atomic>
 #include <bit>
-#include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <thread>
 
 // external libraries
 #include "dbgroup/lock/common.hpp"
 
 // local sources
-#include "mwcas/component/mwcas_target.hpp"
-#include "mwcas/utility.hpp"
+#include "dbgroup/atomic/mwcas/utility.hpp"
 
-namespace dbgroup::atomic::mwcas
+namespace dbgroup::atomic::mwcas::deadlock_free
 {
 /**
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
@@ -39,12 +39,6 @@ namespace dbgroup::atomic::mwcas
  */
 class alignas(kCacheLineSize) MwCASDescriptor
 {
-  /*############################################################################
-   * Type aliases
-   *##########################################################################*/
-
-  using MwCASTarget = component::MwCASTarget;
-
  public:
   /*############################################################################
    * Public constructors and assignment operators
@@ -77,7 +71,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *##########################################################################*/
 
   /**
-   * @return the number of registered MwCAS targets
+   * @return The number of registered MwCAS targets.
    */
   [[nodiscard]] constexpr auto
   Size() const  //
@@ -95,10 +89,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * \e NOTE: if a memory address is included in MwCAS target fields, it must be read
    * via this function.
    *
-   * @tparam T an expected class of a target field
-   * @param addr a target memory address to read
-   * @param fence a flag for controling std::memory_order.
-   * @return a read value
+   * @tparam T An expected class of a target field.
+   * @param addr A target memory address to read.
+   * @param fence A flag for controling std::memory_order.
+   * @return A read value.
    */
   template <class T>
   static auto
@@ -117,8 +111,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
         if (i > kRetryNum) break;
         CPP_UTILITY_SPINLOCK_HINT
       }
-
-      // wait to prevent busy loop
       std::this_thread::sleep_for(kBackOffTime);
     }
   }
@@ -126,11 +118,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /**
    * @brief Add a new MwCAS target to this descriptor.
    *
-   * @tparam T a class of a target
-   * @param addr a target memory address
-   * @param old_val an expected value of a target field
-   * @param new_val an inserting value into a target field
-   * @param fence a flag for controling std::memory_order.
+   * @tparam T The class of a target word.
+   * @param addr A target memory address.
+   * @param old_val The expected value of a target field.
+   * @param new_val An inserting value into a target field.
+   * @param fence A flag for controling std::memory_order.
    */
   template <class T>
   constexpr void
@@ -140,60 +132,70 @@ class alignas(kCacheLineSize) MwCASDescriptor
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
   {
-    assert(target_count_ < kMwCASCapacity);
-
-    targets_[target_count_++] = MwCASTarget{addr, old_val, new_val, fence};
+    targets_.at(target_count_++) =
+        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
 
   /**
    * @brief Perform a MwCAS operation by using registered targets.
    *
-   * @retval true if a MwCAS operation succeeds
-   * @retval false if a MwCAS operation fails
+   * @retval true if a MwCAS operation succeeds.
+   * @retval false if a MwCAS operation fails.
    */
-  auto
-  MwCAS()  //
-      -> bool
-  {
-    const uint64_t desc_addr{std::bit_cast<uint64_t>(this) | kMwCASFlag};
-
-    // serialize MwCAS operations by embedding a descriptor
-    auto mwcas_success = true;
-    size_t embedded_count = 0;
-    for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
-      if (!targets_[i].EmbedDescriptor(desc_addr)) {
-        // if a target field has been already updated, MwCAS fails
-        mwcas_success = false;
-        break;
-      }
-    }
-
-    // complete MwCAS
-    if (mwcas_success) {
-      for (size_t i = 0; i < embedded_count; ++i) {
-        targets_[i].RedoMwCAS();
-      }
-    } else {
-      for (size_t i = 0; i < embedded_count; ++i) {
-        targets_[i].UndoMwCAS();
-      }
-    }
-
-    return mwcas_success;
-  }
+  auto MwCAS()  //
+      -> bool;
 
  private:
+  /*############################################################################
+   * Internal classes
+   *##########################################################################*/
+
+  /**
+   * @brief A class for representing MwCAS targets.
+   *
+   */
+  struct MwCASTarget {
+    /// @brief A target memory address.
+    std::atomic_uint64_t *addr;
+
+    /// @brief An expected value of a target field.
+    uint64_t old_val;
+
+    /// @brief An inserting value into a target field.
+    uint64_t new_val;
+
+    /// @brief A fence to be inserted when embedding a new value.
+    std::memory_order fence;
+  };
+
+  /*############################################################################
+   * Internal APIs
+   *##########################################################################*/
+
+  /**
+   * @brief Embed a descriptor into this target address to linearlize MwCAS.
+   *
+   * @param desc_addr The address of this descriptor with a MwCAS flag.
+   * @param pos The position of a target word.
+   * @retval true if the descriptor address is successfully embedded.
+   * @retval false otherwise.
+   */
+  auto EmbedDescriptor(  //
+      uint64_t desc_addr,
+      size_t pos)  //
+      -> bool;
+
   /*############################################################################
    * Internal member variables
    *##########################################################################*/
 
-  /// @brief Target entries of MwCAS
-  MwCASTarget targets_[kMwCASCapacity] = {};
+  /// @brief Target entries of MwCAS.
+  std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 
-  /// @brief The number of registered MwCAS targets
+  /// @brief The number of registered MwCAS targets.
   size_t target_count_{0};
 };
 
-}  // namespace dbgroup::atomic::mwcas
+}  // namespace dbgroup::atomic::mwcas::deadlock_free
 
-#endif  // MWCAS_MWCAS_DESCRIPTOR_HPP
+#endif  // DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_

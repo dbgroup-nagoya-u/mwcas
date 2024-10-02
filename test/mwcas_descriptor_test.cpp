@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#include "mwcas/mwcas_descriptor.hpp"
+// the corresponding header
+#include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
 
 // C++ standard libraries
 #include <cstddef>
@@ -32,7 +33,7 @@
 // local sources
 #include "common.hpp"
 
-namespace dbgroup::atomic::mwcas::test
+namespace dbgroup::atomic::mwcas::deadlock_free::test
 {
 /*##############################################################################
  * Internal constants
@@ -40,11 +41,7 @@ namespace dbgroup::atomic::mwcas::test
 
 constexpr size_t kExecNum = 1e6;
 
-constexpr size_t kThreadNum = (DBGROUP_TEST_THREAD_NUM);
-
-constexpr size_t kTargetFieldNum = kMwCASCapacity * kThreadNum;
-
-constexpr size_t kRandomSeed = (DBGROUP_TEST_RANDOM_SEED);
+constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
 
 /*##############################################################################
  * Fixture definitions
@@ -111,7 +108,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       const std::unique_lock<std::shared_mutex> guard{worker_lock_};
 
       // run a function over multi-threads
-      std::mt19937_64 rand_engine(kRandomSeed);
+      std::mt19937_64 rand_engine(kRandomSeed);  // NOLINT
       for (size_t i = 0; i < thread_num; ++i) {
         const auto rand_seed = rand_engine();
         threads.emplace_back(&MwCASDescriptorFixture::MwCASRandomly, this, rand_seed);
@@ -137,7 +134,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       const std::shared_lock<std::shared_mutex> guard{main_lock_};
 
       // prepare operations to be executed
-      std::mt19937_64 rand_engine{rand_seed};
+      std::mt19937_64 rand_engine{rand_seed};  // NOLINT
       for (size_t i = 0; i < kExecNum; ++i) {
         // select MwCAS target fields randomly
         MwCASTargets targets{};
@@ -202,7 +199,7 @@ TEST_F(MwCASDescriptorFixture, MwCASWithSingleThreadCorrectlyIncrementTargets)
 
 TEST_F(MwCASDescriptorFixture, MwCASWithMultiThreadsCorrectlyIncrementTargets)
 {
-  VerifyMwCAS(kThreadNum);
+  VerifyMwCAS(kTestThreadNum);
 }
 
-}  // namespace dbgroup::atomic::mwcas::test
+}  // namespace dbgroup::atomic::mwcas::deadlock_free::test
