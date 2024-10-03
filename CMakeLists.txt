@@ -51,12 +51,21 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   )
   FetchContent_MakeAvailable(cpp-utility)
 
+  # use our GC
+  FetchContent_Declare(
+    memory-manager
+    GIT_REPOSITORY "https://github.com/dbgroup-nagoya-u/memory-manager.git"
+    GIT_TAG "89b58245bf22bb7a6ce05f9e108a19961a7f1f79"
+  )
+  FetchContent_MakeAvailable(memory-manager)
+
   #----------------------------------------------------------------------------#
   # Build targets
   #----------------------------------------------------------------------------#
 
   add_library(${PROJECT_NAME} STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/deadlock_free/mwcas_descriptor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/aopt_descriptor.cpp"
   )
   add_library(dbgroup::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
   target_compile_features(${PROJECT_NAME} PUBLIC
@@ -73,6 +82,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   )
   target_link_libraries(${PROJECT_NAME} PUBLIC
     dbgroup::cpp_utility
+    dbgroup::memory_manager
   )
 
   #----------------------------------------------------------------------------#

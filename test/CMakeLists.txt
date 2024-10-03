@@ -35,9 +35,6 @@ function(ADD_DBGROUP_TEST DBGROUP_TEST_TARGET)
   add_executable(${DBGROUP_TEST_TARGET}
     "${CMAKE_CURRENT_SOURCE_DIR}/${DBGROUP_TEST_TARGET}.cpp"
   )
-  target_compile_features(${DBGROUP_TEST_TARGET} PRIVATE
-    "cxx_std_20"
-  )
   target_compile_options(${DBGROUP_TEST_TARGET} PRIVATE
     -Wall
     -Wextra
@@ -50,7 +47,7 @@ function(ADD_DBGROUP_TEST DBGROUP_TEST_TARGET)
     DBGROUP_TEST_RANDOM_SEED=${DBGROUP_TEST_RANDOM_SEED}
   )
   target_link_libraries(${DBGROUP_TEST_TARGET} PRIVATE
-    dbgroup::mwcas
+    dbgroup::${PROJECT_NAME}
     GTest::gtest_main
   )
 
@@ -58,4 +55,4 @@ function(ADD_DBGROUP_TEST DBGROUP_TEST_TARGET)
 endfunction()
 
 # add unit tests to build targets
-ADD_DBGROUP_TEST("mwcas_descriptor_test")
+ADD_DBGROUP_TEST("mwcas_descriptors_test")

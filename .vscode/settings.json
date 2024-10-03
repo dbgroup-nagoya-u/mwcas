@@ -29,9 +29,6 @@
   // C/C++ settings
   "C_Cpp.codeAnalysis.runAutomatically": true,
   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
-  // "C_Cpp.codeAnalysis.exclude": {
-  //   "**/test": true,
-  // },
   "C_Cpp.codeAnalysis.clangTidy.path": "/usr/bin/clang-tidy",
   "C_Cpp.codeAnalysis.clangTidy.useBuildPath": true,
   // unit test settings
@@ -56,6 +53,7 @@
   // extra words for spell checking
   "cSpell.words": [
     "alignas",
+    "AOPT",
     "CASN",
     "cout",
     "ctest",

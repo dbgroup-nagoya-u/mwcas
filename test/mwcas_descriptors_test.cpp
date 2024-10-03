@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-// the corresponding header
+// the corresponding headers
 #include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp"
 
 // C++ standard libraries
 #include <cstddef>
@@ -24,6 +25,7 @@
 #include <random>
 #include <shared_mutex>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -33,8 +35,15 @@
 // local sources
 #include "common.hpp"
 
-namespace dbgroup::atomic::mwcas::deadlock_free::test
+namespace dbgroup::atomic::mwcas::test
 {
+/*##############################################################################
+ * Target MwCAS implementations
+ *############################################################################*/
+
+using DLFMwCAS = deadlock_free::MwCASDescriptor;
+using AOPT = lock_free::AOPTDescriptor;
+
 /*##############################################################################
  * Internal constants
  *############################################################################*/
@@ -47,6 +56,7 @@ constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
  * Fixture definitions
  *############################################################################*/
 
+template <class MwCASDesc>
 class MwCASDescriptorFixture : public ::testing::Test
 {
  protected:
@@ -67,11 +77,18 @@ class MwCASDescriptorFixture : public ::testing::Test
     for (size_t i = 0; i < kTargetFieldNum; ++i) {
       target_fields_[i] = 0UL;
     }
+
+    if constexpr (std::is_same_v<MwCASDesc, AOPT>) {
+      MwCASDesc::StartGC();
+    }
   }
 
   void
   TearDown() override
   {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT>) {
+      MwCASDesc::StopGC();
+    }
   }
 
   /*############################################################################
@@ -86,8 +103,8 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     // check the target fields are correctly incremented
     size_t sum = 0;
-    for (auto &&target : target_fields_) {
-      sum += target;
+    for (auto &target : target_fields_) {
+      sum += MwCASDesc::template Read<Target>(&target);
     }
 
     EXPECT_EQ(kExecNum * thread_num * kMwCASCapacity, sum);
@@ -97,6 +114,35 @@ class MwCASDescriptorFixture : public ::testing::Test
   /*############################################################################
    * Internal utility functions
    *##########################################################################*/
+
+  void
+  MwCAS(  //
+      const MwCASTargets &targets)
+  {
+    if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS>) {
+      while (true) {
+        MwCASDesc desc{};
+        for (auto idx : targets) {
+          auto *addr = &(target_fields_[idx]);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr);
+          const auto new_val = cur_val + 1;
+          desc.AddMwCASTarget(addr, cur_val, new_val);
+        }
+        if (desc.MwCAS()) return;
+      }
+    } else {
+      while (true) {
+        auto *desc = MwCASDesc::GetDescriptor();
+        for (auto idx : targets) {
+          auto *addr = &(target_fields_[idx]);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr);
+          const auto new_val = cur_val + 1;
+          desc->AddMwCASTarget(addr, cur_val, new_val);
+        }
+        if (desc->MwCAS()) return;
+      }
+    }
+  }
 
   void
   RunMwCAS(  //
@@ -155,22 +201,8 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     {  // wait for a main thread to release a lock
       const std::shared_lock<std::shared_mutex> lock{worker_lock_};
-
       for (auto &&targets : operations) {
-        // retry until MwCAS succeeds
-        while (true) {
-          // register MwCAS targets
-          MwCASDescriptor desc{};
-          for (auto &&idx : targets) {
-            auto *addr = &(target_fields_[idx]);
-            const auto cur_val = MwCASDescriptor::Read<Target>(addr);
-            const auto new_val = cur_val + 1;
-            desc.AddMwCASTarget(addr, cur_val, new_val);
-          }
-
-          // perform MwCAS
-          if (desc.MwCAS()) break;
-        }
+        MwCAS(targets);
       }
     }
   }
@@ -189,17 +221,28 @@ class MwCASDescriptorFixture : public ::testing::Test
 };
 
 /*##############################################################################
+ * Preparation for typed testing
+ *############################################################################*/
+
+using MwCASDesctiptors = ::testing::Types<DLFMwCAS, AOPT>;
+TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
+
+/*##############################################################################
  * Unit test definitions
  *############################################################################*/
 
-TEST_F(MwCASDescriptorFixture, MwCASWithSingleThreadCorrectlyIncrementTargets)
-{  //
-  VerifyMwCAS(1);
-}
-
-TEST_F(MwCASDescriptorFixture, MwCASWithMultiThreadsCorrectlyIncrementTargets)
+TYPED_TEST(  //
+    MwCASDescriptorFixture,
+    MwCASWithSingleThreadCorrectlyIncrementTargets)
 {
-  VerifyMwCAS(kTestThreadNum);
+  TestFixture::VerifyMwCAS(1);
 }
 
-}  // namespace dbgroup::atomic::mwcas::deadlock_free::test
+TYPED_TEST(  //
+    MwCASDescriptorFixture,
+    MwCASWithMultiThreadsCorrectlyIncrementTargets)
+{
+  TestFixture::VerifyMwCAS(kTestThreadNum);
+}
+
+}  // namespace dbgroup::atomic::mwcas::test

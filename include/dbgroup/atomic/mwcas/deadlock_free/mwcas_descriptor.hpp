@@ -86,13 +86,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   /**
    * @brief Read a value from a given memory address.
-   * \e NOTE: if a memory address is included in MwCAS target fields, it must be read
-   * via this function.
    *
    * @tparam T An expected class of a target field.
    * @param addr A target memory address to read.
    * @param fence A flag for controling std::memory_order.
    * @return A read value.
+   * @note If a memory address is included in MwCAS target fields, it must be
+   * read via this function.
    */
   template <class T>
   static auto
