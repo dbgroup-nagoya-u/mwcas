@@ -101,8 +101,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
-    const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
+    static_assert(CanMwCAS<T>());
 
+    const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
     uint64_t word{};
     while (true) {
       for (size_t i = 1; true; ++i) {
@@ -132,6 +133,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
   {
+    static_assert(CanMwCAS<T>());
+
     targets_.at(target_count_++) =
         MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }

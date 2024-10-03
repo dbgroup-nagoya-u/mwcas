@@ -150,6 +150,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
+    static_assert(CanMwCAS<T>());
+
     [[maybe_unused]] const auto &guard = _gc->CreateEpochGuard();
     return std::bit_cast<T>(
         ReadInternal(static_cast<const std::atomic_uint64_t *>(addr), nullptr, fence).second);
@@ -172,6 +174,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
   {
+    static_assert(CanMwCAS<T>());
+
     targets_.at(target_count_++) =
         WordDescriptor{this, static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
