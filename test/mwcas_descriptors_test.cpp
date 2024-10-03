@@ -131,6 +131,7 @@ class MwCASDescriptorFixture : public ::testing::Test
         if (desc.MwCAS()) return;
       }
     } else {
+      [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
       while (true) {
         auto *desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {

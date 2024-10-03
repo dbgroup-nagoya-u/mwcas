@@ -30,6 +30,8 @@
 // external libraries
 #include "dbgroup/lock/common.hpp"
 #include "dbgroup/memory/epoch_based_gc.hpp"
+#include "dbgroup/memory/utility.hpp"
+#include "dbgroup/thread/epoch_guard.hpp"
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -114,14 +116,20 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @note This function must be called before performing AOPT-based MwCAS.
    */
   static void StartGC(  //
-      size_t gc_interval = 100000,
-      size_t gc_thread_num = 2);
+      size_t gc_interval = ::dbgroup::memory::kDefaultGCTime,
+      size_t gc_thread_num = ::dbgroup::memory::kDefaultGCThreadNum);
 
   /**
    * @brief Stop garbage collection for AOPT descriptors.
    *
    */
   static void StopGC();
+
+  /**
+   * @return A guard instance for preventing GC.
+   */
+  static auto CreateEpochGuard()  //
+      -> ::dbgroup::thread::EpochGuard;
 
   /**
    * @return A new MwCAS descriptor for the AOPT algorithm.
@@ -152,7 +160,6 @@ class alignas(kCacheLineSize) AOPTDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    [[maybe_unused]] const auto &guard = _gc->CreateEpochGuard();
     return std::bit_cast<T>(
         ReadInternal(static_cast<const std::atomic_uint64_t *>(addr), nullptr, fence).second);
   }

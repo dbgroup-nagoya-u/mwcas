@@ -56,6 +56,13 @@ AOPTDescriptor::StopGC()
 }
 
 auto
+AOPTDescriptor::CreateEpochGuard()  //
+    -> ::dbgroup::thread::EpochGuard
+{
+  return _gc->CreateEpochGuard();
+}
+
+auto
 AOPTDescriptor::GetDescriptor()  //
     -> AOPTDescriptor *
 {
@@ -71,7 +78,6 @@ auto
 AOPTDescriptor::MwCAS()  //
     -> bool
 {
-  [[maybe_unused]] const auto &guard = _gc->CreateEpochGuard();
   thread_local CompletedDescriptors completed_descriptors{};
 
   // serialize MwCAS operations by embedding a descriptor
