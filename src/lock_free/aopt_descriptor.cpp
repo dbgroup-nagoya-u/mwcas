@@ -67,7 +67,8 @@ AOPTDescriptor::GetDescriptor()  //
     -> AOPTDescriptor *
 {
   auto *page = _gc->GetPageIfPossible<AOPTDescriptor>();
-  return (page == nullptr) ? new AOPTDescriptor{} : new (page) AOPTDescriptor{};
+  if (page == nullptr) return new AOPTDescriptor{};
+  return static_cast<AOPTDescriptor *>(page);
 }
 
 /*##############################################################################
@@ -160,9 +161,8 @@ AOPTDescriptor::ReadInternal(  //
  * Internal classes
  *############################################################################*/
 
-AOPTDescriptor::CompletedDescriptors::~CompletedDescriptors()
+AOPTDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
 {
-  [[maybe_unused]] const auto &guard = _gc->CreateEpochGuard();
   FinalizeCompletedDescriptors();
 }
 

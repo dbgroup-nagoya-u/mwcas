@@ -56,7 +56,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    *##########################################################################*/
 
   /// @brief Do not call destructors.
-  using T = void;
+  using T = AOPTDescriptor;
 
   /// @brief Reuse allocated descriptors.
   static constexpr bool kReusePages = true;
@@ -87,8 +87,14 @@ class alignas(kCacheLineSize) AOPTDescriptor
   /**
    * @brief Destroy the AOPTDescriptor object.
    *
+   * @note This destructor casts `target_count_` to an atomic variable to
+   * prevent compilers from optimizing out it.
    */
-  ~AOPTDescriptor() = default;
+  ~AOPTDescriptor()
+  {
+    std::bit_cast<std::atomic_size_t *>(&target_count_)->store(0, kRelaxed);
+    stat_.store(kActive, kRelaxed);
+  }
 
   /*############################################################################
    * Public getters/setters
@@ -297,9 +303,9 @@ class alignas(kCacheLineSize) AOPTDescriptor
    *
    */
   enum Status : uint64_t {
-    kSuccessful = 0,
-    kActive,
-    kFailed
+    kActive = 0,
+    kSuccessful,
+    kFailed,
   };
 
   /*############################################################################
@@ -329,7 +335,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   std::array<WordDescriptor, kMwCASCapacity> targets_ = {};
 
   /// @brief The status of this AOPT descriptor.
-  std::atomic<Status> stat_{kActive};
+  std::atomic<Status> stat_{};
 
   /// @brief The number of registered MwCAS targets.
   size_t target_count_{};
