@@ -30,6 +30,12 @@ namespace dbgroup::atomic::mwcas
  * Global enum and constants
  *############################################################################*/
 
+/// @brief An alias of the acquire memory order.
+constexpr std::memory_order kAcquire = std::memory_order_acquire;
+
+/// @brief An alias of the release memory order.
+constexpr std::memory_order kRelease = std::memory_order_release;
+
 /// @brief An alias of the relaxed memory order.
 constexpr std::memory_order kRelaxed = std::memory_order_relaxed;
 

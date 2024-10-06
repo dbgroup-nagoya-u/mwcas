@@ -34,9 +34,25 @@
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
+namespace
+{
+/*##############################################################################
+ * Local constants
+ *############################################################################*/
+
+/// @brief The bit position for indicating the counter of word descriptors.
+constexpr uint64_t kCntPos = 47;
+
+/// @brief A bit mask for extracting pointers.
+constexpr uint64_t kPtrMask = (1UL << kCntPos) - 1UL;
+
+/// @brief A bit mask for extracting the counter of word descriptors.
+constexpr uint64_t kCntMask = ~kPtrMask ^ ::dbgroup::atomic::mwcas::kMwCASFlag;
+
+}  // namespace
+
 namespace dbgroup::atomic::mwcas::lock_free
 {
-
 /*##############################################################################
  * Static utilities
  *############################################################################*/
@@ -67,8 +83,9 @@ AOPTDescriptor::GetDescriptor()  //
     -> AOPTDescriptor *
 {
   auto *page = _gc->GetPageIfPossible<AOPTDescriptor>();
-  if (page == nullptr) return new AOPTDescriptor{};
-  return static_cast<AOPTDescriptor *>(page);
+  auto *desc = (page == nullptr) ? new AOPTDescriptor{} : static_cast<AOPTDescriptor *>(page);
+  desc->target_count_ = 0;
+  return desc;
 }
 
 /*##############################################################################
@@ -79,13 +96,55 @@ auto
 AOPTDescriptor::MwCAS()  //
     -> bool
 {
+  // set a memory fence
+  stat_.store(kActive, kRelease);
+  return MwCASInternal();
+}
+
+auto
+AOPTDescriptor::ReadInternal(  //
+    const std::atomic_uint64_t *addr,
+    const AOPTDescriptor *self,
+    const std::memory_order fence)  //
+    -> std::pair<uint64_t, uint64_t>
+{
+  uint64_t word{};
+  uint64_t value{};
+  while (true) {
+    word = addr->load(fence);
+    if ((word & kMwCASFlag) == 0) {
+      value = word;
+      break;
+    }
+
+    // found a word descriptor
+    auto *desc = std::bit_cast<AOPTDescriptor *>(word & kPtrMask);
+    const auto pos = (word & kCntMask) >> kCntPos;
+    const auto stat = desc->stat_.load(kAcquire);
+    if (desc == self || stat != kActive) {
+      value = (stat != kSuccessful) ? desc->targets_[pos].old_val : desc->targets_[pos].new_val;
+      break;
+    }
+
+    // found the incomplete MwCAS
+    desc->MwCASInternal();
+  }
+
+  return {word, value};
+}
+
+auto
+AOPTDescriptor::MwCASInternal()  //
+    -> bool
+{
   thread_local CompletedDescriptors completed_descriptors{};
+  const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
 
   // serialize MwCAS operations by embedding a descriptor
   auto mwcas_success = true;
   for (size_t i = 0; i < target_count_; ++i) {
     auto &word_desc = targets_[i];
-    const auto desc_addr = std::bit_cast<uint64_t>(&word_desc) | kMwCASFlag;
+    const auto desc_addr = base_addr | (i << kCntPos);
 
   retry_word:
     auto [cur, value] = ReadInternal(word_desc.addr, this, kRelaxed);
@@ -125,38 +184,6 @@ AOPTDescriptor::MwCAS()  //
   return expected == kSuccessful;
 }
 
-auto
-AOPTDescriptor::ReadInternal(  //
-    const std::atomic_uint64_t *addr,
-    const AOPTDescriptor *self,
-    const std::memory_order fence)  //
-    -> std::pair<uint64_t, uint64_t>
-{
-  uint64_t word{};
-  uint64_t value{};
-  while (true) {
-    word = addr->load(fence);
-    if ((word & kMwCASFlag) == 0) {
-      value = word;
-      break;
-    }
-
-    // found a word descriptor
-    auto *word_desc = std::bit_cast<WordDescriptor *>(word ^ kMwCASFlag);
-    auto *aopt_desc = word_desc->parent;
-    const auto stat = aopt_desc->stat_.load(kRelaxed);
-    if (aopt_desc == self || stat != kActive) {
-      value = (stat != kSuccessful) ? word_desc->old_val : word_desc->new_val;
-      break;
-    }
-
-    // found the incomplete MwCAS
-    aopt_desc->MwCAS();
-  }
-
-  return {word, value};
-}
-
 /*##############################################################################
  * Internal classes
  *############################################################################*/
@@ -187,14 +214,14 @@ AOPTDescriptor::CompletedDescriptors::FinalizeCompletedDescriptors()
       for (size_t i = 0; i < target_num; ++i) {
         auto &target = desc->targets_[i];
         auto cur = target.addr->load(kRelaxed);
-        if (cur != desc_addr) continue;
+        if (cur != (desc_addr | (i << kCntPos))) continue;
         target.addr->compare_exchange_strong(cur, target.new_val, kRelaxed, kRelaxed);
       }
     } else {
       for (size_t i = 0; i < target_num; ++i) {
         auto &target = desc->targets_[i];
         auto cur = target.addr->load(kRelaxed);
-        if (cur != desc_addr) continue;
+        if (cur != (desc_addr | (i << kCntPos))) continue;
         target.addr->compare_exchange_strong(cur, target.old_val, kRelaxed, kRelaxed);
       }
     }

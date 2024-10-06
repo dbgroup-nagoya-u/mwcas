@@ -56,7 +56,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    *##########################################################################*/
 
   /// @brief Do not call destructors.
-  using T = AOPTDescriptor;
+  using T = void;
 
   /// @brief Reuse allocated descriptors.
   static constexpr bool kReusePages = true;
@@ -90,11 +90,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @note This destructor casts `target_count_` to an atomic variable to
    * prevent compilers from optimizing out it.
    */
-  ~AOPTDescriptor()
-  {
-    std::bit_cast<std::atomic_size_t *>(&target_count_)->store(0, kRelaxed);
-    stat_.store(kActive, kRelaxed);
-  }
+  ~AOPTDescriptor() = default;
 
   /*############################################################################
    * Public getters/setters
@@ -190,7 +186,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
     static_assert(CanMwCAS<T>());
 
     targets_.at(target_count_++) =
-        WordDescriptor{this, static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -211,10 +207,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @brief A class for representing MwCAS targets.
    *
    */
-  struct WordDescriptor {
-    /// @brief The address of the corresponding AOPT descriptor.
-    AOPTDescriptor *parent;
-
+  struct MwCASTarget {
     /// @brief A target memory address.
     std::atomic_uint64_t *addr;
 
@@ -327,12 +320,21 @@ class alignas(kCacheLineSize) AOPTDescriptor
       std::memory_order fence)  //
       -> std::pair<uint64_t, uint64_t>;
 
+  /**
+   * @brief An actual MwCAS procedure.
+   *
+   * @retval true if a MwCAS operation succeeds.
+   * @retval false if a MwCAS operation fails.
+   */
+  auto MwCASInternal()  //
+      -> bool;
+
   /*############################################################################
    * Internal member variables
    *##########################################################################*/
 
   /// @brief Target entries of MwCAS.
-  std::array<WordDescriptor, kMwCASCapacity> targets_ = {};
+  std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 
   /// @brief The status of this AOPT descriptor.
   std::atomic<Status> stat_{};
