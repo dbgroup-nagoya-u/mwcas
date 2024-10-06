@@ -17,6 +17,7 @@
 // the corresponding headers
 #include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
 #include "dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp"
 
 // C++ standard libraries
 #include <cstddef>
@@ -42,6 +43,7 @@ namespace dbgroup::atomic::mwcas::test
  *############################################################################*/
 
 using DLFMwCAS = deadlock_free::MwCASDescriptor;
+using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
 /*##############################################################################
@@ -68,6 +70,12 @@ class MwCASDescriptorFixture : public ::testing::Test
   using MwCASTargets = std::vector<size_t>;
 
   /*############################################################################
+   * Internal constants
+   *##########################################################################*/
+
+  static constexpr size_t kOpsNum = std::is_same_v<MwCASDesc, CASN> ? 1e4 : kExecNum;
+
+  /*############################################################################
    * Setup/Teardown
    *##########################################################################*/
 
@@ -78,7 +86,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       target_fields_[i] = 0UL;
     }
 
-    if constexpr (std::is_same_v<MwCASDesc, AOPT>) {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>) {
       MwCASDesc::StartGC();
     }
   }
@@ -86,7 +94,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   void
   TearDown() override
   {
-    if constexpr (std::is_same_v<MwCASDesc, AOPT>) {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>) {
       MwCASDesc::StopGC();
     }
   }
@@ -107,7 +115,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       sum += MwCASDesc::template Read<Target>(&target);
     }
 
-    EXPECT_EQ(kExecNum * thread_num * kMwCASCapacity, sum);
+    EXPECT_EQ(kOpsNum * thread_num * kMwCASCapacity, sum);
   }
 
  private:
@@ -124,21 +132,21 @@ class MwCASDescriptorFixture : public ::testing::Test
         MwCASDesc desc{};
         for (auto idx : targets) {
           auto *addr = &(target_fields_[idx]);
-          const auto cur_val = MwCASDesc::template Read<Target>(addr);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
-          desc.AddMwCASTarget(addr, cur_val, new_val);
+          desc.AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc.MwCAS()) return;
       }
     } else {
-      [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
       while (true) {
+        [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
         auto *desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {
           auto *addr = &(target_fields_[idx]);
-          const auto cur_val = MwCASDesc::template Read<Target>(addr);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
-          desc->AddMwCASTarget(addr, cur_val, new_val);
+          desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc->MwCAS()) return;
       }
@@ -175,14 +183,14 @@ class MwCASDescriptorFixture : public ::testing::Test
       const size_t rand_seed)
   {
     std::vector<MwCASTargets> operations{};
-    operations.reserve(kExecNum);
+    operations.reserve(kOpsNum);
 
     {  // create a lock to prevent a main thread
       const std::shared_lock<std::shared_mutex> guard{main_lock_};
 
       // prepare operations to be executed
       std::mt19937_64 rand_engine{rand_seed};  // NOLINT
-      for (size_t i = 0; i < kExecNum; ++i) {
+      for (size_t i = 0; i < kOpsNum; ++i) {
         // select MwCAS target fields randomly
         MwCASTargets targets{};
         targets.reserve(kMwCASCapacity);
@@ -225,7 +233,7 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<DLFMwCAS, AOPT>;
+using MwCASDesctiptors = ::testing::Types<DLFMwCAS, CASN, AOPT>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
 
 /*##############################################################################

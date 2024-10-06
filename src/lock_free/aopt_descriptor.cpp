@@ -128,6 +128,7 @@ AOPTDescriptor::ReadInternal(  //
 
     // found the incomplete MwCAS
     desc->MwCASInternal();
+    CPP_UTILITY_SPINLOCK_HINT
   }
 
   return {word, value};
