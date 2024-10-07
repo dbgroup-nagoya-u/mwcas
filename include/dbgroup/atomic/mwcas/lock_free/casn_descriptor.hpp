@@ -169,7 +169,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       if ((cur & kMwCASFlag) == 0) break;
 
       auto *desc = std::bit_cast<CASNDescriptor *>(cur & kPtrMask);
-      desc->MwCASInternal();
+      desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
       CPP_UTILITY_SPINLOCK_HINT
       cur = target_addr->load(fence);
     }
@@ -249,6 +249,9 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief The second bit from the last indicates RDCSS descriptors.
   static constexpr uint64_t kRDCSSFlag = 1UL << 62UL;
 
+  /// @brief A bit mask for swapping flags with XOR.
+  static constexpr uint64_t kFlagSwap = kMwCASFlag | kRDCSSFlag;
+
   /// @brief The bit position for indicating the counter of word descriptors.
   static constexpr uint64_t kCntPos = 47;
 
@@ -273,22 +276,24 @@ class alignas(kCacheLineSize) CASNDescriptor
   /**
    * @brief An actual MwCAS procedure.
    *
+   * @param begin_pos The begin position of target words.
    * @retval true if a MwCAS operation succeeds.
    * @retval false if a MwCAS operation fails.
    */
-  auto MwCASInternal()  //
+  auto MwCASInternal(        //
+      size_t begin_pos = 0)  //
       -> bool;
 
   /**
    * @brief Perform a restricted double-compare single-swap operation.
    *
    * @param pos The position of a MwCAS target.
-   * @param casn_addr The address of a CASN descriptor to be embedded.
+   * @param casn_base The address of a CASN descriptor to be embedded.
    * @return The current value of a target address.
    */
   auto RDCSS(  //
       size_t pos,
-      uint64_t casn_addr)  //
+      uint64_t casn_base)  //
       -> uint64_t;
 
   /*############################################################################

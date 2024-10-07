@@ -127,7 +127,7 @@ AOPTDescriptor::ReadInternal(  //
     }
 
     // found the incomplete MwCAS
-    desc->MwCASInternal();
+    desc->MwCASInternal(pos + 1);
     CPP_UTILITY_SPINLOCK_HINT
   }
 
@@ -135,7 +135,8 @@ AOPTDescriptor::ReadInternal(  //
 }
 
 auto
-AOPTDescriptor::MwCASInternal()  //
+AOPTDescriptor::MwCASInternal(  //
+    const size_t begin_pos)     //
     -> bool
 {
   thread_local CompletedDescriptors completed_descriptors{};
@@ -143,7 +144,7 @@ AOPTDescriptor::MwCASInternal()  //
 
   // serialize MwCAS operations by embedding a descriptor
   auto mwcas_success = true;
-  for (size_t i = 0; i < target_count_; ++i) {
+  for (size_t i = begin_pos; i < target_count_; ++i) {
     auto &word_desc = targets_[i];
     const auto desc_addr = base_addr | (i << kCntPos);
 

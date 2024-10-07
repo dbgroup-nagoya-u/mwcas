@@ -323,10 +323,12 @@ class alignas(kCacheLineSize) AOPTDescriptor
   /**
    * @brief An actual MwCAS procedure.
    *
+   * @param begin_pos The begin position of target words.
    * @retval true if a MwCAS operation succeeds.
    * @retval false if a MwCAS operation fails.
    */
-  auto MwCASInternal()  //
+  auto MwCASInternal(        //
+      size_t begin_pos = 0)  //
       -> bool;
 
   /*############################################################################
