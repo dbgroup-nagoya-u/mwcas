@@ -73,7 +73,7 @@ class MwCASDescriptorFixture : public ::testing::Test
    * Internal constants
    *##########################################################################*/
 
-  static constexpr size_t kOpsNum = std::is_same_v<MwCASDesc, CASN> ? 1e4 : kExecNum;
+  static constexpr size_t kOpsNum = std::is_same_v<MwCASDesc, CASN> ? 2e4 : kExecNum;
 
   /*############################################################################
    * Setup/Teardown

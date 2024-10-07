@@ -87,21 +87,22 @@ CASNDescriptor::MwCAS()  //
 }
 
 auto
-CASNDescriptor::MwCASInternal()  //
+CASNDescriptor::MwCASInternal(  //
+    const size_t begin_pos)     //
     -> bool
 {
-  const auto casn_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
+  const auto casn_base = std::bit_cast<uint64_t>(this) | kMwCASFlag;
 
   auto stat = stat_.load(kAcquire);
   if (stat == kUndecided) {
     // phase 1: serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
-    for (size_t i = 0; i < target_count_; ++i) {
+    for (size_t i = begin_pos; i < target_count_; ++i) {
     retry_entry:
-      auto cur = RDCSS(i, casn_addr);
-      if ((cur & kMwCASFlag) > 0 && cur != casn_addr) {
+      auto cur = RDCSS(i, casn_base);
+      if ((cur & kMwCASFlag) > 0 && cur != (casn_base | (i << kCntPos))) {
         auto *desc = std::bit_cast<CASNDescriptor *>(cur & kPtrMask);
-        desc->MwCASInternal();
+        desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
         CPP_UTILITY_SPINLOCK_HINT
         goto retry_entry;  // NOLINT
       }
@@ -123,14 +124,14 @@ CASNDescriptor::MwCASInternal()  //
     for (size_t i = 0; i < target_count_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kRelaxed);
-      if (expected != casn_addr) continue;
+      if (expected != (casn_base | (i << kCntPos))) continue;
       target.addr->compare_exchange_strong(expected, target.new_val, kRelaxed, kRelaxed);
     }
   } else {
     for (size_t i = 0; i < target_count_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kRelaxed);
-      if (expected != casn_addr) continue;
+      if (expected != (casn_base | (i << kCntPos))) continue;
       target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
     }
   }
@@ -141,10 +142,11 @@ CASNDescriptor::MwCASInternal()  //
 auto
 CASNDescriptor::RDCSS(  //
     const size_t pos,
-    const uint64_t casn_addr)  //
+    const uint64_t casn_base)  //
     -> uint64_t
 {
-  auto rdcss_addr = (casn_addr ^ (kMwCASFlag | kRDCSSFlag)) | (pos << kCntPos);
+  const auto pos_bit = (pos << kCntPos);
+  auto rdcss_addr = (casn_base ^ kFlagSwap) | pos_bit;
   auto &target = targets_[pos];
   auto cur = target.addr->load(kRelaxed);
   while (true) {
@@ -162,7 +164,7 @@ CASNDescriptor::RDCSS(  //
     // CASN embedding has already finished
     target.addr->compare_exchange_strong(rdcss_addr, target.old_val, kRelaxed, kRelaxed);
   } else {
-    target.addr->compare_exchange_strong(rdcss_addr, casn_addr, target.fence, kRelaxed);
+    target.addr->compare_exchange_strong(rdcss_addr, casn_base | pos_bit, target.fence, kRelaxed);
   }
   return target.old_val;
 }
@@ -171,10 +173,10 @@ void
 CASNDescriptor::CompleteRDCSS(  //
     uint64_t &rdcss_addr)
 {
-  const auto casn_ptr = rdcss_addr & kPtrMask;
-  const auto casn_addr = casn_ptr | kMwCASFlag;
-  auto *desc = std::bit_cast<CASNDescriptor *>(casn_ptr);
+  const auto casn_addr = rdcss_addr ^ kFlagSwap;
+  auto *desc = std::bit_cast<CASNDescriptor *>(rdcss_addr & kPtrMask);
   auto &target = desc->targets_[(rdcss_addr & kCntMask) >> kCntPos];
+
   if (desc->stat_.load(kAcquire) != kUndecided) {
     // CASN embedding has already finished
     if (target.addr->compare_exchange_strong(rdcss_addr, target.old_val, kRelaxed, kRelaxed)) {
