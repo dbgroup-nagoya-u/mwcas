@@ -8,7 +8,7 @@ endif()
 # project information
 project(
   mwcas
-  VERSION "1.1.1"
+  VERSION "2.0.0"
   DESCRIPTION "An open-source MwCAS library."
   LANGUAGES "CXX"
 )
