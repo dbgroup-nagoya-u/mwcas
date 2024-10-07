@@ -14,18 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef TEST_COMMON_HPP
-#define TEST_COMMON_HPP
+#ifndef TEST_COMMON_HPP_
+#define TEST_COMMON_HPP_
 
+// C++ standard libraries
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 
-#include "mwcas/utility.hpp"
+// target library
+#include "dbgroup/atomic/mwcas/utility.hpp"
 
-#ifdef MWCAS_TEST_THREAD_NUM
-constexpr size_t kThreadNum = MWCAS_TEST_THREAD_NUM;
-#else
-constexpr size_t kThreadNum = 8;
-#endif
+/*##############################################################################
+ * Global constants
+ *############################################################################*/
+
+constexpr size_t kTestThreadNum = (DBGROUP_TEST_THREAD_NUM);
+
+constexpr size_t kRandomSeed = (DBGROUP_TEST_RANDOM_SEED);
+
+/*##############################################################################
+ * Global utility classes
+ *############################################################################*/
 
 /**
  * @brief An example class to represent CAS-updatable data.
@@ -34,16 +44,18 @@ constexpr size_t kThreadNum = 8;
 class MyClass
 {
  public:
-  constexpr MyClass() : data_{}, control_bits_{0} {}
+  constexpr MyClass() = default;
   ~MyClass() = default;
 
   constexpr MyClass(const MyClass &) = default;
+  constexpr MyClass(MyClass &&) noexcept = default;
+
   constexpr auto operator=(const MyClass &) -> MyClass & = default;
-  constexpr MyClass(MyClass &&) = default;
-  constexpr auto operator=(MyClass &&) -> MyClass & = default;
+  constexpr auto operator=(MyClass &&) noexcept -> MyClass & = default;
 
   constexpr auto
-  operator=(const uint64_t value)  //
+  operator=(                 //
+      const uint64_t value)  //
       -> MyClass &
   {
     data_ = value;
@@ -51,22 +63,24 @@ class MyClass
   }
 
   constexpr auto
-  operator==(const MyClass &comp) const  //
+  operator==(                     //
+      const MyClass &comp) const  //
       -> bool
   {
     return data_ == comp.data_;
   }
 
   constexpr auto
-  operator!=(const MyClass &comp) const  //
+  operator!=(                     //
+      const MyClass &comp) const  //
       -> bool
   {
     return !(*this == comp);
   }
 
  private:
-  uint64_t data_ : 63;
-  uint64_t control_bits_ : 1;  // NOLINT
+  uint64_t data_ : 63 {};
+  uint64_t control_bits_ : 1 {};  // NOLINT
 };
 
 namespace dbgroup::atomic::mwcas
@@ -85,4 +99,4 @@ CanMwCAS<MyClass>()  //
 
 }  // namespace dbgroup::atomic::mwcas
 
-#endif  // TEST_COMMON_HPP
+#endif  // TEST_COMMON_HPP_

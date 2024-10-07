@@ -7,19 +7,22 @@ buildType:
       long: Include debugging information without optimizations
       buildType: Debug
       settings:
-        CMAKE_CXX_CLANG_TIDY: "clang-tidy"
         MWCAS_BUILD_TESTS: ON
+        DBGROUP_TEST_THREAD_NUM: 8
+        DBGROUP_TEST_RANDOM_SEED: 0
     relWithDebInfo:
       short: RelWithDebInfo
       long: Perform optimizations and include debugging informatin
       buildType: RelWithDebInfo
       settings:
-        CMAKE_CXX_CLANG_TIDY: "clang-tidy"
         MWCAS_BUILD_TESTS: ON
+        DBGROUP_TEST_THREAD_NUM: 8
+        DBGROUP_TEST_RANDOM_SEED: 0
     release:
       short: Release
       long: Perform optimizations and omit debugging informatin
       buildType: Release
       settings:
-        CMAKE_CXX_CLANG_TIDY: "clang-tidy"
         MWCAS_BUILD_TESTS: ON
+        DBGROUP_TEST_THREAD_NUM: 8
+        DBGROUP_TEST_RANDOM_SEED: 0

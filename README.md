@@ -1,6 +1,6 @@
 # MwCAS
 
-[![Ubuntu-20.04](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/unit_tests.yaml/badge.svg)](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/unit_tests.yaml)
+[![Ubuntu 24.04](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/ubuntu_24.yaml/badge.svg)](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/ubuntu_24.yaml) [![Ubuntu 22.04](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/ubuntu_22.yaml/badge.svg)](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/ubuntu_22.yaml) [![macOS](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/mac.yaml/badge.svg)](https://github.com/dbgroup-nagoya-u/mwcas/actions/workflows/mac.yaml)
 
 This repository is an open source implementation of a multi-word compare-and-swap (MwCAS) operation for research use. This implementation is based on Harris et al.'s CASN operation[^1] with some optimizations. For more information, please refer to the following paper.
 
@@ -26,12 +26,13 @@ cd mwcas
 - `MWCAS_CAPACITY`: The maximum number of target words of MwCAS (default: `4`).
     - In order to maximize performance, it is desirable to specify the minimum number needed. Otherwise, the extra space will pollute the CPU cache.
 - `MWCAS_RETRY_THRESHOLD`: The maximum number of retries for preventing busy loops. (default: `10`).
-- `MWCAS_SLEEP_TIME`: A sleep time for preventing busy loops [us]. (default: `10`).
+- `MWCAS_BACKOFF_TIME`: A back-off time for preventing busy loops [us]. (default: `10`).
 
 #### Parameters for Unit Testing
 
 - `MWCAS_BUILD_TESTS`: build unit tests if `ON` (default: `OFF`).
-- `MWCAS_TEST_THREAD_NUM`: the number of threads to run unit tests (default: `8`).
+- `DBGROUP_TEST_THREAD_NUM`: The number of threads to run unit tests (default `2`).
+- `DBGROUP_TEST_RANDOM_SEED`: A fixed seed value to reproduce the results of unit tests (default `0`).
 
 ### Build and Run Unit Tests
 
@@ -77,7 +78,8 @@ The following code shows the basic usage of this library. Note that you need to 
 #include <thread>
 #include <vector>
 
-#include "mwcas/mwcas_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
+// #include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
 
 // use four threads for a multi-threading example
 constexpr size_t kThreadNum = 4;
@@ -89,7 +91,8 @@ constexpr size_t kExecNum = 1e6;
 using Target = uint64_t;
 
 // aliases for simplicity
-using dbgroup::atomic::mwcas::MwCASDescriptor;
+using dbgroup::atomic::mwcas::deadlock_free::MwCASDescriptor;
+// using dbgroup::atomic::mwcas::lock_free::MwCASDescriptor;
 
 int
 main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -106,15 +109,13 @@ main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // create a MwCAS descriptor
         MwCASDescriptor desc{};
 
-        // prepare expected/desired values
+        // prepare expected values
         const auto old_1 = MwCASDescriptor::Read<Target>(&word_1);
-        const auto new_1 = old_1 + 1;
         const auto old_2 = MwCASDescriptor::Read<Target>(&word_2);
-        const auto new_2 = old_2 + 1;
 
         // register MwCAS targets with the descriptor
-        desc.AddMwCASTarget(&word_1, old_1, new_1);
-        desc.AddMwCASTarget(&word_2, old_2, new_2);
+        desc.AddMwCASTarget(&word_1, old_1, old_1 + 1);
+        desc.AddMwCASTarget(&word_2, old_2, old_2 + 1);
 
         // try MwCAS
         if (desc.MwCAS()) break;
@@ -123,7 +124,7 @@ main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
   };
 
   // perform MwCAS operations with multi-threads
-  std::vector<std::thread> threads;
+  std::vector<std::thread> threads{};
   for (size_t i = 0; i < kThreadNum; ++i) threads.emplace_back(f);
   for (auto&& thread : threads) thread.join();
 
