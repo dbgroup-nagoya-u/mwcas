@@ -44,12 +44,6 @@ namespace dbgroup::atomic::mwcas::lock_free
  */
 class alignas(kCacheLineSize) AOPTDescriptor
 {
-  /*############################################################################
-   * Type aliases
-   *##########################################################################*/
-
-  using EpochBasedGC_t = ::dbgroup::memory::EpochBasedGC<AOPTDescriptor>;
-
  public:
   /*############################################################################
    * GC settings
@@ -87,7 +81,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   /**
    * @brief Destroy the AOPTDescriptor object.
    *
-   * @note This destructor casts `target_count_` to an atomic variable to
+   * @note This destructor casts `target_cnt_` to an atomic variable to
    * prevent compilers from optimizing out it.
    */
   ~AOPTDescriptor() = default;
@@ -103,7 +97,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   Size() const  //
       -> size_t
   {
-    return target_count_;
+    return target_cnt_;
   }
 
   /*############################################################################
@@ -135,8 +129,10 @@ class alignas(kCacheLineSize) AOPTDescriptor
 
   /**
    * @return A new MwCAS descriptor for the AOPT algorithm.
+   * @note You must explicitly delete the given descriptor if you do not call
+   * the MwCAS function.
    */
-  static auto GetDescriptor()  //
+  [[nodiscard]] static auto GetDescriptor()  //
       -> AOPTDescriptor *;
 
   /*############################################################################
@@ -185,7 +181,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    targets_.at(target_count_++) =
+    targets_.at(target_cnt_++) =
         MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
 
@@ -193,15 +189,31 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @brief Perform a MwCAS operation by using registered targets.
    *
    * @retval true if a MwCAS operation succeeds.
-   * @retval false if a MwCAS operation fails.
+   * @retval false otherwise.
    */
   auto MwCAS()  //
       -> bool;
 
  private:
   /*############################################################################
-   * Internal classes
+   * Type aliases
    *##########################################################################*/
+
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<AOPTDescriptor>;
+
+  /*############################################################################
+   * Internal types
+   *##########################################################################*/
+
+  /**
+   * @brief An enumeration for representing AOPT status.
+   *
+   */
+  enum Status : uint64_t {
+    kActive = 0,
+    kSuccessful,
+    kFailed,
+  };
 
   /**
    * @brief A class for representing MwCAS targets.
@@ -291,16 +303,6 @@ class alignas(kCacheLineSize) AOPTDescriptor
     size_t desc_num_{};
   };
 
-  /**
-   * @brief An enumeration for representing AOPT status.
-   *
-   */
-  enum Status : uint64_t {
-    kActive = 0,
-    kSuccessful,
-    kFailed,
-  };
-
   /*############################################################################
    * Internal utility functions
    *##########################################################################*/
@@ -325,7 +327,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    *
    * @param begin_pos The begin position of target words.
    * @retval true if a MwCAS operation succeeds.
-   * @retval false if a MwCAS operation fails.
+   * @retval false otherwise.
    */
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
@@ -342,10 +344,10 @@ class alignas(kCacheLineSize) AOPTDescriptor
   std::atomic<Status> stat_{};
 
   /// @brief The number of registered MwCAS targets.
-  size_t target_count_{};
+  size_t target_cnt_{};
 
   /// @brief A garbage collector for expired descriptors.
-  static inline std::unique_ptr<EpochBasedGC_t> _gc{};  // NOLINT
+  static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
 };
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

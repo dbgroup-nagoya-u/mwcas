@@ -77,7 +77,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   Size() const  //
       -> size_t
   {
-    return target_count_;
+    return target_cnt_;
   }
 
   /*############################################################################
@@ -135,7 +135,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    targets_.at(target_count_++) =
+    targets_.at(target_cnt_++) =
         MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
 
@@ -143,14 +143,14 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief Perform a MwCAS operation by using registered targets.
    *
    * @retval true if a MwCAS operation succeeds.
-   * @retval false if a MwCAS operation fails.
+   * @retval false otherwise.
    */
   auto MwCAS()  //
       -> bool;
 
  private:
   /*############################################################################
-   * Internal classes
+   * Internal types
    *##########################################################################*/
 
   /**
@@ -196,7 +196,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 
   /// @brief The number of registered MwCAS targets.
-  size_t target_count_{0};
+  size_t target_cnt_{};
 };
 
 }  // namespace dbgroup::atomic::mwcas::deadlock_free

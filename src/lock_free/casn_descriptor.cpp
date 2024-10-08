@@ -45,7 +45,7 @@ CASNDescriptor::StartGC(  //
     const size_t gc_interval,
     const size_t gc_thread_num)
 {
-  _gc = std::make_unique<EpochBasedGC_t>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
+  _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
 }
 
 void
@@ -67,7 +67,7 @@ CASNDescriptor::GetDescriptor()  //
 {
   auto *page = _gc->GetPageIfPossible<CASNDescriptor>();
   auto *desc = (page == nullptr) ? new CASNDescriptor{} : static_cast<CASNDescriptor *>(page);
-  desc->target_count_ = 0;
+  desc->target_cnt_ = 0;
   return desc;
 }
 
@@ -97,7 +97,7 @@ CASNDescriptor::MwCASInternal(  //
   if (stat == kUndecided) {
     // phase 1: serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
-    for (size_t i = begin_pos; i < target_count_; ++i) {
+    for (size_t i = begin_pos; i < target_cnt_; ++i) {
     retry_entry:
       auto cur = RDCSS(i, casn_base);
       if ((cur & kMwCASFlag) > 0 && cur != (casn_base | (i << kCntPos))) {
@@ -121,14 +121,14 @@ CASNDescriptor::MwCASInternal(  //
   // phase 2: complete this MwCAS operation
   const auto succeeded = stat == kSucceeded;
   if (succeeded) {
-    for (size_t i = 0; i < target_count_; ++i) {
+    for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kRelaxed);
       if (expected != (casn_base | (i << kCntPos))) continue;
       target.addr->compare_exchange_strong(expected, target.new_val, kRelaxed, kRelaxed);
     }
   } else {
-    for (size_t i = 0; i < target_count_; ++i) {
+    for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kRelaxed);
       if (expected != (casn_base | (i << kCntPos))) continue;

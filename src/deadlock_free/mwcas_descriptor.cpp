@@ -38,7 +38,7 @@ MwCASDescriptor::MwCAS()  //
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto mwcas_success = true;
   size_t embedded_count = 0;
-  for (size_t i = 0; i < target_count_; ++i, ++embedded_count) {
+  for (size_t i = 0; i < target_cnt_; ++i, ++embedded_count) {
     if (!EmbedDescriptor(desc_addr, i)) {
       mwcas_success = false;
       break;

@@ -40,13 +40,13 @@ namespace
  * Local constants
  *############################################################################*/
 
-/// @brief The bit position for indicating the counter of word descriptors.
+/// @brief The bit position for indicating the original number of a target.
 constexpr uint64_t kCntPos = 47;
 
 /// @brief A bit mask for extracting pointers.
 constexpr uint64_t kPtrMask = (1UL << kCntPos) - 1UL;
 
-/// @brief A bit mask for extracting the counter of word descriptors.
+/// @brief A bit mask for extracting the original number of a target.
 constexpr uint64_t kCntMask = ~kPtrMask ^ ::dbgroup::atomic::mwcas::kMwCASFlag;
 
 }  // namespace
@@ -62,7 +62,7 @@ AOPTDescriptor::StartGC(  //
     const size_t gc_interval,
     const size_t gc_thread_num)
 {
-  _gc = std::make_unique<EpochBasedGC_t>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
+  _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
 }
 
 void
@@ -84,7 +84,7 @@ AOPTDescriptor::GetDescriptor()  //
 {
   auto *page = _gc->GetPageIfPossible<AOPTDescriptor>();
   auto *desc = (page == nullptr) ? new AOPTDescriptor{} : static_cast<AOPTDescriptor *>(page);
-  desc->target_count_ = 0;
+  desc->target_cnt_ = 0;
   return desc;
 }
 
@@ -144,7 +144,7 @@ AOPTDescriptor::MwCASInternal(  //
 
   // serialize MwCAS operations by embedding a descriptor
   auto mwcas_success = true;
-  for (size_t i = begin_pos; i < target_count_; ++i) {
+  for (size_t i = begin_pos; i < target_cnt_; ++i) {
     auto &word_desc = targets_[i];
     const auto desc_addr = base_addr | (i << kCntPos);
 
@@ -211,7 +211,7 @@ AOPTDescriptor::CompletedDescriptors::FinalizeCompletedDescriptors()
   for (size_t i = 0; i < desc_num_; ++i) {
     auto *desc = desc_arr_[i];
     const auto desc_addr = std::bit_cast<uint64_t>(desc) | kMwCASFlag;
-    const auto target_num = desc->target_count_;
+    const auto target_num = desc->target_cnt_;
     if (desc->stat_.load(kRelaxed) == kSuccessful) {
       for (size_t i = 0; i < target_num; ++i) {
         auto &target = desc->targets_[i];

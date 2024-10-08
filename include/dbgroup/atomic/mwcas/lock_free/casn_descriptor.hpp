@@ -44,12 +44,6 @@ namespace dbgroup::atomic::mwcas::lock_free
  */
 class alignas(kCacheLineSize) CASNDescriptor
 {
-  /*############################################################################
-   * Type aliases
-   *##########################################################################*/
-
-  using EpochBasedGC_t = ::dbgroup::memory::EpochBasedGC<CASNDescriptor>;
-
  public:
   /*############################################################################
    * GC settings
@@ -101,7 +95,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   Size() const  //
       -> size_t
   {
-    return target_count_;
+    return target_cnt_;
   }
 
   /*############################################################################
@@ -133,8 +127,10 @@ class alignas(kCacheLineSize) CASNDescriptor
 
   /**
    * @return A new MwCAS descriptor for the CASN algorithm.
+   * @note You must explicitly delete the given descriptor if you do not call
+   * the MwCAS function.
    */
-  static auto GetDescriptor()  //
+  [[nodiscard]] static auto GetDescriptor()  //
       -> CASNDescriptor *;
 
   /*############################################################################
@@ -196,7 +192,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    targets_.at(target_count_++) =
+    targets_.at(target_cnt_++) =
         MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
 
@@ -204,14 +200,20 @@ class alignas(kCacheLineSize) CASNDescriptor
    * @brief Perform a MwCAS operation by using registered targets.
    *
    * @retval true if a MwCAS operation succeeds.
-   * @retval false if a MwCAS operation fails.
+   * @retval false otherwise.
    */
   auto MwCAS()  //
       -> bool;
 
  private:
   /*############################################################################
-   * Internal classes
+   * Type aliases
+   *##########################################################################*/
+
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor>;
+
+  /*############################################################################
+   * Internal types
    *##########################################################################*/
 
   /**
@@ -252,13 +254,13 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief A bit mask for swapping flags with XOR.
   static constexpr uint64_t kFlagSwap = kMwCASFlag | kRDCSSFlag;
 
-  /// @brief The bit position for indicating the counter of word descriptors.
+  /// @brief The bit position for indicating the original number of a target.
   static constexpr uint64_t kCntPos = 47;
 
   /// @brief A bit mask for extracting pointers.
   static constexpr uint64_t kPtrMask = (1UL << kCntPos) - 1UL;
 
-  /// @brief A bit mask for extracting the counter of word descriptors.
+  /// @brief A bit mask for extracting the original number of a target.
   static constexpr uint64_t kCntMask = ~kPtrMask ^ (kMwCASFlag | kRDCSSFlag);
 
   /*############################################################################
@@ -278,7 +280,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    *
    * @param begin_pos The begin position of target words.
    * @retval true if a MwCAS operation succeeds.
-   * @retval false if a MwCAS operation fails.
+   * @retval false otherwise.
    */
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
@@ -307,10 +309,10 @@ class alignas(kCacheLineSize) CASNDescriptor
   std::atomic<Status> stat_{kUndecided};
 
   /// @brief The number of registered MwCAS targets.
-  size_t target_count_{};
+  size_t target_cnt_{};
 
   /// @brief A garbage collector for expired descriptors.
-  static inline std::unique_ptr<EpochBasedGC_t> _gc{};  // NOLINT
+  static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
 };
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
