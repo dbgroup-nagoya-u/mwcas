@@ -75,27 +75,4 @@ MwCASDescriptor::MwCAS()  //
   return is_succeeded;
 }
 
-auto
-MwCASDescriptor::EmbedDescriptor(  //
-    const uint64_t desc_addr,
-    const size_t pos)  //
-    -> bool
-{
-  auto &target = targets_[pos];
-  auto *addr = target.addr;
-  const auto old_val = target.old_val;
-  const auto fence = target.fence;
-
-  for (size_t i = 1; true; ++i) {
-    auto expected = addr->load(kRelaxed);
-    if (expected == old_val
-        && addr->compare_exchange_strong(expected, desc_addr, fence, kRelaxed)) {
-      return true;
-    }
-    if ((expected & kMwCASFlag) == 0 || i >= kRetryNum) break;
-    CPP_UTILITY_SPINLOCK_HINT
-  }
-  return false;
-}
-
 }  // namespace dbgroup::atomic::mwcas::lock_free
