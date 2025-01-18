@@ -37,23 +37,23 @@ auto
 MwCASDescriptor::MwCAS()  //
     -> bool
 {
+  const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   if (stat_.load(kRelaxed) == kUndecided) {
     auto status = kSucceeded;
-    const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;  // この位置でいいのか疑問
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
-      while ((word & kMwCASFlag > 0) && word != desc_addr) {
-        auto another_desc_addr = std::move(word);
+      while (((word & kMwCASFlag) > 0) && word != desc_addr) {
+        auto another_desc_addr = word;
         std::this_thread::sleep_for(kBackOffTime);
-        auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
+        word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
         if (word == another_desc_addr) {
           auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr & ~kMwCASFlag);
           another_desc->MwCAS();
-          auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
+          word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
         }
       }
-      if (word != (std::bit_cast<uint64_t>(this) | kMwCASFlag) && word != target.old_val) {
+      if (word != (desc_addr) && word != target.old_val) {
         status = kFailed;
         break;
       }
@@ -64,11 +64,9 @@ MwCASDescriptor::MwCAS()  //
   for (size_t i = 0; i < target_cnt_; ++i) {
     auto &target = targets_[i];
     if (is_succeeded) {
-      target.addr->compare_exchange_strong(std::bit_cast<uint64_t>(this) | kMwCASFlag,
-                                           target.new_val, kRelaxed);
+      target.addr->compare_exchange_strong(desc_addr, target.new_val, kRelaxed);
     } else {
-      target.addr->compare_exchange_strong(std::bit_cast<uint64_t>(this) | kMwCASFlag,
-                                           target.old_val, kRelaxed);
+      target.addr->compare_exchange_strong(desc_addr, target.old_val, kRelaxed);
     }
   }
 

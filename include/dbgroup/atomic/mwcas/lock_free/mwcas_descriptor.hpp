@@ -193,10 +193,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @retval true if the descriptor address is successfully embedded.
    * @retval false otherwise.
    */
-  auto EmbedDescriptor(  //
-      uint64_t desc_addr,
-      size_t pos)  //
-      -> bool;
 
   /*############################################################################
    * Internal member variables
