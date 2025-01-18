@@ -15,20 +15,17 @@
  */
 
 // the corresponding header
-// #include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
-#include "/home/unno/sotsuron/mwcas/include/dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
 
 // C++ standard libraries
 #include <atomic>
 #include <cstddef>
 
 // external libraries
-// #include "dbgroup/lock/common.hpp"
-#include "/home/unno/sotsuron/mwcas/test/common.hpp"
+#include "dbgroup/lock/common.hpp"
 
 // local sources
-// #include "dbgroup/atomic/mwcas/utility.hpp"
-#include "/home/unno/sotsuron/mwcas/include/dbgroup/atomic/mwcas/utility.hpp"
+#include "dbgroup/atomic/mwcas/utility.hpp"
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
@@ -38,19 +35,22 @@ MwCASDescriptor::MwCAS()  //
     -> bool
 {
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
-  if (stat_.load(kRelaxed) == kUndecided) {
+  if (stat_.load(std::memory_order_seq_cst) == kUndecided) {
     auto status = kSucceeded;
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
+      auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
+                                                       target.fence);
       while (((word & kMwCASFlag) > 0) && word != desc_addr) {
         auto another_desc_addr = word;
         std::this_thread::sleep_for(kBackOffTime);
-        word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
+        word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
+                                                    target.fence);
         if (word == another_desc_addr) {
           auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr & ~kMwCASFlag);
           another_desc->MwCAS();
-          word = target.addr->compare_exchange_strong(target.old_val, desc_addr, kRelaxed);
+          word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
+                                                      target.fence);
         }
       }
       if (word != (desc_addr) && word != target.old_val) {
@@ -58,15 +58,16 @@ MwCASDescriptor::MwCAS()  //
         break;
       }
     }
-    stat_.compare_exchange_strong(kUndecided, status, kRelaxed);
+    stat_.compare_exchange_strong(kUndecided, status, target.fence, target.fence,
+                                  std::memory_order_seq_cst, std::memory_order_seq_cst);
   }
-  auto is_succeeded = (stat_.load(kRelaxed) == kSucceeded);
+  auto is_succeeded = (stat_.load(std::memory_order_seq_cst) == kSucceeded);
   for (size_t i = 0; i < target_cnt_; ++i) {
     auto &target = targets_[i];
     if (is_succeeded) {
-      target.addr->compare_exchange_strong(desc_addr, target.new_val, kRelaxed);
+      target.addr->compare_exchange_strong(desc_addr, target.new_val, target.fence, target.fence);
     } else {
-      target.addr->compare_exchange_strong(desc_addr, target.old_val, kRelaxed);
+      target.addr->compare_exchange_strong(desc_addr, target.old_val, target.fence, target.fence);
     }
   }
 
