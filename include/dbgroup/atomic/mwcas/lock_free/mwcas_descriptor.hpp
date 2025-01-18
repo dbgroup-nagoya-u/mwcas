@@ -31,7 +31,7 @@
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
-namespace dbgroup::atomic::mwcas::deadlock_free
+namespace dbgroup::atomic::mwcas::lock_free
 {
 /**
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
@@ -154,6 +154,16 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *##########################################################################*/
 
   /**
+   * @brief An enumeration for representing MwCAS status.
+   *
+   */
+  enum Status : uint64_t {
+    kUndecided = 0,
+    kSucceeded,
+    kFailed,
+  };
+
+  /**
    * @brief A class for representing MwCAS targets.
    *
    */
@@ -192,6 +202,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Internal member variables
    *##########################################################################*/
 
+  /// @brief The status of this CASN descriptor.
+  std::atomic<Status> stat_{kUndecided};
+
   /// @brief Target entries of MwCAS.
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 
@@ -199,6 +212,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
   size_t target_cnt_{};
 };
 
-}  // namespace dbgroup::atomic::mwcas::deadlock_free
+}  // namespace dbgroup::atomic::mwcas::lock_free
 
 #endif  // DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_
