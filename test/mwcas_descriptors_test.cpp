@@ -18,6 +18,7 @@
 #include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
 #include "dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp"
 #include "dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
 
 // C++ standard libraries
 #include <cstddef>
@@ -43,6 +44,7 @@ namespace dbgroup::atomic::mwcas::test
  *############################################################################*/
 
 using DLFMwCAS = deadlock_free::MwCASDescriptor;
+using LFMwCAS = lock_free::MwCASDescriptor;
 using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
@@ -127,7 +129,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   MwCAS(  //
       const MwCASTargets &targets)
   {
-    if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS>) {
+    if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS> || std::is_same_v<MwCASDesc, LFMwCAS>) {
       while (true) {
         MwCASDesc desc{};
         for (auto idx : targets) {
@@ -233,7 +235,7 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<DLFMwCAS, CASN, AOPT>;
+using MwCASDesctiptors = ::testing::Types<DLFMwCAS, CASN, AOPT, LFMwCAS>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
 
 /*##############################################################################
