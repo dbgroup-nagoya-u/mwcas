@@ -37,6 +37,7 @@ MwCASDescriptor::MwCAS()  //
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   if (stat_.load(std::memory_order_seq_cst) == kUndecided) {
     auto status = kSucceeded;
+    auto undecided = kUndecided;  // あまりよくない方法かも
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
@@ -58,16 +59,17 @@ MwCASDescriptor::MwCAS()  //
         break;
       }
     }
-    stat_.compare_exchange_strong(kUndecided, status, target.fence, target.fence,
-                                  std::memory_order_seq_cst, std::memory_order_seq_cst);
+    stat_.compare_exchange_strong(undecided, status, std::memory_order_seq_cst,
+                                  std::memory_order_seq_cst);
   }
   auto is_succeeded = (stat_.load(std::memory_order_seq_cst) == kSucceeded);
+  auto expected = desc_addr;  // あまりよくない方法かも
   for (size_t i = 0; i < target_cnt_; ++i) {
     auto &target = targets_[i];
     if (is_succeeded) {
-      target.addr->compare_exchange_strong(desc_addr, target.new_val, target.fence, target.fence);
+      target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
     } else {
-      target.addr->compare_exchange_strong(desc_addr, target.old_val, target.fence, target.fence);
+      target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
     }
   }
 
