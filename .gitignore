@@ -33,6 +33,3 @@
 
 # ignore build directories
 build
-mybuild
-CMakeFiles
-.vscode
