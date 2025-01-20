@@ -65,13 +65,18 @@ MwCASDescriptor::MwCAS()  //
     }
     cur_stat = stat;
   }
-  auto is_succeeded = (stat_.load(std::memory_order_seq_cst) == kSucceeded);
-  auto expected = desc_addr;  // あまりよくない方法かも
-  for (size_t i = 0; i < target_cnt_; ++i) {
-    auto &target = targets_[i];
-    if (is_succeeded) {
+  if (cur_stat == kSucceeded) {
+    for (size_t i = 0; i < target_cnt_; ++i) {
+      auto &target = targets_[i];
+      auto expected = target.addr->load(kSeqCst);
+      if (expected != desc_addr) continue;
       target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
-    } else {
+    }
+  } else {
+    for (size_t i = 0; i < target_cnt_; ++i) {
+      auto &target = targets_[i];
+      auto expected = target.addr->load(kSeqCst);
+      if (expected != desc_addr) continue;
       target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
     }
   }
