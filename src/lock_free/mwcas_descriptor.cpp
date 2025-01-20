@@ -67,28 +67,9 @@ MwCASDescriptor::MwCASInternal(  //
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
-      auto &target = targets_[i];
-      auto *addr = target.addr;
-      auto word = addr->load(kSeqCst);
-      while (((word & kMwCASFlag) > 0) && word != desc_addr) {
-        const auto another_desc_addr = word;
-        std::this_thread::sleep_for(kBackOffTime);
-        word = addr->load(kSeqCst);
-        if (word != another_desc_addr) continue;  // other threads modified this field
-
-        // a long CPU stall has been detected, so perform another MwCAS
-        auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr ^ kMwCASFlag);
-        another_desc->MwCASInternal();
-        word = addr->load(kSeqCst);
-      }
-      if (word != desc_addr) {
-        if (word != target.old_val) {
-          stat = kFailed;
-          break;
-        } else if (!addr->compare_exchange_strong(word, desc_addr, kSeqCst,
-                                                  kSeqCst)) {  // CAS is failed
-          continue;  // この部分の実装が怪しそう．while文の前までgotoのが良い？全然別の実装の方が良い？
-        }
+      if (!EmbedDescriptor(desc_addr, i)) {
+        stat = kFailed;
+        break;
       }
     }
     cur_stat = stat_.load(kSeqCst);

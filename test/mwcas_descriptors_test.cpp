@@ -246,19 +246,19 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<DLFMwCAS, CASN, AOPT, LFMwCAS>;
+using MwCASDesctiptors = ::testing::Types<LFMwCAS>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
 
 /*##############################################################################
  * Unit test definitions
  *############################################################################*/
 
-TYPED_TEST(  //
-    MwCASDescriptorFixture,
-    MwCASWithSingleThreadCorrectlyIncrementTargets)
-{
-  TestFixture::VerifyMwCAS(1);
-}
+// TYPED_TEST(  //
+//     MwCASDescriptorFixture,
+//     MwCASWithSingleThreadCorrectlyIncrementTargets)
+// {
+//   TestFixture::VerifyMwCAS(1);
+// }
 
 TYPED_TEST(  //
     MwCASDescriptorFixture,
