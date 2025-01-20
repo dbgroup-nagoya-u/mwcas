@@ -129,7 +129,18 @@ class MwCASDescriptorFixture : public ::testing::Test
   MwCAS(  //
       const MwCASTargets &targets)
   {
-    if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS> || std::is_same_v<MwCASDesc, LFMwCAS>) {
+    if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
+      while (true) {
+        auto *desc = MwCASDesc::GetDescriptor();
+        for (auto idx : targets) {
+          auto *addr = &(target_fields_[idx]);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
+          const auto new_val = cur_val + 1;
+          desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
+        }
+        if (desc->MwCAS()) return;
+      }
+    } else if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS>) {
       while (true) {
         MwCASDesc desc{};
         for (auto idx : targets) {
