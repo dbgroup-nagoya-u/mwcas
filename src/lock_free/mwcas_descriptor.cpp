@@ -29,7 +29,25 @@
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
+/*##############################################################################
+ * Static utilities
+ *############################################################################*/
 
+auto
+MwCASDescriptor::GetDescriptor()  //
+    -> MwCASDescriptor *
+{
+  /*auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
+  auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
+  desc->target_cnt_ = 0;*/
+  // GCを無視した一時的な実装
+  MwCASDescriptor *desc{};
+  return desc;
+}
+
+/*##############################################################################
+ * Utilities
+ *############################################################################*/
 auto
 MwCASDescriptor::MwCAS()  //
     -> bool
@@ -50,29 +68,31 @@ MwCASDescriptor::MwCASInternal(const size_t begin_pos)  //
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
-                                                       target.fence);
+      auto *addr = target.addr;
+      auto word = addr->load(kSeqCst);
       while (((word & kMwCASFlag) > 0) && word != desc_addr) {
-        auto another_desc_addr = word;
+        const auto another_desc_addr = word;
         std::this_thread::sleep_for(kBackOffTime);
-        word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
-                                                    target.fence);
-        if (word == another_desc_addr) {
-          auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr & ~kMwCASFlag);
-          another_desc->MwCASInternal();
-          word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
-                                                      target.fence);
-        }
+        word = addr->load(kSeqCst);
+        if (word != another_desc_addr) continue;  // other threads modified this field
+        // a long CPU stall has been detected, so perform another MwCAS
+        auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr ^ kMwCASFlag);
+        another_desc->MwCASInternal();
+        word = addr->load(kSeqCst);
       }
-      if (word != (desc_addr) && word != target.old_val) {
-        stat = kFailed;
-        break;
+      if (word != desc_addr) {
+        if (word != target.old_val) {
+          stat = kFailed;
+          break;
+        } else if (!addr->compare_exchange_strong(word, desc_addr, kSeqCst,
+                                                  kSeqCst)) {  // CAS is failed
+          continue;  // もしくはwhile文の前までgotoのがいい？
+        }
       }
     }
     cur_stat = stat_.load(kSeqCst);
-    if (cur_stat == kUndecided) {
-      stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst);  // ここでif文にする？
-      cur_stat = stat;  // ここの意味がわからない
+    if (cur_stat == kUndecided && stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst)) {
+      cur_stat = stat;
     }
   }
 
