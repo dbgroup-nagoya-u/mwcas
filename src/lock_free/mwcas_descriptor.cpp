@@ -35,9 +35,9 @@ MwCASDescriptor::MwCAS()  //
     -> bool
 {
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
-  if (stat_.load(std::memory_order_seq_cst) == kUndecided) {
-    auto status = kSucceeded;
-    auto undecided = kUndecided;  // あまりよくない方法かも
+  auto cur_stat = stat_.load(kSeqCst);
+  if (cur_stat == kUndecided) {
+    auto stat = kSucceeded;
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
