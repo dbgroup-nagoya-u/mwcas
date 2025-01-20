@@ -59,8 +59,11 @@ MwCASDescriptor::MwCAS()  //
         break;
       }
     }
-    stat_.compare_exchange_strong(undecided, status, std::memory_order_seq_cst,
-                                  std::memory_order_seq_cst);
+    cur_stat = stat_.load(kSeqCst);
+    if (cur_stat == kUndecided) {
+      stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst);
+    }
+    cur_stat = stat;
   }
   auto is_succeeded = (stat_.load(std::memory_order_seq_cst) == kSucceeded);
   auto expected = desc_addr;  // あまりよくない方法かも
