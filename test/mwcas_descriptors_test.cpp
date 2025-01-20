@@ -253,12 +253,12 @@ TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
  * Unit test definitions
  *############################################################################*/
 
-// TYPED_TEST(  //
-//     MwCASDescriptorFixture,
-//     MwCASWithSingleThreadCorrectlyIncrementTargets)
-// {
-//   TestFixture::VerifyMwCAS(1);
-// }
+TYPED_TEST(  //
+    MwCASDescriptorFixture,
+    MwCASWithSingleThreadCorrectlyIncrementTargets)
+{
+  TestFixture::VerifyMwCAS(1);
+}
 
 TYPED_TEST(  //
     MwCASDescriptorFixture,

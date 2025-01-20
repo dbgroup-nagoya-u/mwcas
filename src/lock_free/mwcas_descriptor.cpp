@@ -78,7 +78,8 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
-  if (cur_stat == kSucceeded) {
+  auto ret = (cur_stat == kSucceeded);
+  if (ret) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
@@ -94,7 +95,7 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
-  return cur_stat;
+  return ret;
 }
 
 auto
