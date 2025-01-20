@@ -50,11 +50,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   constexpr MwCASDescriptor() = default;
 
-  constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
-  constexpr MwCASDescriptor(MwCASDescriptor &&) noexcept = default;
+  MwCASDescriptor(const MwCASDescriptor &) = delete;
+  MwCASDescriptor(MwCASDescriptor &&) = delete;
 
-  constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
-  constexpr auto operator=(MwCASDescriptor &&) noexcept -> MwCASDescriptor & = default;
+  auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = delete;
+  auto operator=(MwCASDescriptor &&) -> MwCASDescriptor & = delete;
 
   /*############################################################################
    * Public destructors
