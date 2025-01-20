@@ -34,11 +34,21 @@ auto
 MwCASDescriptor::MwCAS()  //
     -> bool
 {
+  // set a memory fence
+  stat_.store(kUndecided, kRelease);
+  const auto succeeded = MwCASInternal();
+  return succeeded;
+}
+
+auto
+MwCASDescriptor::MwCASInternal(const size_t begin_pos)  //
+    -> bool
+{
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto cur_stat = stat_.load(kSeqCst);
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
-    for (size_t i = 0; i < target_cnt_; ++i) {
+    for (size_t i = begin_pos; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
                                                        target.fence);
@@ -49,7 +59,7 @@ MwCASDescriptor::MwCAS()  //
                                                     target.fence);
         if (word == another_desc_addr) {
           auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr & ~kMwCASFlag);
-          another_desc->MwCAS();
+          another_desc->MwCASInternal();
           word = target.addr->compare_exchange_strong(target.old_val, desc_addr, target.fence,
                                                       target.fence);
         }
@@ -61,10 +71,11 @@ MwCASDescriptor::MwCAS()  //
     }
     cur_stat = stat_.load(kSeqCst);
     if (cur_stat == kUndecided) {
-      stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst);
+      stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst);  // ここでif文にする？
+      cur_stat = stat;  // ここの意味がわからない
     }
-    cur_stat = stat;
   }
+
   if (cur_stat == kSucceeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
@@ -81,7 +92,7 @@ MwCASDescriptor::MwCAS()  //
     }
   }
 
-  return is_succeeded;
+  return cur_stat;  // ここの戻り値は未定
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
