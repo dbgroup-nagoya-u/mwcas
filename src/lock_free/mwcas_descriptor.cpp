@@ -41,8 +41,7 @@ MwCASDescriptor::GetDescriptor()  //
   auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
   desc->target_cnt_ = 0;*/
   // GCを無視した一時的な実装
-  MwCASDescriptor *desc{};
-  return desc;
+  return new MwCASDescriptor{};
 }
 
 /*##############################################################################
@@ -59,7 +58,8 @@ MwCASDescriptor::MwCAS()  //
 }
 
 auto
-MwCASDescriptor::MwCASInternal(const size_t begin_pos)  //
+MwCASDescriptor::MwCASInternal(  //
+    const size_t begin_pos)      //
     -> bool
 {
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
@@ -75,6 +75,7 @@ MwCASDescriptor::MwCASInternal(const size_t begin_pos)  //
         std::this_thread::sleep_for(kBackOffTime);
         word = addr->load(kSeqCst);
         if (word != another_desc_addr) continue;  // other threads modified this field
+
         // a long CPU stall has been detected, so perform another MwCAS
         auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr ^ kMwCASFlag);
         another_desc->MwCASInternal();
@@ -112,7 +113,35 @@ MwCASDescriptor::MwCASInternal(const size_t begin_pos)  //
     }
   }
 
-  return cur_stat;  // ここの戻り値は未定
+  return cur_stat;
+}
+
+auto
+MwCASDescriptor::EmbedDescriptor(  //
+    const uint64_t desc_addr,
+    const size_t pos)  //
+    -> bool
+{
+  auto &target = targets_[pos];
+  auto *addr = target.addr;
+  auto word = addr->load(kSeqCst);
+  while (true) {
+    while (word & kMwCASFlag) {
+      if (word == desc_addr) return true;
+      const auto another_desc_addr = word;
+      std::this_thread::sleep_for(kBackOffTime);
+      word = addr->load(kSeqCst);
+      if (word != another_desc_addr) continue;  // other threads modified this field
+
+      // a long CPU stall has been detected, so perform another MwCAS
+      auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr ^ kMwCASFlag);
+      another_desc->MwCASInternal();
+      word = addr->load(kSeqCst);
+    }
+
+    if (word != target.old_val) return false;
+    if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) return true;
+  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
