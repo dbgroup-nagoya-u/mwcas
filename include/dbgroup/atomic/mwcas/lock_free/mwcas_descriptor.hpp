@@ -81,6 +81,18 @@ class alignas(kCacheLineSize) MwCASDescriptor
   }
 
   /*############################################################################
+   * Public APIs for managing memory
+   *##########################################################################*/
+
+  /**
+   * @return A new MwCAS descriptor for the MwCAS algorithm.
+   * @note You must explicitly delete the given descriptor if you do not call
+   * the MwCAS function.
+   */
+  [[nodiscard]] static auto GetDescriptor()  //
+      -> MwCASDescriptor *;
+
+  /*############################################################################
    * Public utility functions
    *##########################################################################*/
 
@@ -184,19 +196,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /*############################################################################
    * Internal APIs
    *##########################################################################*/
-
-  /**
-   * @brief Embed a descriptor into this target address to linearlize MwCAS.
-   *
-   * @param desc_addr The address of this descriptor with a MwCAS flag.
-   * @param pos The position of a target word.
-   * @retval true if the descriptor address is successfully embedded.
-   * @retval false otherwise.
-   */
-  auto EmbedDescriptor(  //
-      uint64_t desc_addr,
-      size_t pos)  //
-      -> bool;
 
   /*############################################################################
    * Internal utility functions
