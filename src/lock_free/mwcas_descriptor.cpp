@@ -86,7 +86,7 @@ MwCASDescriptor::MwCASInternal(const size_t begin_pos)  //
           break;
         } else if (!addr->compare_exchange_strong(word, desc_addr, kSeqCst,
                                                   kSeqCst)) {  // CAS is failed
-          continue;  // もしくはwhile文の前までgotoのがいい？
+          continue;  // この部分の実装が怪しそう．while文の前までgotoのが良い？全然別の実装の方が良い？
         }
       }
     }
