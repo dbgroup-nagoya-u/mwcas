@@ -55,7 +55,7 @@ MwCASDescriptor::MwCAS()  //
         }
       }
       if (word != (desc_addr) && word != target.old_val) {
-        status = kFailed;
+        stat = kFailed;
         break;
       }
     }

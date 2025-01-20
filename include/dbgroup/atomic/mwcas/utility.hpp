@@ -58,6 +58,9 @@ constexpr size_t kRetryNum = (MWCAS_RETRY_THRESHOLD);
 /// @brief A sleep time for preventing busy loops [us].
 constexpr std::chrono::microseconds kBackOffTime{MWCAS_BACKOFF_TIME};
 
+/// @brief 一時的な定数
+constexpr std::memory_order kSeqCst = std::memory_order_seq_cst;
+
 /*##############################################################################
  * Global utility functions
  *############################################################################*/
