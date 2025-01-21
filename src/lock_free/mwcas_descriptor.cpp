@@ -72,7 +72,7 @@ MwCASDescriptor::MwCASInternal(  //
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      if (!EmbedDescriptor(desc_addr, i, target.cnt)) {
+      if (!EmbedDescriptor(desc_addr, i)) {
         stat = kFailed;
         break;
       }
@@ -89,16 +89,18 @@ MwCASDescriptor::MwCASInternal(  //
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
-      if ((expected ^ desc_addr) & kAddrMask) continue;
-      target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
+      if (((expected ^ desc_addr) & kDescMask) == 0UL) {
+        target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
+      }
       target_cnt_sum += target.cnt;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
-      if ((expected ^ desc_addr) & kAddrMask) continue;
-      target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
+      if (((expected ^ desc_addr) & kDescMask) == 0UL) {
+        target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
+      }
       target_cnt_sum += target.cnt;
     }
   }
@@ -122,25 +124,22 @@ MwCASDescriptor::EmbedDescriptor(  //
   auto word = addr->load(kSeqCst);
   while (true) {
     while (word & kMwCASFlag) {
-      if (((word ^ desc_addr) & kAddrMask) == 0) return true;
+      if (((word ^ desc_addr) & kDescMask) == 0) return true;
       const auto another_word = word;
       std::this_thread::sleep_for(kBackOffTime);
       word = addr->load(kSeqCst);
       if (word != another_word) continue;  // other threads modified this field
 
       // a long CPU stall has been detected, so perform another MwCAS
-      auto *another_word_pointer = std::bit_cast<MwCASDescriptor *>(another_word & kAddrMask);
-
-      // ここで支援する記述子のcntをインクリメントしたものをCAS(もしくはTATAS)して記述子を埋め込みなおす．その後に支援
       const auto incremented = word + kCntUnit;
       if (addr->compare_exchange_strong(word, incremented, kSeqCst, kSeqCst)) {
         // follow another MwCAS
         auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
         const auto pos = (word & kPosMask) >> kPosShift;
         auto &desc_cnt = another_desc->targets_[pos].cnt;
-        auto cur_cnt = desc_cnt.loat(kSeqCst);
+        auto cur_cnt = desc_cnt.load(kSeqCst);
         const auto cnt = static_cast<uint32_t>((incremented & kCntMask) >> kCntShift);
-        wihle (cur_cnt < cnt) {  // increment the descriptor's counter
+        while (cur_cnt < cnt) {  // increment the descriptor's counter
           if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
           CPP_UTILITY_SPINLOCK_HINT
         }
