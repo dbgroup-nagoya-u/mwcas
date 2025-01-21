@@ -114,8 +114,7 @@ MwCASDescriptor::MwCASInternal(  //
 auto
 MwCASDescriptor::EmbedDescriptor(  //
     const uint64_t desc_addr,
-    const size_t pos,
-    const size_t cnt)  //
+    const size_t pos)  //
     -> bool
 {
   auto &target = targets_[pos];
@@ -127,8 +126,7 @@ MwCASDescriptor::EmbedDescriptor(  //
       const auto another_word = word;
       std::this_thread::sleep_for(kBackOffTime);
       word = addr->load(kSeqCst);
-      if (((word ^ another_word) | ~kCntMask) == 0)  // Equal except for cnt.
-        continue;                                    // other threads modified this field
+      if (word != another_word) continue;  // other threads modified this field
 
       // a long CPU stall has been detected, so perform another MwCAS
       auto *another_word_pointer = std::bit_cast<MwCASDescriptor *>(another_word & kAddrMask);

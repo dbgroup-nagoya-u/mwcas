@@ -190,7 +190,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     uint64_t new_val;
 
     /// @brief access count for GC.
-    uint64_t cnt;
+    std::atomic_uint32_t cnt;
 
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
@@ -210,8 +210,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   auto EmbedDescriptor(  //
       uint64_t desc_addr,
-      size_t pos,  //
-      size_t cnt)  //
+      size_t pos)  //
       -> bool;
 
   /*############################################################################
