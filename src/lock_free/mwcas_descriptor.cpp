@@ -105,7 +105,7 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
-  exit_cnt_++;
+  exit_cnt_++;  // ここのインクリメントもアトミックにすべき？
   if (exit_cnt_ == target_cnt_sum) {
     // GC処理（未実装）
   }

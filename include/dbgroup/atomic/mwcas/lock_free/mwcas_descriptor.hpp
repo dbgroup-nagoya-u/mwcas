@@ -148,7 +148,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     static_assert(CanMwCAS<T>());
 
     targets_.at(target_cnt_++) =
-        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, 0, fence};
   }
 
   /**
