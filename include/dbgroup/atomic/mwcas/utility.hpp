@@ -42,6 +42,16 @@ constexpr std::memory_order kRelaxed = std::memory_order_relaxed;
 /// @brief The last significant bit indicates MwCAS descriptors.
 constexpr uint64_t kMwCASFlag = 1UL << 63UL;
 
+/// @brief
+/// 以下一時的に作った定数（LFMwCAS完成後に確定させる）なお，オーバーフローは一旦考慮していない
+constexpr uint64_t kPositionShift = 47;  // 左シフトをする回数
+constexpr uint64_t kCntShift = 50;       // 左シフトをする回数
+constexpr uint64_t kPosMask = (((1UL << (1 + kCntShift - kPositionShift)) - 1)
+                               << kPositionShift);  // posの部分だけ1となるマスク
+constexpr uint64_t kCntMask =
+    (((1UL << (64 - kCntShift)) - 1) << kCntShift);  // cntの部分だけ1となるマスク
+constexpr uint64_t kAddrMask = (1UL << 47) - 1;      // アドレス用のビットマスク
+
 /*##############################################################################
  * Tuning parameters
  *############################################################################*/

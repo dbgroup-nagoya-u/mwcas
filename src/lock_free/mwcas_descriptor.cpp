@@ -57,17 +57,22 @@ MwCASDescriptor::MwCAS()  //
   return succeeded;
 }
 
+//                wordのビット割り当て（実装後に消す）
+// |     63     |       62-50       |      49-47     |        46-0       |
+// | MwCAS Flag | Reference Counter | Begin Position |Descriptor Address |
+
 auto
 MwCASDescriptor::MwCASInternal(  //
-    const size_t begin_pos)      //
-    -> bool
+    const size_t begin_pos       //
+    ) -> bool
 {
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto cur_stat = stat_.load(kSeqCst);
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
-      if (!EmbedDescriptor(desc_addr, i)) {
+      auto &target = targets_[i];
+      if (!EmbedDescriptor(desc_addr, i, target.cnt)) {
         stat = kFailed;
         break;
       }
@@ -79,20 +84,28 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   auto ret = (cur_stat == kSucceeded);
+  auto target_cnt_sum = 0;
   if (ret) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
-      if (expected != desc_addr) continue;
+      if ((expected ^ desc_addr) & kAddrMask) continue;
       target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
+      target_cnt_sum += target.cnt;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
-      if (expected != desc_addr) continue;
+      if ((expected ^ desc_addr) & kAddrMask) continue;
       target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
+      target_cnt_sum += target.cnt;
     }
+  }
+
+  exit_cnt_++;
+  if (exit_cnt_ == target_cnt_sum) {
+    // GC処理（未実装）
   }
 
   return ret;
@@ -101,7 +114,8 @@ MwCASDescriptor::MwCASInternal(  //
 auto
 MwCASDescriptor::EmbedDescriptor(  //
     const uint64_t desc_addr,
-    const size_t pos)  //
+    const size_t pos,
+    const size_t cnt)  //
     -> bool
 {
   auto &target = targets_[pos];
@@ -109,15 +123,30 @@ MwCASDescriptor::EmbedDescriptor(  //
   auto word = addr->load(kSeqCst);
   while (true) {
     while (word & kMwCASFlag) {
-      if (word == desc_addr) return true;
-      const auto another_desc_addr = word;
+      if (((word ^ desc_addr) & kAddrMask) == 0) return true;
+      const auto another_word = word;
       std::this_thread::sleep_for(kBackOffTime);
       word = addr->load(kSeqCst);
-      if (word != another_desc_addr) continue;  // other threads modified this field
+      if (((word ^ another_word) | ~kCntMask) == 0)  // Equal except for cnt.
+        continue;                                    // other threads modified this field
 
       // a long CPU stall has been detected, so perform another MwCAS
-      auto *another_desc = std::bit_cast<MwCASDescriptor *>(another_desc_addr ^ kMwCASFlag);
-      another_desc->MwCASInternal();
+      auto *another_word_pointer = std::bit_cast<MwCASDescriptor *>(another_word & kAddrMask);
+
+      // ここで支援する記述子のcntをインクリメントしたものをCAS(もしくはTATAS)して記述子を埋め込みなおす．その後に支援
+      auto another_word_cnt = ((another_word & kCntMask) >> kCntShift);
+      auto another_word_pos = ((another_word & kPosMask) >> kPositionShift);
+      auto another_word_incremented_cnt =
+          ((another_word & ~kCntMask) | ((another_word_cnt + 1) << kCntShift));
+      if (addr->compare_exchange_strong(
+              another_word, another_word_incremented_cnt, kSeqCst,
+              kSeqCst)) {  // ここでビルドエラーが出る（another_wordの型エラーだとは思う）
+        (another_word_pointer->targets_[another_word_pos])
+            .cnt++;  // これでインクリメントできるのかと設計上安全なのかはわからない．
+        another_word_pointer->MwCASInternal(another_word_pos + 1);
+      } else {
+        // 何もしなければ勝手にバックオフになるはず
+      }
       word = addr->load(kSeqCst);
     }
 

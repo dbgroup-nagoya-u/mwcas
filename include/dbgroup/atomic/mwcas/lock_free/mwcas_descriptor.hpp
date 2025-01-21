@@ -189,6 +189,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
     /// @brief An inserting value into a target field.
     uint64_t new_val;
 
+    /// @brief access count for GC.
+    uint64_t cnt;
+
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
   };
@@ -207,7 +210,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   auto EmbedDescriptor(  //
       uint64_t desc_addr,
-      size_t pos)  //
+      size_t pos,  //
+      size_t cnt)  //
       -> bool;
 
   /*############################################################################
@@ -221,8 +225,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @retval true if a MwCAS operation succeeds.
    * @retval false otherwise.
    */
-  auto MwCASInternal(        //
-      size_t begin_pos = 0)  //
+  auto MwCASInternal(       //
+      size_t begin_pos = 0  //
+      )                     //
       -> bool;
 
   /*############################################################################
@@ -231,6 +236,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   /// @brief The status of this CASN descriptor.
   std::atomic<Status> stat_{kUndecided};
+
+  /// @brief The total number of threads that have completed referencing.
+  size_t exit_cnt_{};
 
   /// @brief Target entries of MwCAS.
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
