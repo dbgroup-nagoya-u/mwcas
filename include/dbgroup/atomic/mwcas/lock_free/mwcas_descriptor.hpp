@@ -237,7 +237,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   std::atomic<Status> stat_{kUndecided};
 
   /// @brief The total number of threads that have completed referencing.
-  size_t exit_cnt_{};
+  std::atomic_uint32_t exit_cnt_;
 
   /// @brief Target entries of MwCAS.
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};

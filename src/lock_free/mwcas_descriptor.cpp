@@ -105,9 +105,16 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
-  exit_cnt_++;  // ここのインクリメントもアトミックにすべき？
-  if (exit_cnt_ == target_cnt_sum) {
-    // GC処理（未実装）
+  // increment 'exit_cnt_' atomically
+  while (true) {  // 1加算するだけだからこうしたけど，もしかしたら無限ループになるかも
+    auto exit_cnt_now = exit_cnt_.load(kSeqCst);
+    if (exit_cnt_.compare_exchange_weak(exit_cnt_now, exit_cnt_now + 1, kSeqCst, kSeqCst)) {
+      if (exit_cnt_now == target_cnt_sum) {
+        // GC処理（未実装）
+      }
+      break;
+    }
+    CPP_UTILITY_SPINLOCK_HINT
   }
 
   return ret;
