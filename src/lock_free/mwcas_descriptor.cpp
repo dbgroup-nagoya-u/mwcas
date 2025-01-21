@@ -132,20 +132,21 @@ MwCASDescriptor::EmbedDescriptor(  //
       auto *another_word_pointer = std::bit_cast<MwCASDescriptor *>(another_word & kAddrMask);
 
       // ここで支援する記述子のcntをインクリメントしたものをCAS(もしくはTATAS)して記述子を埋め込みなおす．その後に支援
-      auto another_word_cnt = ((another_word & kCntMask) >> kCntShift);
-      auto another_word_pos = ((another_word & kPosMask) >> kPositionShift);
-      auto another_word_incremented_cnt =
-          ((another_word & ~kCntMask) | ((another_word_cnt + 1) << kCntShift));
-      if (addr->compare_exchange_strong(
-              another_word, another_word_incremented_cnt, kSeqCst,
-              kSeqCst)) {  // ここでビルドエラーが出る（another_wordの型エラーだとは思う）
-        (another_word_pointer->targets_[another_word_pos])
-            .cnt++;  // これでインクリメントできるのかと設計上安全なのかはわからない．
-        another_word_pointer->MwCASInternal(another_word_pos + 1);
-      } else {
-        // 何もしなければ勝手にバックオフになるはず
+      const auto incremented = word + kCntUnit;
+      if (addr->compare_exchange_strong(word, incremented, kSeqCst, kSeqCst)) {
+        // follow another MwCAS
+        auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
+        const auto pos = (word & kPosMask) >> kPosShift;
+        auto &desc_cnt = another_desc->targets_[pos].cnt;
+        auto cur_cnt = desc_cnt.loat(kSeqCst);
+        const auto cnt = static_cast<uint32_t>((incremented & kCntMask) >> kCntShift);
+        wihle (cur_cnt < cnt) {  // increment the descriptor's counter
+          if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
+          CPP_UTILITY_SPINLOCK_HINT
+        }
+        another_desc->MwCASInternal(pos + 1);
+        word = addr->load(kSeqCst);
       }
-      word = addr->load(kSeqCst);
     }
 
     if (word != target.old_val) return false;
