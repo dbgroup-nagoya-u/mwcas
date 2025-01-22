@@ -96,17 +96,21 @@ MwCASDescriptor::MwCASInternal(  //
       auto expected = target.addr->load(kSeqCst);
       if (((expected ^ desc_addr) & kDescMask) == 0UL) {
         target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
+        follow_cnt += ((expected & kCntMask) >> kCntShift);
+      } else {
+        follow_cnt += target.cnt;
       }
-      follow_cnt += target.cnt;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
       if (((expected ^ desc_addr) & kDescMask) == 0UL) {
-        target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
+        target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
+        follow_cnt += ((expected & kCntMask) >> kCntShift);
+      } else {
+        follow_cnt += target.cnt;
       }
-      follow_cnt += target.cnt;
     }
   }
 
