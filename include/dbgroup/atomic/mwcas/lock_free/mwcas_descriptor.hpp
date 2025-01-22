@@ -116,15 +116,14 @@ class alignas(kCacheLineSize) MwCASDescriptor
     static_assert(CanMwCAS<T>());
 
     const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
-    uint64_t word{};
+    auto word = target_addr->load(fence);
     while (true) {
-      for (size_t i = 1; true; ++i) {
-        word = target_addr->load(fence);
-        if ((word & kMwCASFlag) == 0) return std::bit_cast<T>(word);
-        if (i > kRetryNum) break;
-        CPP_UTILITY_SPINLOCK_HINT
-      }
+      if ((word & kMwCASFlag) == 0) return std::bit_cast<T>(word);
+      const auto another_word = word;
       std::this_thread::sleep_for(kBackOffTime);
+      word = target_addr->load(fence);
+      if (word == another_word)
+        (std::bit_cast<MwCASDescriptor *>(word & kAddrMask))->MwCASInternal();
     }
   }
 
