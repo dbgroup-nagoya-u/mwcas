@@ -244,9 +244,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   /// @brief The number of registered MwCAS targets.
   size_t target_cnt_{};
-
-  /// @brief Thread-local storage containing a reusable descriptor.
-  static thread_local std::unique_ptr<MwCASDescriptor> tls;
 };
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

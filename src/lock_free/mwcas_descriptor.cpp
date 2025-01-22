@@ -23,6 +23,7 @@
 
 // external libraries
 #include "dbgroup/lock/common.hpp"
+#include "dbgroup/memory/utility.hpp"
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -59,6 +60,12 @@ constexpr uint64_t kAddrMask = (1UL << 47) - 1;
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
+
+/*##############################################################################
+ * Local global variable
+ *############################################################################*/
+thread_local std::unique_ptr<MwCASDescriptor> tls = nullptr;
+
 }  // namespace
 
 /*##############################################################################
@@ -182,10 +189,5 @@ MwCASDescriptor::EmbedDescriptor(  //
     if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) return true;
   }
 }
-
-/*##############################################################################
- * Static member variables
- *############################################################################*/
-thread_local std::unique_ptr<MwCASDescriptor> MwCASDescriptor::tls = nullptr;
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
