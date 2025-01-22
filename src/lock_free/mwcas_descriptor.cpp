@@ -108,7 +108,6 @@ MwCASDescriptor::MwCASInternal(  //
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
-      auto &target = targets_[i];
       if (!EmbedDescriptor(desc_addr, i)) {
         stat = kFailed;
         break;
@@ -120,9 +119,9 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
-  auto ret = (cur_stat == kSucceeded);
+  const auto succeeded = (cur_stat == kSucceeded);
   auto follow_cnt = 0;
-  if (ret) {
+  if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       auto expected = target.addr->load(kSeqCst);
@@ -150,7 +149,7 @@ MwCASDescriptor::MwCASInternal(  //
     tls.reset(this);
   }
 
-  return ret;
+  return succeeded;
 }
 
 auto
