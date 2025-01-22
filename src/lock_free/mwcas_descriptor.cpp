@@ -76,9 +76,12 @@ auto
 MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor *
 {
-  auto *page = tls.release();
-  auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
+  auto *desc = tls.release();
+  if (!desc) {
+    desc = ::dbgroup::memory::Allocate<MwCASDescriptor>();
+  }
   desc->target_cnt_ = 0;
+  desc->exit_cnt_.store(0, kRelaxed);
   return desc;
 }
 
