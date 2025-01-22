@@ -110,7 +110,7 @@ MwCASDescriptor::MwCASInternal(  //
     while (true) {  // 1加算するだけだからこうしたけど，もしかしたら無限ループになるかも
       auto exit_cnt_now = exit_cnt_.load(kSeqCst);
       if (exit_cnt_.compare_exchange_weak(exit_cnt_now, exit_cnt_now + 1, kSeqCst, kSeqCst)) {
-        if (exit_cnt_now == target_cnt_sum) {
+        if (exit_cnt_now == (target_cnt_sum + 1)) {
           // GC処理（未実装）
         }
         break;
