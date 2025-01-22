@@ -26,14 +26,40 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
+
+//                       Bit allocation of a word.
+// |     63     |       62-50       |      49-47     |        46-0       |
+// | MwCAS Flag | Reference Counter | Begin Position |Descriptor Address |
+
+namespace dbgroup::atomic::mwcas::lock_free
+{
 namespace
 {
 /*##############################################################################
  * Local constants
  *############################################################################*/
-}
-namespace dbgroup::atomic::mwcas::lock_free
-{
+
+/// @brief An offset for right-shifting to extract the "begin position".
+constexpr uint64_t kPosShift = 47;
+
+/// @brief An offset for right-shifting to extract the "reference counter".
+constexpr uint64_t kCntShift = 50;
+
+/// @brief A constant for incrementing the "reference counter".
+constexpr uint64_t kCntUnit = 1UL << kCntShift;
+
+/// @brief A bitmask with only the "begin position" portion set to 1.
+constexpr uint64_t kPosMask = (((1UL << (1 + kCntShift - kPosShift)) - 1) << kPosShift);
+
+/// @brief A bitmask with only the "reference counter" portion set to 1.
+constexpr uint64_t kCntMask = (((1UL << (64 - kCntShift)) - 1) << kCntShift);
+
+/// @brief A bitmask with only the "descriptor address" portion set to 1.
+constexpr uint64_t kAddrMask = (1UL << 47) - 1;
+
+/// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
+constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
+}  // namespace
 
 /*##############################################################################
  * Static utilities
@@ -61,10 +87,6 @@ MwCASDescriptor::MwCAS()  //
   const auto succeeded = MwCASInternal();
   return succeeded;
 }
-
-//                wordのビット割り当て（実装後に消す）
-// |     63     |       62-50       |      49-47     |        46-0       |
-// | MwCAS Flag | Reference Counter | Begin Position |Descriptor Address |
 
 auto
 MwCASDescriptor::MwCASInternal(  //
