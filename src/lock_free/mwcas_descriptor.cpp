@@ -89,7 +89,7 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   auto ret = (cur_stat == kSucceeded);
-  auto target_cnt_sum = 0;
+  auto follow_cnt = 0;
   if (ret) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
@@ -97,7 +97,7 @@ MwCASDescriptor::MwCASInternal(  //
       if (((expected ^ desc_addr) & kDescMask) == 0UL) {
         target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
       }
-      target_cnt_sum += target.cnt;
+      follow_cnt += target.cnt;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
@@ -106,23 +106,11 @@ MwCASDescriptor::MwCASInternal(  //
       if (((expected ^ desc_addr) & kDescMask) == 0UL) {
         target.addr->compare_exchange_strong(expected, target.old_val, target.fence, target.fence);
       }
-      target_cnt_sum += target.cnt;
+      follow_cnt += target.cnt;
     }
   }
 
-  if (target_cnt_sum) {  // slow path
-    // increment 'exit_cnt_' atomically
-    while (true) {
-      auto exit_cnt_now = exit_cnt_.load(kSeqCst);
-      if (exit_cnt_.compare_exchange_weak(exit_cnt_now, exit_cnt_now + 1, kSeqCst, kSeqCst)) {
-        if (exit_cnt_now == (target_cnt_sum + 1)) {
-          tls.reset(this);
-        }
-        break;
-      }
-      CPP_UTILITY_SPINLOCK_HINT
-    }
-  } else {  // fast path
+  if (follow_cnt == 0 || exit_cnt_.fetch_add(1, kSeqCst) == follow_cnt) {
     tls.reset(this);
   }
 
