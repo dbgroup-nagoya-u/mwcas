@@ -26,9 +26,15 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
-
+namespace
+{
+/*##############################################################################
+ * Local constants
+ *############################################################################*/
+}
 namespace dbgroup::atomic::mwcas::lock_free
 {
+
 /*##############################################################################
  * Static utilities
  *############################################################################*/
@@ -37,11 +43,10 @@ auto
 MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor *
 {
-  /*auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
+  auto *page = tls.release();
   auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
-  desc->target_cnt_ = 0;*/
-  // GCを無視した一時的な実装
-  return new MwCASDescriptor{};
+  desc->target_cnt_ = 0;
+  return desc;
 }
 
 /*##############################################################################
@@ -107,18 +112,18 @@ MwCASDescriptor::MwCASInternal(  //
 
   if (target_cnt_sum) {  // slow path
     // increment 'exit_cnt_' atomically
-    while (true) {  // 1加算するだけだからこうしたけど，もしかしたら無限ループになるかも
+    while (true) {
       auto exit_cnt_now = exit_cnt_.load(kSeqCst);
       if (exit_cnt_.compare_exchange_weak(exit_cnt_now, exit_cnt_now + 1, kSeqCst, kSeqCst)) {
         if (exit_cnt_now == (target_cnt_sum + 1)) {
-          // GC処理（未実装）
+          tls.reset(this);
         }
         break;
       }
       CPP_UTILITY_SPINLOCK_HINT
     }
   } else {  // fast path
-    // GC処理（未実装）
+    tls.reset(this);
   }
 
   return ret;
@@ -163,5 +168,10 @@ MwCASDescriptor::EmbedDescriptor(  //
     if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) return true;
   }
 }
+
+/*##############################################################################
+ * Static member variables
+ *############################################################################*/
+thread_local std::unique_ptr<MwCASDescriptor> MwCASDescriptor::tls = nullptr;
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
