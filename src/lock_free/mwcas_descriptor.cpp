@@ -56,7 +56,7 @@ constexpr uint64_t kPosMask = (((1UL << (1 + kCntShift - kPosShift)) - 1) << kPo
 constexpr uint64_t kCntMask = (((1UL << (64 - kCntShift)) - 1) << kCntShift);
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
-constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
+constexpr uint64_t kDescMask = kMwCASFlag | MwCASDescriptor::kAddrMask;
 
 /*##############################################################################
  * Local global variable
@@ -126,13 +126,7 @@ MwCASDescriptor::MwCASInternal(  //
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      auto expected = target.addr->load(kSeqCst);
-      if (((expected ^ desc_addr) & kDescMask) == 0UL) {
-        target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
-        follow_cnt += ((expected & kCntMask) >> kCntShift);
-      } else {
-        follow_cnt += target.cnt;
-      }
+      UnembedDescriptor(desc_addr, target, &follow_cnt, target.old_val);
     }
   }
 
@@ -184,10 +178,10 @@ MwCASDescriptor::EmbedDescriptor(  //
 }
 
 void
-MwCASDescriptor::UnembedDescriptor(  //
-    const uint64_t desc_addr,        //
-    MwCASTarget &target,             //
-    int *follow_cnt,                 //
+MwCASDescriptor::UnembedDescriptor(  // 実はよく処理の内容がわかっていないので，あとで精読する
+    const uint64_t desc_addr,  //
+    MwCASTarget &target,       //
+    int *follow_cnt,           //
     uint64_t set_value)
 {
   while (true) {

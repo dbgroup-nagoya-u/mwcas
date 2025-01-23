@@ -159,6 +159,12 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto MwCAS()  //
       -> bool;
 
+  /*############################################################################
+   * Internal constants
+   *##########################################################################*/
+  /// @brief A bitmask with only the "descriptor address" portion set to 1.
+  static constexpr uint64_t kAddrMask = (1UL << 47) - 1;
+
  private:
   /*############################################################################
    * Internal types
