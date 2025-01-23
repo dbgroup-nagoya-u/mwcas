@@ -55,9 +55,6 @@ constexpr uint64_t kPosMask = (((1UL << (1 + kCntShift - kPosShift)) - 1) << kPo
 /// @brief A bitmask with only the "reference counter" portion set to 1.
 constexpr uint64_t kCntMask = (((1UL << (64 - kCntShift)) - 1) << kCntShift);
 
-/// @brief A bitmask with only the "descriptor address" portion set to 1.
-constexpr uint64_t kAddrMask = (1UL << 47) - 1;
-
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
@@ -124,13 +121,7 @@ MwCASDescriptor::MwCASInternal(  //
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      auto expected = target.addr->load(kSeqCst);
-      if (((expected ^ desc_addr) & kDescMask) == 0UL) {
-        target.addr->compare_exchange_strong(expected, target.new_val, target.fence, target.fence);
-        follow_cnt += ((expected & kCntMask) >> kCntShift);
-      } else {
-        follow_cnt += target.cnt;
-      }
+      UnembedDescriptor(desc_addr, target, &follow_cnt, target.new_val);
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
@@ -189,6 +180,32 @@ MwCASDescriptor::EmbedDescriptor(  //
 
     if (word != target.old_val) return false;
     if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) return true;
+  }
+}
+
+void
+MwCASDescriptor::UnembedDescriptor(  //
+    const uint64_t desc_addr,        //
+    MwCASTarget &target,             //
+    int *follow_cnt,                 //
+    uint64_t set_value)
+{
+  while (true) {
+    auto expected = target.addr->load(kSeqCst);
+    auto cur_cnt = target.cnt.load(kSeqCst);
+    auto cnt = static_cast<uint32_t>((expected & kCntMask) >> kCntShift);
+    if (((expected ^ desc_addr) & kDescMask)  // already swapped
+        || (cur_cnt == cnt
+            && target.addr->compare_exchange_strong(expected, set_value, target.fence,
+                                                    target.fence))) {  // swap succeeded
+      *follow_cnt += cur_cnt;
+      break;
+    }
+    // the descriptor's counter should be updated
+    while (cur_cnt < cnt) {
+      if (target.cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
+      CPP_UTILITY_SPINLOCK_HINT
+    }
   }
 }
 

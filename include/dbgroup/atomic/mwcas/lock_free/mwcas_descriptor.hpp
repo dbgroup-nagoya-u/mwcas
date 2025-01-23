@@ -212,6 +212,12 @@ class alignas(kCacheLineSize) MwCASDescriptor
       size_t pos)  //
       -> bool;
 
+  void UnembedDescriptor(   //
+      uint64_t desc_addr,   //
+      MwCASTarget &target,  //
+      int *follow_cnt,      //
+      uint64_t set_value);
+
   /*############################################################################
    * Internal utility functions
    *##########################################################################*/
