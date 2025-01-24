@@ -119,11 +119,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     auto word = target_addr->load(fence);
     while (true) {
       if ((word & kMwCASFlag) == 0) return std::bit_cast<T>(word);
-      const auto another_word = word;
-      std::this_thread::sleep_for(kBackOffTime);
-      word = target_addr->load(fence);
-      if (word == another_word)
-        (std::bit_cast<MwCASDescriptor *>(word & kAddrMask))->MwCASInternal();
+      FollowIfNeeded(addr, word, fence);
     }
   }
 
