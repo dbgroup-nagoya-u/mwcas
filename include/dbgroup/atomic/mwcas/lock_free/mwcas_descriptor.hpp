@@ -95,6 +95,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /*############################################################################
    * Public utility functions
    *##########################################################################*/
+
+  /**
+   * @brief A class for representing MwCAS targets.
+   *
+   */
   struct MwCASTarget {
     /// @brief A target memory address.
     std::atomic_uint64_t *addr;
@@ -125,7 +130,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   template <class T>
   static auto
   Read(            //
-      void *addr,  // constを取り除いた． void * const addr ならいける？かも？
+      void *addr,  // constを取り除いた． void * const addr ならいけるかも？
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
@@ -205,11 +210,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
     kSucceeded,
     kFailed,
   };
-
-  /**
-   * @brief A class for representing MwCAS targets.
-   *
-   */
 
   /*############################################################################
    * Internal APIs
