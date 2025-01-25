@@ -23,6 +23,7 @@ llvm-*,
 -llvm-header-guard,
 misc-*,
 -misc-non-private-member-variables-in-classes,
+-misc-unused-parameters,
 modernize-*,
 -modernize-avoid-c-arrays,
 -modernize-loop-convert,
@@ -31,6 +32,7 @@ readability-*,
 -readability-braces-around-statements,
 -readability-convert-member-functions-to-static,
 -readability-function-cognitive-complexity,
+-readability-implicit-bool-conversion,
 performance-*,'
 WarningsAsErrors: ''
 HeaderFilterRegex: '(include|src|test)/.*\.hpp$'
