@@ -108,11 +108,23 @@ MwCASDescriptor::MwCASInternal(  //
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
-      if (!EmbedDescriptor(desc_addr, i)) {
-        stat = kFailed;
-        break;
+      auto &target = targets_[i];
+      auto *addr = target.addr;
+      auto word = addr->load(kSeqCst);
+      while (true) {
+        if (word & kMwCASFlag) {
+          if (((word ^ desc_addr) & kDescMask) == 0) break;
+          FollowIfNeeded(addr, word, kSeqCst);
+          continue;
+        }
+        if (word != target.old_val) {
+          stat = kFailed;
+          goto out;
+        }
+        if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) break;
       }
     }
+  out:
     cur_stat = stat_.load(kSeqCst);
     if (cur_stat == kUndecided && stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst)) {
       cur_stat = stat;
@@ -166,46 +178,6 @@ MwCASDescriptor::FollowIfNeeded(  //
     }
     another_desc->MwCASInternal(pos + 1);
     word = addr->load(kSeqCst);
-  }
-}
-
-auto
-MwCASDescriptor::EmbedDescriptor(  //
-    const uint64_t desc_addr,
-    const size_t pos)  //
-    -> bool
-{
-  auto &target = targets_[pos];
-  auto *addr = target.addr;
-  auto word = addr->load(kSeqCst);
-  while (true) {
-    while (word & kMwCASFlag) {
-      if (((word ^ desc_addr) & kDescMask) == 0) return true;
-      const auto another_word = word;
-      std::this_thread::sleep_for(kBackOffTime);
-      word = addr->load(kSeqCst);
-      if (word != another_word) continue;  // other threads modified this field
-
-      // a long CPU stall has been detected, so perform another MwCAS
-      const auto incremented = word + kCntUnit;
-      if (addr->compare_exchange_strong(word, incremented, kSeqCst, kSeqCst)) {
-        // follow another MwCAS
-        auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
-        const auto pos = (word & kPosMask) >> kPosShift;
-        auto &desc_cnt = another_desc->targets_[pos].cnt;
-        auto cur_cnt = desc_cnt.load(kSeqCst);
-        const auto cnt = static_cast<uint32_t>((incremented & kCntMask) >> kCntShift);
-        while (cur_cnt < cnt) {  // increment the descriptor's counter
-          if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
-          CPP_UTILITY_SPINLOCK_HINT
-        }
-        another_desc->MwCASInternal(pos + 1);
-        word = addr->load(kSeqCst);
-      }
-    }
-
-    if (word != target.old_val) return false;
-    if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) return true;
   }
 }
 

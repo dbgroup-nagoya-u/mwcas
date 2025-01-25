@@ -208,19 +208,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
       std::memory_order fence);
 
   /**
-   * @brief Embed a descriptor into this target address to linearlize MwCAS.
-   *
-   * @param desc_addr The address of this descriptor with a MwCAS flag.
-   * @param pos The position of a target word.
-   * @retval true if the descriptor address is successfully embedded.
-   * @retval false otherwise.
-   */
-  auto EmbedDescriptor(  //
-      uint64_t desc_addr,
-      size_t pos)  //
-      -> bool;
-
-  /**
    * @brief Swap an embedded descriptor into a desired value.
    *
    * @param desc_addr The address of this descriptor with the flag.
