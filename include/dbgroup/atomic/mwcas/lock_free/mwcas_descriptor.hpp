@@ -97,27 +97,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *##########################################################################*/
 
   /**
-   * @brief A class for representing MwCAS targets.
-   *
-   */
-  struct MwCASTarget {
-    /// @brief A target memory address.
-    std::atomic_uint64_t *addr;
-
-    /// @brief An expected value of a target field.
-    uint64_t old_val;
-
-    /// @brief An inserting value into a target field.
-    uint64_t new_val;
-
-    /// @brief The number of followers that start from this address.
-    std::atomic_uint32_t cnt;
-
-    /// @brief A fence to be inserted when embedding a new value.
-    std::memory_order fence;
-  };
-
-  /**
    * @brief Read a value from a given memory address.
    *
    * @tparam T An expected class of a target field.
@@ -168,20 +147,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
   }
 
   /**
-   * @brief Swap an embedded descriptor into a desired value.
-   *
-   * @param desc_addr The address of this descriptor with the flag.
-   * @param target A target MwCAS information.
-   * @param desired A desired value to be embedded.
-   * @return The number of followers.
-   */
-  auto Finalize(            //
-      uint64_t desc_addr,   //
-      MwCASTarget &target,  //
-      uint64_t desired)     //
-      -> uint32_t;
-
-  /**
    * @brief Perform a MwCAS operation by using registered targets.
    *
    * @retval true if a MwCAS operation succeeds.
@@ -189,12 +154,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   auto MwCAS()  //
       -> bool;
-
-  /*############################################################################
-   * Internal constants
-   *##########################################################################*/
-  /// @brief A bitmask with only the "descriptor address" portion set to 1.
-  static constexpr uint64_t kAddrMask = (1UL << 47) - 1;
 
  private:
   /*############################################################################
@@ -211,9 +170,42 @@ class alignas(kCacheLineSize) MwCASDescriptor
     kFailed,
   };
 
+  /**
+   * @brief A class for representing MwCAS targets.
+   *
+   */
+  struct MwCASTarget {
+    /// @brief A target memory address.
+    std::atomic_uint64_t *addr;
+
+    /// @brief An expected value of a target field.
+    uint64_t old_val;
+
+    /// @brief An inserting value into a target field.
+    uint64_t new_val;
+
+    /// @brief The number of followers that start from this address.
+    std::atomic_uint32_t cnt;
+
+    /// @brief A fence to be inserted when embedding a new value.
+    std::memory_order fence;
+  };
+
   /*############################################################################
    * Internal APIs
    *##########################################################################*/
+
+  /**
+   * @brief Insert back-off and follow the existing MwCAS if needed.
+   *
+   * @param[in] addr A target address.
+   * @param[in,out] word The current value of a target address.
+   * @param[in] fence A memory fence.
+   */
+  static void FollowIfNeeded(  //
+      std::atomic_uint64_t *addr,
+      uint64_t &word,
+      std::memory_order fence);
 
   /**
    * @brief Embed a descriptor into this target address to linearlize MwCAS.
@@ -229,16 +221,18 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> bool;
 
   /**
-   * @brief Insert back-off and follow the existing MwCAS if needed.
+   * @brief Swap an embedded descriptor into a desired value.
    *
-   * @param[in] addr A target address.
-   * @param[in,out] word The current value of a target address.
-   * @param[in] fence A memory fence.
+   * @param desc_addr The address of this descriptor with the flag.
+   * @param target A target MwCAS information.
+   * @param desired A desired value to be embedded.
+   * @return The number of followers.
    */
-  static void FollowIfNeeded(  //
-      std::atomic_uint64_t *addr,
-      uint64_t &word,
-      std::memory_order fence);
+  auto Finalize(            //
+      uint64_t desc_addr,   //
+      MwCASTarget &target,  //
+      uint64_t desired)     //
+      -> uint32_t;
 
   /*############################################################################
    * Internal utility functions
