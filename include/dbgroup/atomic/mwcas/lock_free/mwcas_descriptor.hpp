@@ -108,8 +108,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   template <class T>
   static auto
-  Read(            //
-      void *addr,  // constを取り除いた． void * const addr ならいけるかも？
+  Read(  //
+      void *addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
@@ -117,10 +117,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     auto *target_addr = static_cast<std::atomic_uint64_t *>(addr);
     auto word = target_addr->load(fence);
-    while (true) {
-      if ((word & kMwCASFlag) == 0) return std::bit_cast<T>(word);
+    while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
+    return std::bit_cast<T>(word);
   }
 
   /**
@@ -208,6 +208,17 @@ class alignas(kCacheLineSize) MwCASDescriptor
       std::memory_order fence);
 
   /**
+   * @brief An actual MwCAS procedure.
+   *
+   * @param begin_pos The begin position of target words.
+   * @retval true if a MwCAS operation succeeds.
+   * @retval false otherwise.
+   */
+  auto MwCASInternal(        //
+      size_t begin_pos = 0)  //
+      -> bool;
+
+  /**
    * @brief Swap an embedded descriptor into a desired value.
    *
    * @param desc_addr The address of this descriptor with the flag.
@@ -222,21 +233,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> uint32_t;
 
   /*############################################################################
-   * Internal utility functions
-   *##########################################################################*/
-
-  /**
-   * @brief An actual MwCAS procedure.
-   *
-   * @param begin_pos The begin position of target words.
-   * @retval true if a MwCAS operation succeeds.
-   * @retval false otherwise.
-   */
-  auto MwCASInternal(        //
-      size_t begin_pos = 0)  //
-      -> bool;
-
-  /*############################################################################
    * Internal member variables
    *##########################################################################*/
 
@@ -244,7 +240,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   std::atomic<Status> stat_{kUndecided};
 
   /// @brief The total number of threads that have completed referencing.
-  std::atomic_uint32_t exit_cnt_;
+  std::atomic_uint32_t exit_cnt_{};
 
   /// @brief Target entries of MwCAS.
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
