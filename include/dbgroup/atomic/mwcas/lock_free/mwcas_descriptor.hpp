@@ -23,10 +23,6 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <thread>
-
-// external libraries
-#include "dbgroup/lock/common.hpp"
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"

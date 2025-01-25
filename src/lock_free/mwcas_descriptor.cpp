@@ -19,7 +19,11 @@
 
 // C++ standard libraries
 #include <atomic>
+#include <bit>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <thread>
 
 // external libraries
 #include "dbgroup/lock/common.hpp"
