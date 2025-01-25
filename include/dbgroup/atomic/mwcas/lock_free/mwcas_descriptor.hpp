@@ -95,6 +95,22 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /*############################################################################
    * Public utility functions
    *##########################################################################*/
+  struct MwCASTarget {
+    /// @brief A target memory address.
+    std::atomic_uint64_t *addr;
+
+    /// @brief An expected value of a target field.
+    uint64_t old_val;
+
+    /// @brief An inserting value into a target field.
+    uint64_t new_val;
+
+    /// @brief The number of followers that start from this address.
+    std::atomic_uint32_t cnt;
+
+    /// @brief A fence to be inserted when embedding a new value.
+    std::memory_order fence;
+  };
 
   /**
    * @brief Read a value from a given memory address.
@@ -108,18 +124,18 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   template <class T>
   static auto
-  Read(  //
-      const void *addr,
+  Read(            //
+      void *addr,  // constを取り除いた． void * const addr ならいける？かも？
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
-    const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
+    auto *target_addr = static_cast<std::atomic_uint64_t *>(addr);
     auto word = target_addr->load(fence);
     while (true) {
       if ((word & kMwCASFlag) == 0) return std::bit_cast<T>(word);
-      FollowIfNeeded(addr, word, fence);
+      FollowIfNeeded(target_addr, word, fence);
     }
   }
 
@@ -145,6 +161,20 @@ class alignas(kCacheLineSize) MwCASDescriptor
     new (&(targets_.at(target_cnt_++)))
         MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, 0, fence};
   }
+
+  /**
+   * @brief Swap an embedded descriptor into a desired value.
+   *
+   * @param desc_addr The address of this descriptor with the flag.
+   * @param target A target MwCAS information.
+   * @param desired A desired value to be embedded.
+   * @return The number of followers.
+   */
+  auto Finalize(            //
+      uint64_t desc_addr,   //
+      MwCASTarget &target,  //
+      uint64_t desired)     //
+      -> uint32_t;
 
   /**
    * @brief Perform a MwCAS operation by using registered targets.
@@ -180,22 +210,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief A class for representing MwCAS targets.
    *
    */
-  struct MwCASTarget {
-    /// @brief A target memory address.
-    std::atomic_uint64_t *addr;
-
-    /// @brief An expected value of a target field.
-    uint64_t old_val;
-
-    /// @brief An inserting value into a target field.
-    uint64_t new_val;
-
-    /// @brief access count for GC.
-    std::atomic_uint32_t cnt;
-
-    /// @brief A fence to be inserted when embedding a new value.
-    std::memory_order fence;
-  };
 
   /*############################################################################
    * Internal APIs
@@ -214,11 +228,17 @@ class alignas(kCacheLineSize) MwCASDescriptor
       size_t pos)  //
       -> bool;
 
-  void UnembedDescriptor(   //
-      uint64_t desc_addr,   //
-      MwCASTarget &target,  //
-      int *follow_cnt,      //
-      uint64_t set_value);
+  /**
+   * @brief Insert back-off and follow the existing MwCAS if needed.
+   *
+   * @param[in] addr A target address.
+   * @param[in,out] word The current value of a target address.
+   * @param[in] fence A memory fence.
+   */
+  static void FollowIfNeeded(  //
+      std::atomic_uint64_t *addr,
+      uint64_t &word,
+      std::memory_order fence);
 
   /*############################################################################
    * Internal utility functions
@@ -231,9 +251,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @retval true if a MwCAS operation succeeds.
    * @retval false otherwise.
    */
-  auto MwCASInternal(       //
-      size_t begin_pos = 0  //
-      )                     //
+  auto MwCASInternal(        //
+      size_t begin_pos = 0)  //
       -> bool;
 
   /*############################################################################

@@ -61,7 +61,8 @@ constexpr uint64_t kDescMask = kMwCASFlag | MwCASDescriptor::kAddrMask;
 /*##############################################################################
  * Local global variable
  *############################################################################*/
-thread_local std::unique_ptr<MwCASDescriptor> tls = nullptr;
+/// @brief A thread local descriptor for reuse.
+thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
 
 }  // namespace
 
@@ -73,7 +74,7 @@ auto
 MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor *
 {
-  auto *desc = tls.release();
+  auto *desc = _tls.release();
   if (!desc) {
     desc = ::dbgroup::memory::Allocate<MwCASDescriptor>();
   }
@@ -91,8 +92,7 @@ MwCASDescriptor::MwCAS()  //
 {
   // set a memory fence
   stat_.store(kUndecided, kRelease);
-  const auto succeeded = MwCASInternal();
-  return succeeded;
+  return MwCASInternal();
 }
 
 auto
@@ -117,21 +117,21 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   const auto succeeded = (cur_stat == kSucceeded);
-  auto follow_cnt = 0;
+  auto follow_cnt = 0U;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      UnembedDescriptor(desc_addr, target, &follow_cnt, target.new_val);
+      follow_cnt += Finalize(desc_addr, target, target.new_val);
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      UnembedDescriptor(desc_addr, target, &follow_cnt, target.old_val);
+      follow_cnt += Finalize(desc_addr, target, target.old_val);
     }
   }
 
   if (follow_cnt == 0 || exit_cnt_.fetch_add(1, kSeqCst) == follow_cnt) {
-    tls.reset(this);
+    _tls.reset(this);
   }
 
   return succeeded;
@@ -177,29 +177,57 @@ MwCASDescriptor::EmbedDescriptor(  //
   }
 }
 
-void
-MwCASDescriptor::UnembedDescriptor(  // 実はよく処理の内容がわかっていないので，あとで精読する
+auto
+MwCASDescriptor::Finalize(     // 依存関係が微妙
     const uint64_t desc_addr,  //
     MwCASTarget &target,       //
-    int *follow_cnt,           //
-    uint64_t set_value)
+    const uint64_t desired)    //
+    -> uint32_t
 {
   while (true) {
     auto expected = target.addr->load(kSeqCst);
     auto cur_cnt = target.cnt.load(kSeqCst);
-    auto cnt = static_cast<uint32_t>((expected & kCntMask) >> kCntShift);
-    if (((expected ^ desc_addr) & kDescMask)  // already swapped
-        || (cur_cnt == cnt
-            && target.addr->compare_exchange_strong(expected, set_value, target.fence,
-                                                    target.fence))) {  // swap succeeded
-      *follow_cnt += cur_cnt;
-      break;
+    const auto cnt = static_cast<uint32_t>((expected & kCntMask) >> kCntShift);
+    if (((expected ^ desc_addr) & kDescMask)                            // already swapped, or
+        || (cur_cnt == cnt                                              // counter is latest and
+            && target.addr->compare_exchange_strong(expected, desired,  // swap succeeds
+                                                    target.fence, target.fence))) {
+      return cur_cnt;
     }
     // the descriptor's counter should be updated
     while (cur_cnt < cnt) {
       if (target.cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
       CPP_UTILITY_SPINLOCK_HINT
     }
+  }
+}
+
+void
+MwCASDescriptor::FollowIfNeeded(  //
+    std::atomic_uint64_t *addr,
+    uint64_t &word,
+    const std::memory_order fence)
+{
+  const auto another_word = word;
+  std::this_thread::sleep_for(kBackOffTime);
+  word = addr->load(fence);
+  if (word != another_word) return;  // other threads modified this field
+
+  // a long CPU stall has been detected, so perform another MwCAS
+  const auto incremented = word + kCntUnit;
+  if (addr->compare_exchange_strong(word, incremented, kSeqCst, kSeqCst)) {
+    // follow another MwCAS
+    auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
+    const auto pos = (word & kPosMask) >> kPosShift;
+    auto &desc_cnt = another_desc->targets_[pos].cnt;
+    auto cur_cnt = desc_cnt.load(kSeqCst);
+    const auto cnt = static_cast<uint32_t>((incremented & kCntMask) >> kCntShift);
+    while (cur_cnt < cnt) {  // increment the descriptor's counter
+      if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
+      CPP_UTILITY_SPINLOCK_HINT
+    }
+    another_desc->MwCASInternal(pos + 1);
+    word = addr->load(kSeqCst);
   }
 }
 
