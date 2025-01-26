@@ -57,10 +57,10 @@ constexpr uint64_t kCntUnit = 1UL << kCntShift;
 constexpr uint64_t kAddrMask = (1UL << 47UL) - 1UL;
 
 /// @brief A bitmask with only the "begin position" portion set to 1.
-constexpr uint64_t kPosMask = (((1UL << (1UL + kCntShift - kPosShift)) - 1UL) << kPosShift);
+constexpr uint64_t kPosMask = (0b111UL << kPosShift);
 
 /// @brief A bitmask with only the "reference counter" portion set to 1.
-constexpr uint64_t kCntMask = (((1UL << (64UL - kCntShift)) - 1UL) << kCntShift);
+constexpr uint64_t kCntMask = (0b11111'11111111UL << kCntShift);
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
