@@ -135,8 +135,8 @@ MwCASDescriptor::FollowIfNeeded(  //
 
 auto
 MwCASDescriptor::MwCASInternal(  //
-    const size_t begin_pos       //
-    ) -> bool
+    const size_t begin_pos)      //
+    -> bool
 {
   const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto cur_stat = stat_.load(kSeqCst);
@@ -147,16 +147,16 @@ MwCASDescriptor::MwCASInternal(  //
       auto *addr = target.addr;
       auto word = addr->load(kSeqCst);
       while (true) {
-        if (word & kMwCASFlag) {
-          if (((word ^ desc_addr) & kDescMask) == 0) break;
-          FollowIfNeeded(addr, word, kSeqCst);
-          continue;
+        if (word == target.old_val
+                && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)
+            || (((word ^ desc_addr) & kDescMask) == 0)) {
+          break;
         }
-        if (word != target.old_val) {
+        if ((word & kMwCASFlag) == 0) {
           stat = kFailed;
           goto out;
         }
-        if (addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) break;
+        FollowIfNeeded(addr, word, kSeqCst);
       }
     }
   out:
