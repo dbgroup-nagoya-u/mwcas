@@ -235,7 +235,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   Target target_fields_[kTargetFieldNum]{};
 
-  std::uniform_int_distribution<size_t> id_dist_{0, kMwCASCapacity - 1};
+  std::uniform_int_distribution<size_t> id_dist_{0, kTargetFieldNum - 1};
 
   std::shared_mutex main_lock_{};
 
