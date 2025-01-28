@@ -61,20 +61,28 @@ constexpr uint64_t kCntUnit = 1UL << kCntShift;
 constexpr uint64_t kAddrMask = (1UL << 47UL) - 1UL;
 
 /// @brief A bitmask with only the "begin position" portion set to 1.
-constexpr uint64_t kPosMask = (0b111UL << kPosShift);
+constexpr uint64_t kPosMask = (kCntUnit - 1UL) ^ kAddrMask;
 
 /// @brief A bitmask with only the "reference counter" portion set to 1.
-constexpr uint64_t kCntMask = (0b11111'11111111UL << kCntShift);
+constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
-/// @brief 一時的においた定数．
-constexpr uint64_t kVersionShift = 50;
-/// @brief 一時的においた定数．
+/// @brief The begin bit position of versions.
+constexpr uint64_t kVersionShift = kValueBitNum;
+
+/// @brief A unit value for incrementing versions.
 constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
-/// @brief 一時的においた定数．
-constexpr uint64_t kVersionMask = ((1UL << (62UL - kVersionShift)) - 1UL) << kVersionShift;
+
+/// @brief A bit mask for extracting actual values.
+constexpr uint64_t kValueMask = kVersionUnit - 1UL;
+
+/// @brief A bit mask for extracting versions and actual values.
+constexpr uint64_t kVerAndValMask = ~kMwCASFlag;
+
+/// @brief A bit mask for extracting versions.
+constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
 
 /*##############################################################################
  * Local global variable
