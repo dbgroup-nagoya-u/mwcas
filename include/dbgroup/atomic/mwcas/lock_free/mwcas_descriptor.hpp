@@ -116,7 +116,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
-    return std::bit_cast<T>(word);
+    return std::bit_cast<T>(word & kValueMask);
   }
 
   /**
@@ -186,6 +186,25 @@ class alignas(kCacheLineSize) MwCASDescriptor
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
   };
+
+  /*############################################################################
+   * Internal constants
+   *##########################################################################*/
+
+  /// @brief The begin bit position of versions.
+  static constexpr uint64_t kVersionShift = kValueBitNum;
+
+  /// @brief A unit value for incrementing versions.
+  static constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
+
+  /// @brief A bit mask for extracting actual values.
+  static constexpr uint64_t kValueMask = kVersionUnit - 1UL;
+
+  /// @brief A bit mask for extracting versions and actual values.
+  static constexpr uint64_t kVerAndValMask = ~kMwCASFlag;
+
+  /// @brief A bit mask for extracting versions.
+  static constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
 
   /*############################################################################
    * Internal APIs
