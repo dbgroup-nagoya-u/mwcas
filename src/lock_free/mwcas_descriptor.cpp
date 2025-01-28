@@ -37,8 +37,8 @@
 // | MwCAS Flag | Reference Counter | Begin Position |Descriptor Address |
 
 //                   Bit allocation of an actual value.
-//                      |   63-N  |     N-0      |
-//                      | Version | Actual Value |
+//          |           63           |  62-(N+1) |     N-0      |
+//          | Version Confirmed Flag |  Version  | Actual Value |
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
@@ -71,6 +71,10 @@ constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
 /// @brief 一時的においた定数．
 constexpr uint64_t kVersionShift = 50;
+/// @brief 一時的においた定数．
+constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
+/// @brief 一時的においた定数．
+constexpr uint64_t kVersionMask = ((1UL << (62UL - kVersionShift)) - 1UL) << kVersionShift;
 
 /*##############################################################################
  * Local global variable
@@ -154,20 +158,28 @@ MwCASDescriptor::MwCASInternal(  //
       auto *addr = target.addr;
       auto word = addr->load(kSeqCst);
       while (true) {
-        // wordのバージョン（word & kMwCASFlag）をoldに埋め込む
         auto cur_old_val = target.old_val.load();
-        // 埋め込み済みじゃ無かったら普通に埋め込む
-        //// 埋め込みに成功したら記述子埋め込みに入る
-        //// 埋め込みに失敗したら実際に入っていたold_valをaddr->load()と比較する
-        ////// 比較して同じだったら記述子埋め込みに入る
-        ////// 比較して違っていたら安全のために失敗する．
-        // 埋め込み済みだったらcur_old_valのバージョンを確認する
-        //// バージョンがwordと同じだったら記述子埋め込みに入る
-        //// バージョンが違っていたら安全のために失敗する
-        if (word == target.old_val
-                && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)
-            || (((word ^ desc_addr) & kDescMask) == 0)) {  // 同じ記述子かどうか見てる
-          break;
+        if (cur_old_val & kMwCASFlag) {
+          if (cur_old_val - word == kMwCASFlag
+                  && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)
+              || (((word ^ desc_addr) & kDescMask) == 0)) {
+            break;
+          }
+          if ((word & kMwCASFlag) == 0) {
+            stat = kFailed;
+            goto out;
+          }
+          FollowIfNeeded(addr, word, kSeqCst);
+          continue;
+        }
+        if (target.old_val.compare_exchange_strong(cur_old_val, word | kMwCASFlag, kSeqCst, kSeqCst)
+            || cur_old_val == (addr->load(kSeqCst) | kMwCASFlag)) {
+          word = cur_old_val - kMwCASFlag;
+          if (word == target.old_val
+                  && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)
+              || (((word ^ desc_addr) & kDescMask) == 0)) {
+            break;
+          }
         }
         if ((word & kMwCASFlag) == 0) {
           stat = kFailed;
@@ -188,7 +200,9 @@ MwCASDescriptor::MwCASInternal(  //
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      follow_cnt += Finalize(desc_addr, target, target.new_val);  // new_valのバージョンを変更する
+      auto next_version = (target.old_val.load(kSeqCst) & kVersionMask) + kVersionUnit;
+      follow_cnt += Finalize(desc_addr, target,
+                             (target.new_val | next_version));  // new_valのバージョンを変更する
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
