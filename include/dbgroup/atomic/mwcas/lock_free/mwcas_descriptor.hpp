@@ -170,7 +170,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief A class for representing MwCAS targets.
    *
    */
-  struct MwCASTarget {
+  struct alignas(kCacheLineSize / 2) MwCASTarget {
     /// @brief A target memory address.
     std::atomic_uint64_t *addr;
 
@@ -257,11 +257,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /// @brief The total number of threads that have completed referencing.
   std::atomic_uint32_t exit_cnt_{};
 
-  /// @brief Target entries of MwCAS.
-  std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
-
   /// @brief The number of registered MwCAS targets.
   size_t target_cnt_{};
+
+  /// @brief Target entries of MwCAS.
+  std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 };
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
