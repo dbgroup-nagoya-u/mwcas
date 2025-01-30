@@ -33,8 +33,8 @@
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 //                       Bit allocation of a word.
-// |     63     |       62-50       |      49-47     |        46-0       |
-// | MwCAS Flag | Reference Counter | Begin Position |Descriptor Address |
+// |     63     |       62-50       |      49-47     |         46-0       |
+// | MwCAS Flag | Reference Counter | Begin Position | Descriptor Address |
 
 //                   Bit allocation of an actual value.
 //          |           63           |  62-(N+1) |     N-0      |
