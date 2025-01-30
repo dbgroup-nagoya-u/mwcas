@@ -246,7 +246,7 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<LFMwCAS>;
+using MwCASDesctiptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
 
 /*##############################################################################
