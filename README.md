@@ -25,6 +25,7 @@ cd mwcas
 
 - `MWCAS_CAPACITY`: The maximum number of target words of MwCAS (default: `4`).
     - In order to maximize performance, it is desirable to specify the minimum number needed. Otherwise, the extra space will pollute the CPU cache.
+- `MWCAS_VALUE_BIT_NUM`: The maximum number of bits for representing values (default: `48`).
 - `MWCAS_RETRY_THRESHOLD`: The maximum number of retries for preventing busy loops. (default: `10`).
 - `MWCAS_BACKOFF_TIME`: A back-off time for preventing busy loops [us]. (default: `10`).
 

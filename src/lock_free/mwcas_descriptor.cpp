@@ -33,8 +33,8 @@
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 //                       Bit allocation of a word.
-// |     63     |       62-50       |      49-47     |        46-0       |
-// | MwCAS Flag | Reference Counter | Begin Position |Descriptor Address |
+// |     63     |       62-50       |      49-47     |         46-0       |
+// | MwCAS Flag | Reference Counter | Begin Position | Descriptor Address |
 
 //                   Bit allocation of an actual value.
 //          |           63           |  62-(N+1) |     N-0      |
@@ -61,20 +61,13 @@ constexpr uint64_t kCntUnit = 1UL << kCntShift;
 constexpr uint64_t kAddrMask = (1UL << 47UL) - 1UL;
 
 /// @brief A bitmask with only the "begin position" portion set to 1.
-constexpr uint64_t kPosMask = (0b111UL << kPosShift);
+constexpr uint64_t kPosMask = (kCntUnit - 1UL) ^ kAddrMask;
 
 /// @brief A bitmask with only the "reference counter" portion set to 1.
-constexpr uint64_t kCntMask = (0b11111'11111111UL << kCntShift);
+constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
-
-/// @brief 一時的においた定数．
-constexpr uint64_t kVersionShift = 50;
-/// @brief 一時的においた定数．
-constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
-/// @brief 一時的においた定数．
-constexpr uint64_t kVersionMask = ((1UL << (62UL - kVersionShift)) - 1UL) << kVersionShift;
 
 /*##############################################################################
  * Local global variable
@@ -149,46 +142,38 @@ MwCASDescriptor::MwCASInternal(  //
     const size_t begin_pos)      //
     -> bool
 {
-  const auto desc_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
+  const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto cur_stat = stat_.load(kSeqCst);
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
+      const auto desc_addr = base_addr | (i << kPosShift);
       auto &target = targets_[i];
       auto *addr = target.addr;
+      auto &old_val = target.old_val;
       auto word = addr->load(kSeqCst);
-      while (true) {
-        auto cur_old_val = target.old_val.load();
-        if (cur_old_val & kMwCASFlag) {
-          if (cur_old_val - word == kMwCASFlag
-                  && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)
-              || (((word ^ desc_addr) & kDescMask) == 0)) {
-            break;
-          }
-          if ((word & kMwCASFlag) == 0) {
-            stat = kFailed;
-            goto out;
-          }
-          FollowIfNeeded(addr, word, kSeqCst);
-          continue;
-        }
-        if (target.old_val.compare_exchange_strong(cur_old_val, word | kMwCASFlag, kSeqCst, kSeqCst)
-            || cur_old_val == (addr->load(kSeqCst) | kMwCASFlag)) {
-          word = cur_old_val - kMwCASFlag;
-          if (word == target.old_val
-                  && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)
-              || (((word ^ desc_addr) & kDescMask) == 0)) {
-            break;
-          }
-        }
-        if ((word & kMwCASFlag) == 0) {
-          stat = kFailed;
-          goto out;
-        }
-        FollowIfNeeded(addr, word, kSeqCst);
+
+      // retain the current version and try to embed the descriptor
+      auto expected = old_val.load(kSeqCst);
+      if (((expected & kMwCASFlag) == 0 && ((word ^ expected) & ~kVersionMask) == 0
+           && old_val.compare_exchange_strong(expected, word | kMwCASFlag, kSeqCst, kSeqCst)
+           && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst))) {
+        continue;
+      }
+
+      // this thread may be a follower, so use the retained word
+      if (word == expected && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) {
+        continue;
+      }
+
+      // check another thread has embedded the descriptor
+      if ((word & kDescMask) != base_addr) {
+        stat = kFailed;
+        break;
       }
     }
-  out:
+
+    // set a linearization point
     cur_stat = stat_.load(kSeqCst);
     if (cur_stat == kUndecided && stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst)) {
       cur_stat = stat;
@@ -200,14 +185,14 @@ MwCASDescriptor::MwCASInternal(  //
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      auto next_version = (target.old_val.load(kSeqCst) & kVersionMask) + kVersionUnit;
-      follow_cnt += Finalize(desc_addr, target,
-                             (target.new_val | next_version));  // new_valのバージョンを変更する
+      const auto ver = (target.old_val.load(kSeqCst) + kVersionUnit) & kVersionMask;
+      follow_cnt += Finalize(base_addr, target, (target.new_val | ver));
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      follow_cnt += Finalize(desc_addr, target, target.old_val);
+      const auto val = (target.old_val.load(kSeqCst) + kVersionUnit) & kVerAndValMask;
+      follow_cnt += Finalize(base_addr, target, val);
     }
   }
 

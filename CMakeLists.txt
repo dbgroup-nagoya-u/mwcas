@@ -28,6 +28,12 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   )
 
   set(
+    MWCAS_VALUE_BIT_NUM
+    "48" CACHE STRING
+    "The maximum number of bits for representing values."
+  )
+
+  set(
     MWCAS_RETRY_THRESHOLD
     "10" CACHE STRING
     "The maximum number of retries for preventing busy loops."
@@ -78,6 +84,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC
     MWCAS_CAPACITY=${MWCAS_CAPACITY}
+    MWCAS_VALUE_BIT_NUM=${MWCAS_VALUE_BIT_NUM}
     MWCAS_RETRY_THRESHOLD=${MWCAS_RETRY_THRESHOLD}
     MWCAS_BACKOFF_TIME=${MWCAS_BACKOFF_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
