@@ -99,8 +99,7 @@ auto
 MwCASDescriptor::MwCAS()  //
     -> bool
 {
-  // set a memory fence
-  stat_.store(kUndecided, kRelease);
+  stat_.store(kUndecided, kRelease);  // set a memory fence
   return MwCASInternal();
 }
 
@@ -121,19 +120,19 @@ MwCASDescriptor::FollowIfNeeded(  //
 
   // a long CPU stall has been detected, so perform another MwCAS
   const auto incremented = word + kCntUnit;
-  if (addr->compare_exchange_strong(word, incremented, kSeqCst, kSeqCst)) {
+  if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
     auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
     const auto pos = (word & kPosMask) >> kPosShift;
     auto &desc_cnt = another_desc->targets_[pos].cnt;
-    auto cur_cnt = desc_cnt.load(kSeqCst);
+    auto cur_cnt = desc_cnt.load(kRelaxed);
     const auto cnt = static_cast<uint32_t>((incremented & kCntMask) >> kCntShift);
     while (cur_cnt < cnt) {  // increment the descriptor's counter
-      if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
+      if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kRelaxed, kRelaxed)) break;
       CPP_UTILITY_SPINLOCK_HINT
     }
     another_desc->MwCASInternal(pos + 1);
-    word = addr->load(kSeqCst);
+    word = addr->load(fence);
   }
 }
 
@@ -143,7 +142,7 @@ MwCASDescriptor::MwCASInternal(  //
     -> bool
 {
   const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
-  auto cur_stat = stat_.load(kSeqCst);
+  auto cur_stat = stat_.load(kAcquire);  // set a memory fence for followers
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
@@ -151,18 +150,19 @@ MwCASDescriptor::MwCASInternal(  //
       auto &target = targets_[i];
       auto *addr = target.addr;
       auto &old_val = target.old_val;
-      auto word = addr->load(kSeqCst);
+      const auto fence = target.fence;
+      auto word = addr->load(kRelaxed);
 
       // retain the current version and try to embed the descriptor
-      auto expected = old_val.load(kSeqCst);
+      auto expected = old_val.load(kRelaxed);
       if (((expected & kMwCASFlag) == 0 && ((word ^ expected) & ~kVersionMask) == 0
-           && old_val.compare_exchange_strong(expected, word | kMwCASFlag, kSeqCst, kSeqCst)
-           && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst))) {
+           && old_val.compare_exchange_strong(expected, word | kMwCASFlag, kRelaxed, kRelaxed)
+           && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed))) {
         continue;
       }
 
       // this thread may be a follower, so use the retained word
-      if (word == expected && addr->compare_exchange_strong(word, desc_addr, kSeqCst, kSeqCst)) {
+      if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
         continue;
       }
 
@@ -174,8 +174,9 @@ MwCASDescriptor::MwCASInternal(  //
     }
 
     // set a linearization point
-    cur_stat = stat_.load(kSeqCst);
-    if (cur_stat == kUndecided && stat_.compare_exchange_strong(cur_stat, stat, kSeqCst, kSeqCst)) {
+    cur_stat = stat_.load(kRelaxed);
+    if (cur_stat == kUndecided
+        && stat_.compare_exchange_strong(cur_stat, stat, kRelaxed, kRelaxed)) {
       cur_stat = stat;
     }
   }
@@ -185,18 +186,18 @@ MwCASDescriptor::MwCASInternal(  //
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      const auto ver = (target.old_val.load(kSeqCst) + kVersionUnit) & kVersionMask;
+      const auto ver = (target.old_val.load(kRelaxed) + kVersionUnit) & kVersionMask;
       follow_cnt += Finalize(base_addr, target, (target.new_val | ver));
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      const auto val = (target.old_val.load(kSeqCst) + kVersionUnit) & kVerAndValMask;
+      const auto val = (target.old_val.load(kRelaxed) + kVersionUnit) & kVerAndValMask;
       follow_cnt += Finalize(base_addr, target, val);
     }
   }
 
-  if (follow_cnt == 0 || exit_cnt_.fetch_add(1, kSeqCst) == follow_cnt) {
+  if (follow_cnt == 0 || exit_cnt_.fetch_add(1, kRelaxed) == follow_cnt) {
     _tls.reset(this);
   }
 
@@ -211,18 +212,18 @@ MwCASDescriptor::Finalize(  //
     -> uint32_t
 {
   while (true) {
-    auto expected = target.addr->load(kSeqCst);
-    auto cur_cnt = target.cnt.load(kSeqCst);
+    auto expected = target.addr->load(kRelaxed);
+    auto cur_cnt = target.cnt.load(kRelaxed);
     const auto cnt = static_cast<uint32_t>((expected & kCntMask) >> kCntShift);
     if (((expected ^ desc_addr) & kDescMask)                            // already swapped, or
         || (cur_cnt == cnt                                              // counter is latest and
             && target.addr->compare_exchange_strong(expected, desired,  // swap succeeds
-                                                    target.fence, target.fence))) {
+                                                    kRelaxed, kRelaxed))) {
       return cur_cnt;
     }
     // the descriptor's counter should be updated
     while (cur_cnt < cnt) {
-      if (target.cnt.compare_exchange_weak(cur_cnt, cnt, kSeqCst, kSeqCst)) break;
+      if (target.cnt.compare_exchange_weak(cur_cnt, cnt, kRelaxed, kRelaxed)) break;
       CPP_UTILITY_SPINLOCK_HINT
     }
   }
