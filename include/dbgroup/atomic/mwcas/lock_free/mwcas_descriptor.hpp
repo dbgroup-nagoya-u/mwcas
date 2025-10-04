@@ -100,18 +100,18 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *##########################################################################*/
 
   /**
-   * @brief Start garbage collection for LFMwCAS descriptors.
+   * @brief Start garbage collection for this descriptors.
    *
    * @param gc_interval Interval for GC in microseconds.
    * @param gc_thread_num The number of worker threads to release garbages.
-   * @note This function must be called before performing LFMwCAS-based MwCAS.
+   * @note This function must be called before performing MwCAS.
    */
   static void StartGC(  //
       size_t gc_interval = ::dbgroup::memory::kDefaultGCTime,
       size_t gc_thread_num = ::dbgroup::memory::kDefaultGCThreadNum);
 
   /**
-   * @brief Stop garbage collection for LFMwCAS descriptors.
+   * @brief Stop garbage collection for this descriptors.
    *
    */
   static void StopGC();
@@ -123,7 +123,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> ::dbgroup::thread::EpochGuard;
 
   /**
-   * @return A new MwCAS descriptor for the LFMwCAS algorithm.
+   * @return A new descriptor for the MwCAS algorithm.
    * @note You must explicitly delete the given descriptor if you do not call
    * the MwCAS function.
    */
@@ -297,7 +297,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Internal member variables
    *##########################################################################*/
 
-  /// @brief The status of this LFMwCAS descriptor.
+  /// @brief The status of this descriptor.
   std::atomic<Status> stat_{kUndecided};
 
   /// @brief The number of registered MwCAS targets.
