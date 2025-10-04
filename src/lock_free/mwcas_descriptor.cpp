@@ -102,7 +102,8 @@ MwCASDescriptor::CreateEpochGuard()  //
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetDescriptor() -> MwCASDescriptor *
+MwCASDescriptor::GetDescriptor()  //
+    -> MwCASDescriptor *
 {
   auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
   auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
