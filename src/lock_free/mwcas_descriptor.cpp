@@ -27,6 +27,7 @@
 
 // external libraries
 #include "dbgroup/lock/common.hpp"
+#include "dbgroup/memory/epoch_based_gc.hpp"
 #include "dbgroup/memory/utility.hpp"
 
 // local sources
@@ -72,20 +73,40 @@ constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 }  // namespace
 
 /*##############################################################################
+ * Static utilities
+ *############################################################################*/
+
+void
+MwCASDescriptor::StartGC(  //
+    const size_t gc_interval,
+    const size_t gc_thread_num)
+{
+  _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
+}
+
+void
+MwCASDescriptor::StopGC()
+{
+  _gc.reset();
+}
+
+auto
+MwCASDescriptor::CreateEpochGuard()  //
+    -> ::dbgroup::thread::EpochGuard
+{
+  return _gc->CreateEpochGuard();
+}
+
+/*##############################################################################
  * Public APIs
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetDescriptor()  // TODO: fix later
-    -> MwCASDescriptor *
+MwCASDescriptor::GetDescriptor() -> MwCASDescriptor *
 {
-  auto *desc = _tls.release();
-  if (!desc) {
-    desc = ::dbgroup::memory::Allocate<MwCASDescriptor>();
-  }
+  auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
+  auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
   desc->target_cnt_ = 0;
-  desc->exit_cnt_.store(0, kRelaxed);
-  return desc;
 }
 
 auto

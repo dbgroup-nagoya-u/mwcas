@@ -24,6 +24,12 @@
 #include <cstddef>
 #include <cstdint>
 
+// external libraries
+#include "dbgroup/lock/common.hpp"
+#include "dbgroup/memory/epoch_based_gc.hpp"
+#include "dbgroup/memory/utility.hpp"
+#include "dbgroup/thread/epoch_guard.hpp"
+
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
@@ -36,6 +42,19 @@ namespace dbgroup::atomic::mwcas::lock_free
 class alignas(kCacheLineSize) MwCASDescriptor
 {
  public:
+  /*############################################################################
+   * GC settings
+   *##########################################################################*/
+
+  /// @brief Do not call destructors.
+  using T = void;
+
+  /// @brief Reuse allocated descriptors.
+  static constexpr bool kReusePages = true;
+
+  /// @brief The number of retained descriptors in each thread.
+  static constexpr size_t kMaxReusableDescriptors = 64;
+
   /*############################################################################
    * Public constructors and assignment operators
    *##########################################################################*/
@@ -81,7 +100,30 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *##########################################################################*/
 
   /**
-   * @return A new MwCAS descriptor for the MwCAS algorithm.
+   * @brief Start garbage collection for LFMwCAS descriptors.
+   *
+   * @param gc_interval Interval for GC in microseconds.
+   * @param gc_thread_num The number of worker threads to release garbages.
+   * @note This function must be called before performing LFMwCAS-based MwCAS.
+   */
+  static void StartGC(  //
+      size_t gc_interval = ::dbgroup::memory::kDefaultGCTime,
+      size_t gc_thread_num = ::dbgroup::memory::kDefaultGCThreadNum);
+
+  /**
+   * @brief Stop garbage collection for LFMwCAS descriptors.
+   *
+   */
+  static void StopGC();
+
+  /**
+   * @return A guard instance for preventing GC.
+   */
+  static auto CreateEpochGuard()  //
+      -> ::dbgroup::thread::EpochGuard;
+
+  /**
+   * @return A new MwCAS descriptor for the LFMwCAS algorithm.
    * @note You must explicitly delete the given descriptor if you do not call
    * the MwCAS function.
    */
@@ -152,6 +194,12 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> bool;
 
  private:
+  /*############################################################################
+   * Type aliases
+   *##########################################################################*/
+
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptor>;
+
   /*############################################################################
    * Internal types
    *##########################################################################*/
@@ -250,7 +298,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Internal member variables
    *##########################################################################*/
 
-  /// @brief The status of this CASN descriptor.
+  /// @brief The status of this LFMwCAS descriptor.
   std::atomic<Status> stat_{kUndecided};
 
   /// @brief The number of registered MwCAS targets.
@@ -258,6 +306,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   /// @brief Target entries of MwCAS.
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
+
+  /// @brief A garbage collector for expired descriptors.
+  static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
 };
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
