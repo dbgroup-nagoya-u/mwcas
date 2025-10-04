@@ -241,11 +241,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @param desired A desired value to be embedded.
    * @return The number of followers.
    */
-  auto Finalize(            //
+  void Finalize(            //
       uint64_t desc_addr,   //
       MwCASTarget &target,  //
-      uint64_t desired)     //
-      -> uint32_t;
+      uint64_t desired);
 
   /*############################################################################
    * Internal member variables
@@ -253,9 +252,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   /// @brief The status of this CASN descriptor.
   std::atomic<Status> stat_{kUndecided};
-
-  /// @brief The total number of threads that have completed referencing.
-  std::atomic_uint32_t exit_cnt_{};
 
   /// @brief The number of registered MwCAS targets.
   size_t target_cnt_{};

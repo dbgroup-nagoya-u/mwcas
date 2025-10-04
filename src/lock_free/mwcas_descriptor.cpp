@@ -69,13 +69,6 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
-/*##############################################################################
- * Local global variable
- *############################################################################*/
-
-/// @brief A thread local descriptor for reuse.
-thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
-
 }  // namespace
 
 /*##############################################################################
@@ -83,7 +76,7 @@ thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetDescriptor()  //
+MwCASDescriptor::GetDescriptor()  // TODO: fix later
     -> MwCASDescriptor *
 {
   auto *desc = _tls.release();
@@ -182,34 +175,28 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   const auto succeeded = (cur_stat == kSucceeded);
-  auto follow_cnt = 0U;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto ver = (target.old_val.load(kRelaxed) + kVersionUnit) & kVersionMask;
-      follow_cnt += Finalize(base_addr, target, (target.new_val | ver));
+      Finalize(base_addr, target, (target.new_val | ver));
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto val = (target.old_val.load(kRelaxed) + kVersionUnit) & kVerAndValMask;
-      follow_cnt += Finalize(base_addr, target, val);
+      Finalize(base_addr, target, val);
     }
-  }
-
-  if (follow_cnt == 0 || exit_cnt_.fetch_add(1, kRelaxed) == follow_cnt) {
-    _tls.reset(this);
   }
 
   return succeeded;
 }
 
-auto
+void
 MwCASDescriptor::Finalize(  //
     const uint64_t desc_addr,
     MwCASTarget &target,
     const uint64_t desired)  //
-    -> uint32_t
 {
   while (true) {
     auto expected = target.addr->load(kRelaxed);
@@ -219,7 +206,7 @@ MwCASDescriptor::Finalize(  //
         || (cur_cnt == cnt                                              // counter is latest and
             && target.addr->compare_exchange_strong(expected, desired,  // swap succeeds
                                                     kRelaxed, kRelaxed))) {
-      return cur_cnt;
+      return;
     }
     // the descriptor's counter should be updated
     while (cur_cnt < cnt) {
