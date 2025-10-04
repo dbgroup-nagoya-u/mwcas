@@ -98,7 +98,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   TearDown() override
   {
     if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
-                  || std::is_same_v<MwCASDesc, CASN>) {
+                  || std::is_same_v<MwCASDesc, LFMwCAS>) {
       MwCASDesc::StopGC();
     }
   }
