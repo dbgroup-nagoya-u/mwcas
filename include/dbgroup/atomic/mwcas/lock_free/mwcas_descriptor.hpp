@@ -287,7 +287,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @param desc_addr The address of this descriptor with the flag.
    * @param target A target MwCAS information.
    * @param desired A desired value to be embedded.
-   * @return The number of followers.
    */
   void Finalize(            //
       uint64_t desc_addr,   //
