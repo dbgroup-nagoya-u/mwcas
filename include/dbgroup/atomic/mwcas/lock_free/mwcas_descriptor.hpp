@@ -181,7 +181,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     static_assert(CanMwCAS<T>());
 
     new (&(targets_.at(target_cnt_++)))
-        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, 0, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -227,9 +227,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     /// @brief An inserting value into a target field.
     uint64_t new_val;
-
-    /// @brief The number of followers that start from this address.
-    std::atomic_uint32_t cnt;
 
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;

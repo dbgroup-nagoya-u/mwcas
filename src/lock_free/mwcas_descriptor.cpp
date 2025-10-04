@@ -140,13 +140,6 @@ MwCASDescriptor::FollowIfNeeded(  //
     // follow another MwCAS
     auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
     const auto pos = (word & kPosMask) >> kPosShift;
-    auto &desc_cnt = another_desc->targets_[pos].cnt;
-    auto cur_cnt = desc_cnt.load(kRelaxed);
-    const auto cnt = static_cast<uint32_t>((incremented & kCntMask) >> kCntShift);
-    while (cur_cnt < cnt) {  // increment the descriptor's counter
-      if (desc_cnt.compare_exchange_weak(cur_cnt, cnt, kRelaxed, kRelaxed)) break;
-      CPP_UTILITY_SPINLOCK_HINT
-    }
     another_desc->MwCASInternal(pos + 1);
     word = addr->load(fence);
   }
@@ -223,18 +216,10 @@ MwCASDescriptor::Finalize(  //
 {
   while (true) {
     auto expected = target.addr->load(kRelaxed);
-    auto cur_cnt = target.cnt.load(kRelaxed);
-    const auto cnt = static_cast<uint32_t>((expected & kCntMask) >> kCntShift);
-    if (((expected ^ desc_addr) & kDescMask)                            // already swapped, or
-        || (cur_cnt == cnt                                              // counter is latest and
-            && target.addr->compare_exchange_strong(expected, desired,  // swap succeeds
-                                                    kRelaxed, kRelaxed))) {
+    if (((expected ^ desc_addr) & kDescMask)                        // already swapped, or
+        || target.addr->compare_exchange_strong(expected, desired,  // swap succeeds
+                                                kRelaxed, kRelaxed)) {
       return;
-    }
-    // the descriptor's counter should be updated
-    while (cur_cnt < cnt) {
-      if (target.cnt.compare_exchange_weak(cur_cnt, cnt, kRelaxed, kRelaxed)) break;
-      CPP_UTILITY_SPINLOCK_HINT
     }
   }
 }
