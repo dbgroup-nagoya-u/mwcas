@@ -106,7 +106,7 @@ MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor *
 {
   auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
-  auto *desc = (page == nullptr) ? new MwCASDescriptor{} : static_cast<MwCASDescriptor *>(page);
+  auto *desc = (page) ? static_cast<MwCASDescriptor *>(page) : new MwCASDescriptor{};
   desc->target_cnt_ = 0;
   return desc;
 }
