@@ -88,7 +88,8 @@ class MwCASDescriptorFixture : public ::testing::Test
       target_fields_[i] = 0UL;
     }
 
-    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>) {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
+                  || std::is_same_v<MwCASDesc, LFMwCAS>) {
       MwCASDesc::StartGC();
     }
   }
@@ -96,7 +97,8 @@ class MwCASDescriptorFixture : public ::testing::Test
   void
   TearDown() override
   {
-    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>) {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
+                  || std::is_same_v<MwCASDesc, CASN>) {
       MwCASDesc::StopGC();
     }
   }
