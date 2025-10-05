@@ -214,13 +214,10 @@ MwCASDescriptor::Finalize(  //
     MwCASTarget &target,
     const uint64_t desired)  //
 {
-  while (true) {
-    auto expected = target.addr->load(kRelaxed);
-    if (((expected ^ desc_addr) & kDescMask)                        // already swapped, or
-        || target.addr->compare_exchange_strong(expected, desired,  // swap succeeds
-                                                kRelaxed, kRelaxed)) {
-      return;
-    }
+  auto expected = target.addr->load(kRelaxed);
+  while (((expected ^ desc_addr) & kDescMask) == 0
+         && !target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
+    CPP_UTILITY_SPINLOCK_HINT
   }
 }
 
