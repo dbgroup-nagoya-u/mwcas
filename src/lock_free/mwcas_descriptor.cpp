@@ -116,7 +116,9 @@ MwCASDescriptor::MwCAS()  //
     -> bool
 {
   stat_.store(kUndecided, kRelease);  // set a memory fence
-  return MwCASInternal();
+  const auto succeeded = MwCASInternal();
+  _gc->AddGarbage<MwCASDescriptor>(this);
+  return succeeded;
 }
 
 /*##############################################################################
