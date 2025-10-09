@@ -70,6 +70,13 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
+/*##############################################################################
+ * Local global variable
+ *############################################################################*/
+
+/// @brief A thread local descriptor for reuse.
+thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
+
 }  // namespace
 
 /*##############################################################################
@@ -105,8 +112,11 @@ auto
 MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor *
 {
-  auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
-  auto *desc = (page) ? static_cast<MwCASDescriptor *>(page) : new MwCASDescriptor{};
+  auto *desc = _tls.release();
+  if (!desc) {
+    auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
+    desc = (page) ? static_cast<MwCASDescriptor *>(page) : new MwCASDescriptor{};
+  }
   desc->target_cnt_ = 0;
   return desc;
 }
@@ -117,7 +127,9 @@ MwCASDescriptor::MwCAS()  //
 {
   stat_.store(kUndecided, kRelease);  // set a memory fence
   const auto succeeded = MwCASInternal();
-  _gc->AddGarbage<MwCASDescriptor>(this);
+  if (_tls.get() == nullptr) {
+    _gc->AddGarbage<MwCASDescriptor>(this);
+  }
   return succeeded;
 }
 
@@ -193,18 +205,23 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   const auto succeeded = (cur_stat == kSucceeded);
+  auto all_cnts_zero = true;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto ver = (target.old_val.load(kRelaxed) + kVersionUnit) & kVersionMask;
-      Finalize(base_addr, target, (target.new_val | ver));
+      all_cnts_zero &= Finalize(base_addr, target, (target.new_val | ver));
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto val = (target.old_val.load(kRelaxed) + kVersionUnit) & kVerAndValMask;
-      Finalize(base_addr, target, val);
+      all_cnts_zero &= Finalize(base_addr, target, val);
     }
+  }
+
+  if (all_cnts_zero) {
+    _tls.reset(this);
   }
 
   return succeeded;
