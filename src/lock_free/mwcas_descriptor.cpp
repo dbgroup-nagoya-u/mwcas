@@ -210,7 +210,7 @@ MwCASDescriptor::MwCASInternal(  //
   return succeeded;
 }
 
-void
+bool
 MwCASDescriptor::Finalize(  //
     const uint64_t desc_addr,
     MwCASTarget &target,
@@ -221,6 +221,7 @@ MwCASDescriptor::Finalize(  //
          && !target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
     CPP_UTILITY_SPINLOCK_HINT
   }
+  return (expected & kCntMask) == 0;
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
