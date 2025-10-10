@@ -285,7 +285,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @param target A target MwCAS information.
    * @param desired A desired value to be embedded.
    */
-  bool Finalize(            //
+  auto Finalize(            //
+      uint64_t desc_addr,   //
+      MwCASTarget &target,  //
+      uint64_t desired)  //
+    -> uint64_t;
       uint64_t desc_addr,   //
       MwCASTarget &target,  //
       uint64_t desired);
