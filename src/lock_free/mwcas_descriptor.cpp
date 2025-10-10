@@ -205,28 +205,22 @@ MwCASDescriptor::MwCASInternal(  //
       cur_stat = stat;
     }
   }
-
-  const auto succeeded = (cur_stat == kSucceeded);
-  auto all_cnts_zero = true;
+  uint64_t ref_cnt{};
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto ver = (target.old_val.load(kRelaxed) + kVersionUnit) & kVersionMask;
-      all_cnts_zero &= Finalize(base_addr, target, (target.new_val | ver));
+      ref_cnt += Finalize(base_addr, target, (target.new_val | ver));
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto val = (target.old_val.load(kRelaxed) + kVersionUnit) & kVerAndValMask;
-      all_cnts_zero &= Finalize(base_addr, target, val);
+      ref_cnt += Finalize(base_addr, target, val);
     }
   }
 
-  if (all_cnts_zero) {
-    _tls.reset(this);
-  }
-
-  return succeeded;
+  return {succeeded, ref_cnt > 0};
 }
 
 bool
