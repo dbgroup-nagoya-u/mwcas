@@ -126,8 +126,10 @@ MwCASDescriptor::MwCAS()  //
     -> bool
 {
   stat_.store(kUndecided, kRelease);  // set a memory fence
-  const auto succeeded = MwCASInternal();
-  if (_tls.get() == nullptr) {
+  const auto [succeeded, referred] = MwCASInternal();
+  if (referred) {
+    _tls.reset(this);
+  } else {
     _gc->AddGarbage<MwCASDescriptor>(this);
   }
   return succeeded;
