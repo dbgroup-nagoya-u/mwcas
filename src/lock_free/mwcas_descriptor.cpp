@@ -234,7 +234,7 @@ MwCASDescriptor::Finalize(  //
          && !target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
     CPP_UTILITY_SPINLOCK_HINT
   }
-  return (expected & kCntMask) == 0;
+  return expected & kCntMask;
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
