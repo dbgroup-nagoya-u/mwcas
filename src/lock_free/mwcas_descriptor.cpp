@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <memory>
 #include <thread>
+#include <utility>
 
 // external libraries
 #include "dbgroup/lock/common.hpp"
@@ -164,7 +165,7 @@ MwCASDescriptor::FollowIfNeeded(  //
 auto
 MwCASDescriptor::MwCASInternal(  //
     const size_t begin_pos)      //
-    -> bool
+    -> std::pair<bool, bool>
 {
   const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto cur_stat = stat_.load(kAcquire);  // set a memory fence for followers
@@ -205,6 +206,8 @@ MwCASDescriptor::MwCASInternal(  //
       cur_stat = stat;
     }
   }
+
+  const auto succeeded = (cur_stat == kSucceeded);
   uint64_t ref_cnt{};
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
@@ -220,14 +223,15 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
-  return {succeeded, ref_cnt > 0};
+  return std::pair{succeeded, ref_cnt > 0};
 }
 
-bool
+auto
 MwCASDescriptor::Finalize(  //
-    const uint64_t desc_addr,
-    MwCASTarget &target,
-    const uint64_t desired)  //
+    uint64_t desc_addr,     //
+    MwCASTarget &target,    //
+    uint64_t desired)       //
+    -> uint64_t
 {
   auto expected = target.addr->load(kRelaxed);
   while (((expected ^ desc_addr) & kDescMask) == 0

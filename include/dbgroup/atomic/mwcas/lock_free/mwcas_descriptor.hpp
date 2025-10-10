@@ -276,7 +276,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
-      -> bool;
+      -> std::pair<bool, bool>;
 
   /**
    * @brief Swap an embedded descriptor into a desired value.
@@ -288,11 +288,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto Finalize(            //
       uint64_t desc_addr,   //
       MwCASTarget &target,  //
-      uint64_t desired)  //
-    -> uint64_t;
-      uint64_t desc_addr,   //
-      MwCASTarget &target,  //
-      uint64_t desired);
+      uint64_t desired)     //
+      -> uint64_t;
 
   /*############################################################################
    * Internal member variables
