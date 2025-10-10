@@ -129,9 +129,9 @@ MwCASDescriptor::MwCAS()  //
   stat_.store(kUndecided, kRelease);  // set a memory fence
   const auto [succeeded, referred] = MwCASInternal();
   if (referred) {
-    _tls.reset(this);
-  } else {
     _gc->AddGarbage<MwCASDescriptor>(this);
+  } else {
+    _tls.reset(this);
   }
   return succeeded;
 }
