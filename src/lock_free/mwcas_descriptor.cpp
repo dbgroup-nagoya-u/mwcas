@@ -236,8 +236,10 @@ MwCASDescriptor::Finalize(  //
   auto expected = target.addr->load(kRelaxed);
   while (true) {
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed))
+    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
       return (expected & kCntMask) != 0;
+    }
+    CPP_UTILITY_SPINLOCK_HINT
   }
 }
 
