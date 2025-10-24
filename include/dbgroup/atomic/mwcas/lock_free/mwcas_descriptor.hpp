@@ -289,7 +289,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       uint64_t desc_addr,   //
       MwCASTarget &target,  //
       uint64_t desired)     //
-      -> uint64_t;
+      -> bool;
 
   /*############################################################################
    * Internal member variables

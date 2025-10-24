@@ -208,22 +208,22 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   const auto succeeded = (cur_stat == kSucceeded);
-  uint64_t ref_cnt{};
+  bool referred = false;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto ver = (target.old_val.load(kRelaxed) + kVersionUnit) & kVersionMask;
-      ref_cnt += Finalize(base_addr, target, (target.new_val | ver));
+      referred = Finalize(base_addr, target, (target.new_val | ver)) || referred;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
       const auto val = (target.old_val.load(kRelaxed) + kVersionUnit) & kVerAndValMask;
-      ref_cnt += Finalize(base_addr, target, val);
+      referred = Finalize(base_addr, target, val) || referred;
     }
   }
 
-  return std::pair{succeeded, ref_cnt > 0};
+  return std::pair{succeeded, referred};
 }
 
 auto
@@ -231,14 +231,14 @@ MwCASDescriptor::Finalize(  //
     uint64_t desc_addr,     //
     MwCASTarget &target,    //
     uint64_t desired)       //
-    -> uint64_t
+    -> bool
 {
   auto expected = target.addr->load(kRelaxed);
-  while (((expected ^ desc_addr) & kDescMask) == 0
-         && !target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
-    CPP_UTILITY_SPINLOCK_HINT
+  while (true) {
+    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed))
+      return (expected & kCntMask) != 0;
   }
-  return expected & kCntMask;
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
