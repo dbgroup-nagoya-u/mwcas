@@ -32,6 +32,7 @@
 #include <vector>
 
 // external libraries
+#include "dbgroup/random/zipf.hpp"
 #include "gtest/gtest.h"
 
 // local sources
@@ -56,6 +57,8 @@ constexpr size_t kExecNum = 1e6;
 
 constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
 
+constexpr double kSkewParameter = 0.0;
+
 /*##############################################################################
  * Fixture definitions
  *############################################################################*/
@@ -70,6 +73,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   using Target = uint64_t;
   using MwCASTargets = std::vector<size_t>;
+  using Zipf = ::dbgroup::random::ApproxZipfDistribution<size_t>;
 
   /*############################################################################
    * Internal constants
@@ -199,7 +203,7 @@ class MwCASDescriptorFixture : public ::testing::Test
         MwCASTargets targets{};
         targets.reserve(kMwCASCapacity);
         while (targets.size() < kMwCASCapacity) {
-          size_t idx = id_dist_(rand_engine);
+          size_t idx = zipf_dist_(rand_engine);
           const auto iter = std::find(targets.begin(), targets.end(), idx);
           if (iter == targets.end()) {
             targets.emplace_back(idx);
@@ -226,7 +230,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   Target target_fields_[kTargetFieldNum]{};
 
-  std::uniform_int_distribution<size_t> id_dist_{0, kTargetFieldNum - 1};
+  Zipf zipf_dist_{0, kTargetFieldNum - 1, kSkewParameter};
 
   std::shared_mutex main_lock_{};
 
