@@ -158,7 +158,7 @@ class MwCASDescriptorFixture : public ::testing::Test
           auto *addr = &(target_fields_[idx]);
           const auto [cur_val, word] = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
-          desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
+          desc->AddMwCASTarget(addr, word, new_val, kRelaxed);
         }
         if (desc->MwCAS()) return;
       }
