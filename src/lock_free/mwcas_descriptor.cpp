@@ -153,15 +153,8 @@ MwCASDescriptor::MwCASInternal(  //
       const auto fence = target.fence;
       auto word = addr->load(kRelaxed);
 
-      // retain the current version and try to embed the descriptor
+      // try to embed the descriptor
       auto expected = old_val.load(kRelaxed);
-      if (((expected & kMwCASFlag) == 0 && ((word ^ expected) & ~kVersionMask) == 0
-           && old_val.compare_exchange_strong(expected, word | kMwCASFlag, kRelaxed, kRelaxed)
-           && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed))) {
-        continue;
-      }
-
-      // this thread may be a follower, so use the retained word
       if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
         continue;
       }
