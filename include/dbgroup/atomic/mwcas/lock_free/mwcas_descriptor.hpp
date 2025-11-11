@@ -23,6 +23,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -107,7 +108,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   Read(  //
       void *addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
-      -> T
+      -> std::pair<T, T>
   {
     static_assert(CanMwCAS<T>());
 
@@ -116,7 +117,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
-    return std::bit_cast<T>(word & kValueMask);
+    return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
   }
 
   /**
