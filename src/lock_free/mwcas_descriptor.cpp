@@ -188,6 +188,9 @@ MwCASDescriptor::MwCASInternal(  //
       // check another thread has embedded the descriptor
       if ((word & kDescMask) != base_addr) {
         stat = kFailed;
+        if (i == 0) {  // fast path: the first target failed
+          return std::pair{false, false};
+        }
         break;
       }
     }
