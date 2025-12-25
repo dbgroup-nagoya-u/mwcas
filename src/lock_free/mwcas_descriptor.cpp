@@ -147,7 +147,8 @@ MwCASDescriptor::FollowIfNeeded(  //
     const std::memory_order fence)
 {
   const auto another_word = word;
-  std::this_thread::sleep_for(kBackOffTime);
+  const auto count = (word & kCntMask) >> kCntShift;
+  std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
   word = addr->load(fence);
   if (word != another_word) return;  // other threads modified this field
 
