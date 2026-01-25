@@ -78,6 +78,9 @@ constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 /// @brief A thread local descriptor for reuse.
 thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
 
+/// @brief A thread local counter for version wraps.
+thread_local uint64_t _tls_version_wrap_count = 0;  // NOLINT
+
 }  // namespace
 
 /*##############################################################################
@@ -108,6 +111,13 @@ MwCASDescriptor::CreateEpochGuard()  //
 /*##############################################################################
  * Public APIs
  *############################################################################*/
+
+auto
+MwCASDescriptor::GetTlsVersionWrapCount()  //
+    -> uint64_t
+{
+  return _tls_version_wrap_count;
+}
 
 auto
 MwCASDescriptor::GetDescriptor()  //
@@ -230,6 +240,9 @@ MwCASDescriptor::Finalize(  //
   while (true) {
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
     if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
+      if ((desired & kVersionMask) == 0) {
+        _tls_version_wrap_count++;
+      }
       return (expected & kCntMask) != 0;
     }
     CPP_UTILITY_SPINLOCK_HINT

@@ -96,6 +96,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
     return target_cnt_;
   }
 
+  /**
+   * @brief Get the version wrap count for the current thread.
+   * @return The number of times the version counter wrapped in this thread.
+   */
+  static auto GetTlsVersionWrapCount()  //
+      -> uint64_t;
+
   /*############################################################################
    * Public APIs for managing memory
    *##########################################################################*/
