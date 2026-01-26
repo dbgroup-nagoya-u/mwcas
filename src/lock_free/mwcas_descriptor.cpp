@@ -30,6 +30,7 @@
 #include "dbgroup/lock/common.hpp"
 #include "dbgroup/memory/epoch_based_gc.hpp"
 #include "dbgroup/memory/utility.hpp"
+#include "dbgroup/thread/id_manager.hpp"
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -78,9 +79,6 @@ constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 /// @brief A thread local descriptor for reuse.
 thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
 
-/// @brief A thread local counter for version wraps.
-thread_local uint64_t _tls_version_wrap_count = 0;  // NOLINT
-
 }  // namespace
 
 /*##############################################################################
@@ -92,6 +90,9 @@ MwCASDescriptor::StartGC(  //
     const size_t gc_interval,
     const size_t gc_thread_num)
 {
+  if (version_wrap_counts_.empty()) {
+    version_wrap_counts_.resize(gc_thread_num);
+  }
   _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
 }
 
@@ -113,10 +114,14 @@ MwCASDescriptor::CreateEpochGuard()  //
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetTlsVersionWrapCount()  //
+MwCASDescriptor::GetVersionWrapCountSum()  //
     -> uint64_t
 {
-  return _tls_version_wrap_count;
+  uint64_t total_count = 0;
+  for (const auto &counter : version_wrap_counts_) {
+    total_count += counter.count.load(std::memory_order_relaxed);
+  }
+  return total_count;
 }
 
 auto
@@ -241,7 +246,8 @@ MwCASDescriptor::Finalize(  //
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
     if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
       if ((desired & kVersionMask) == 0) {
-        _tls_version_wrap_count++;
+        const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
+        version_wrap_counts_[thread_id].count.fetch_add(1, std::memory_order_relaxed);
       }
       return (expected & kCntMask) != 0;
     }
