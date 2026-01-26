@@ -91,7 +91,11 @@ MwCASDescriptor::StartGC(  //
     const size_t gc_thread_num)
 {
   if (version_wrap_counts_.empty()) {
-    version_wrap_counts_.resize(gc_thread_num);
+#ifdef DBGROUP_MAX_THREAD_NUM
+    version_wrap_counts_.resize(DBGROUP_MAX_THREAD_NUM);
+#else
+    version_wrap_counts_.resize(112);
+#endif
   }
   _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
 }
