@@ -23,6 +23,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -101,7 +102,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief Get the TOTAL version wrap count across ALL threads.
    * @return The sum of version wrap counts.
    */
-  static auto GetVersionWrapCountSum()  //
+  static auto CalcMaxVersionWrapCountSum()  //
       -> uint64_t;
 
   /*############################################################################
@@ -242,16 +243,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
   };
 
   /**
-   * @brief A counter structure aligned to cache lines to prevent false sharing.
+   * @brief A shard of the version wrap map, aligned to cache lines.
+   * Each thread owns one shard to record wrap counts without contention.
    */
-  struct alignas(kCacheLineSize) VersionCounter {
-    std::atomic_uint64_t count{0};
-
-    VersionCounter() = default;
-
-    VersionCounter(const VersionCounter &other) : count(other.count.load(std::memory_order_relaxed))
-    {
-    }
+  struct alignas(kCacheLineSize) VersionWrapMapShard {
+    std::map<uint64_t, uint64_t> counts;
   };
 
   /*############################################################################
@@ -329,9 +325,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /// @brief A garbage collector for expired descriptors.
   static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
 
-  /// @brief Global version wrap counters for each thread.
-  /// defined inline (C++17 feature) to avoid multiple definition errors.
-  static inline std::vector<VersionCounter> version_wrap_counts_;
+  /// @brief Per-thread map shards to store wrap counts.
+  static inline std::vector<VersionWrapMapShard> wrap_count_shards_;
 };
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

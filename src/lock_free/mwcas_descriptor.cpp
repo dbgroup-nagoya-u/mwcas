@@ -90,11 +90,11 @@ MwCASDescriptor::StartGC(  //
     const size_t gc_interval,
     const size_t gc_thread_num)
 {
-  if (version_wrap_counts_.empty()) {
+  if (wrap_count_shards_.empty()) {
 #ifdef DBGROUP_MAX_THREAD_NUM
-    version_wrap_counts_.resize(DBGROUP_MAX_THREAD_NUM);
+    wrap_count_shards_.resize(DBGROUP_MAX_THREAD_NUM);
 #else
-    version_wrap_counts_.resize(112);
+    wrap_count_shards_.resize(112);
 #endif
   }
   _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
@@ -118,14 +118,25 @@ MwCASDescriptor::CreateEpochGuard()  //
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetVersionWrapCountSum()  //
+MwCASDescriptor::CalcMaxVersionWrapCountSum()  //
     -> uint64_t
 {
-  uint64_t total_count = 0;
-  for (const auto &counter : version_wrap_counts_) {
-    total_count += counter.count.load(std::memory_order_relaxed);
+  std::map<uint64_t, uint64_t> merged_map;
+
+  for (const auto &shard : wrap_count_shards_) {
+    for (const auto &[addr, count] : shard.counts) {
+      merged_map[addr] += count;
+    }
   }
-  return total_count;
+
+  uint64_t max_count = 0;
+  for (const auto &[addr, total_count] : merged_map) {
+    if (total_count > max_count) {
+      max_count = total_count;
+    }
+  }
+
+  return max_count;
 }
 
 auto
@@ -251,7 +262,7 @@ MwCASDescriptor::Finalize(  //
     if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
       if ((desired & kVersionMask) == 0) {
         const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
-        version_wrap_counts_[thread_id].count.fetch_add(1, std::memory_order_relaxed);
+        wrap_count_shards_[thread_id].counts[std::bit_cast<uint64_t>(target.addr)]++;
       }
       return (expected & kCntMask) != 0;
     }
