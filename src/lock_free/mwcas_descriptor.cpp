@@ -34,6 +34,7 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
+#include "dbgroup/benchmark/stop_watch.hpp"
 
 //                       Bit allocation of a word.
 // |     63     |       62-50       |      49-47     |         46-0       |
@@ -93,8 +94,10 @@ MwCASDescriptor::StartGC(  //
   if (wrap_count_shards_.empty()) {
 #ifdef DBGROUP_MAX_THREAD_NUM
     wrap_count_shards_.resize(DBGROUP_MAX_THREAD_NUM);
+    sw_vec_.resize(DBGROUP_MAX_THREAD_NUM);
 #else
     wrap_count_shards_.resize(112);
+    sw_vec_.resize(112);
 #endif
   }
   _gc = std::make_unique<EpochBasedGC>(gc_interval, gc_thread_num, kMaxReusableDescriptors);
@@ -137,6 +140,17 @@ MwCASDescriptor::CalcMaxVersionWrapCountSum()  //
   }
 
   return max_count;
+}
+
+auto
+MwCASDescriptor::GetStopWatch() -> dbgroup::benchmark::StopWatch
+{
+  dbgroup::benchmark::StopWatch merged_sw;
+
+  for (const auto &sw : sw_vec_) {
+    merged_sw += sw;
+  }
+  return merged_sw;
 }
 
 auto

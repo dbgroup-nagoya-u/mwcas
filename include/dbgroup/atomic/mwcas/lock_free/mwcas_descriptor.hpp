@@ -106,12 +106,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   static auto CalcMaxVersionWrapCountSum()  //
       -> uint64_t;
 
-  [[nodiscard]] static auto
-  GetStopWatch()  //
-      -> dbgroup::benchmark::StopWatch &
-  {
-    return sw;
-  }
+  [[nodiscard]] static auto GetStopWatch() -> dbgroup::benchmark::StopWatch;
 
   /*############################################################################
    * Public APIs for managing memory
@@ -174,9 +169,10 @@ class alignas(kCacheLineSize) MwCASDescriptor
     auto *target_addr = static_cast<std::atomic_uint64_t *>(addr);
     auto word = target_addr->load(fence);
     while (word & kMwCASFlag) {
-      sw.Start();
+      const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
+      sw_vec_[thread_id].Start();
       FollowIfNeeded(target_addr, word, fence);
-      sw.Stop();
+      sw_vec_[thread_id].Stop();
     }
     return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
   }
@@ -333,7 +329,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 
   /// @brief A stopwatch for measuring FollowIfNeeded execution time.
-  static inline thread_local dbgroup::benchmark::StopWatch sw{};
+  static inline std::vector<dbgroup::benchmark::StopWatch> sw_vec_{};
 
   /// @brief A garbage collector for expired descriptors.
   static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
