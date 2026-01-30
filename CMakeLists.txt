@@ -74,6 +74,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/casn_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/aopt_descriptor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/stop_watch.cpp"
   )
   add_library(dbgroup::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
   target_compile_features(${PROJECT_NAME} PUBLIC

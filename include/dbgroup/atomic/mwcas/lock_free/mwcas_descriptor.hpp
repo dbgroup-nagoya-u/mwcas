@@ -35,6 +35,7 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
+#include "dbgroup/benchmark/stop_watch.hpp"
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
@@ -105,6 +106,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
   static auto CalcMaxVersionWrapCountSum()  //
       -> uint64_t;
 
+  [[nodiscard]] static auto
+  GetStopWatch()  //
+      -> dbgroup::benchmark::StopWatch &
+  {
+    return sw;
+  }
+
   /*############################################################################
    * Public APIs for managing memory
    *##########################################################################*/
@@ -166,7 +174,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
     auto *target_addr = static_cast<std::atomic_uint64_t *>(addr);
     auto word = target_addr->load(fence);
     while (word & kMwCASFlag) {
+      sw.Start();
       FollowIfNeeded(target_addr, word, fence);
+      sw.Stop();
     }
     return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
   }
@@ -321,6 +331,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
   /// @brief Target entries of MwCAS.
   std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
+
+  /// @brief A stopwatch for measuring FollowIfNeeded execution time.
+  static inline thread_local dbgroup::benchmark::StopWatch sw{};
 
   /// @brief A garbage collector for expired descriptors.
   static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
