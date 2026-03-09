@@ -71,6 +71,9 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
+/// @brief The maximum number of retries for spin-locking.
+constexpr int kMaxSpinlockCount = 10;
+
 /*##############################################################################
  * Local global variable
  *############################################################################*/
@@ -144,11 +147,17 @@ void
 MwCASDescriptor::FollowIfNeeded(  //
     std::atomic_uint64_t *addr,
     uint64_t &word,
+    const int i,
     const std::memory_order fence)
 {
   const auto another_word = word;
-  const auto count = (word & kCntMask) >> kCntShift;
-  std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
+  if (i >= kMaxSpinlockCount) {
+    std::this_thread::sleep_for(kBackOffTime
+                                * (1UL << i - kMaxSpinlockCount));  // exponential back-off
+  } else {
+    CPP_UTILITY_SPINLOCK_HINT
+  }
+
   word = addr->load(fence);
   if (word != another_word) return;  // other threads modified this field
 

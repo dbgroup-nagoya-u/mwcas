@@ -156,8 +156,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     auto *target_addr = static_cast<std::atomic_uint64_t *>(addr);
     auto word = target_addr->load(fence);
-    while (word & kMwCASFlag) {
-      FollowIfNeeded(target_addr, word, fence);
+    for (int i = 0; word & kMwCASFlag; ++i) {
+      FollowIfNeeded(target_addr, word, i, fence);
     }
     return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
   }
@@ -266,6 +266,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   static void FollowIfNeeded(  //
       std::atomic_uint64_t *addr,
       uint64_t &word,
+      const int i,
       std::memory_order fence);
 
   /**
