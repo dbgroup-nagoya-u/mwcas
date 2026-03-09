@@ -147,16 +147,22 @@ void
 MwCASDescriptor::FollowIfNeeded(  //
     std::atomic_uint64_t *addr,
     uint64_t &word,
-    const int i,
     const std::memory_order fence)
 {
   const auto another_word = word;
-  if (i >= kMaxSpinlockCount) {
-    std::this_thread::sleep_for(kBackOffTime
-                                * (1UL << i - kMaxSpinlockCount));  // exponential back-off
-  } else {
+  for (uint32_t i = 0; i < kMaxSpinlockCount; ++i) {
     CPP_UTILITY_SPINLOCK_HINT
+    word = addr->load(fence);
+    if (word != another_word) return;
   }
+  for (uint32_t i = 0; i < kMaxSpinlockCount; ++i) {
+    std::this_thread::yield();
+    word = addr->load(fence);
+    if (word != another_word) return;
+  }
+
+  const auto count = (word & kCntMask) >> kCntShift;
+  std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
 
   word = addr->load(fence);
   if (word != another_word) return;  // other threads modified this field
