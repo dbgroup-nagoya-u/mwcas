@@ -73,6 +73,8 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
+constexpr uint32_t kMaxSpinlockCount = 10;
+
 /*##############################################################################
  * Local global variable
  *############################################################################*/
@@ -191,9 +193,14 @@ MwCASDescriptor::FollowIfNeeded(  //
     const std::memory_order fence)
 {
   const auto another_word = word;
-  std::this_thread::sleep_for(kBackOffTime);
-  word = addr->load(fence);
-  if (word != another_word) return;  // other threads modified this field
+  for (uint32_t i = 0; i < kMaxSpinlockCount; ++i) {
+    CPP_UTILITY_SPINLOCK_HINT
+    word = addr->load(fence);
+    if (word != another_word) return;
+  }
+
+  const auto count = (word & kCntMask) >> kCntShift;
+  std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
 
   // a long CPU stall has been detected, so perform another MwCAS
   const auto incremented = word + kCntUnit;
