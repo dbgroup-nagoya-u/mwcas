@@ -227,7 +227,7 @@ MwCASDescriptor::MwCASInternal(  //
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      const auto val = (target.old_val.load(kRelaxed) + kVersionUnit) & kVerAndValMask;
+      const auto val = target.old_val.load(kRelaxed) & kVerAndValMask;
       referred = Finalize(base_addr, target, val) || referred;
     }
   }
