@@ -224,7 +224,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     std::atomic_uint64_t *addr;
 
     /// @brief An expected value of a target field.
-    std::atomic_uint64_t old_val;
+    uint64_t old_val;
 
     /// @brief An inserting value into a target field.
     uint64_t new_val;
