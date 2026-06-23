@@ -52,6 +52,9 @@ constexpr size_t kCacheLineSize = 64;
 /// @brief The maximum number of target words of MwCAS.
 constexpr size_t kMwCASCapacity = (MWCAS_CAPACITY);
 
+/// @brief The maximum number of bits for representing values.
+constexpr size_t kValueBitNum = (MWCAS_VALUE_BIT_NUM);
+
 /// @brief The maximum number of retries for preventing busy loops.
 constexpr size_t kRetryNum = (MWCAS_RETRY_THRESHOLD);
 

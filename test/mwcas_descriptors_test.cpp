@@ -18,6 +18,7 @@
 #include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
 #include "dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp"
 #include "dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
 
 // C++ standard libraries
 #include <cstddef>
@@ -31,6 +32,7 @@
 #include <vector>
 
 // external libraries
+#include "dbgroup/random/zipf.hpp"
 #include "gtest/gtest.h"
 
 // local sources
@@ -43,6 +45,7 @@ namespace dbgroup::atomic::mwcas::test
  *############################################################################*/
 
 using DLFMwCAS = deadlock_free::MwCASDescriptor;
+using LFMwCAS = lock_free::MwCASDescriptor;
 using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
@@ -53,6 +56,8 @@ using AOPT = lock_free::AOPTDescriptor;
 constexpr size_t kExecNum = 1e6;
 
 constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
+
+constexpr double kSkewParameter = 0.0;
 
 /*##############################################################################
  * Fixture definitions
@@ -68,6 +73,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   using Target = uint64_t;
   using MwCASTargets = std::vector<size_t>;
+  using Zipf = ::dbgroup::random::ApproxZipfDistribution<size_t>;
 
   /*############################################################################
    * Internal constants
@@ -86,7 +92,8 @@ class MwCASDescriptorFixture : public ::testing::Test
       target_fields_[i] = 0UL;
     }
 
-    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>) {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
+                  || std::is_same_v<MwCASDesc, LFMwCAS>) {
       MwCASDesc::StartGC();
     }
   }
@@ -94,7 +101,8 @@ class MwCASDescriptorFixture : public ::testing::Test
   void
   TearDown() override
   {
-    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>) {
+    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
+                  || std::is_same_v<MwCASDesc, LFMwCAS>) {
       MwCASDesc::StopGC();
     }
   }
@@ -112,7 +120,11 @@ class MwCASDescriptorFixture : public ::testing::Test
     // check the target fields are correctly incremented
     size_t sum = 0;
     for (auto &target : target_fields_) {
-      sum += MwCASDesc::template Read<Target>(&target);
+      if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
+        sum += MwCASDesc::template Read<Target>(&target).first;
+      } else {
+        sum += MwCASDesc::template Read<Target>(&target);
+      }
     }
 
     EXPECT_EQ(kOpsNum * thread_num * kMwCASCapacity, sum);
@@ -137,6 +149,18 @@ class MwCASDescriptorFixture : public ::testing::Test
           desc.AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc.MwCAS()) return;
+      }
+    } else if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
+      while (true) {
+        [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
+        auto *desc = MwCASDesc::GetDescriptor();
+        for (auto idx : targets) {
+          auto *addr = &(target_fields_[idx]);
+          const auto [cur_val, word] = MwCASDesc::template Read<Target>(addr, kRelaxed);
+          const auto new_val = cur_val + 1;
+          desc->AddMwCASTarget(addr, word, new_val, kRelaxed);
+        }
+        if (desc->MwCAS()) return;
       }
     } else {
       while (true) {
@@ -195,7 +219,7 @@ class MwCASDescriptorFixture : public ::testing::Test
         MwCASTargets targets{};
         targets.reserve(kMwCASCapacity);
         while (targets.size() < kMwCASCapacity) {
-          size_t idx = id_dist_(rand_engine);
+          size_t idx = zipf_dist_(rand_engine);
           const auto iter = std::find(targets.begin(), targets.end(), idx);
           if (iter == targets.end()) {
             targets.emplace_back(idx);
@@ -222,7 +246,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   Target target_fields_[kTargetFieldNum]{};
 
-  std::uniform_int_distribution<size_t> id_dist_{0, kMwCASCapacity - 1};
+  Zipf zipf_dist_{0, kTargetFieldNum - 1, kSkewParameter};
 
   std::shared_mutex main_lock_{};
 
@@ -233,7 +257,7 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<DLFMwCAS, CASN, AOPT>;
+using MwCASDesctiptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
 
 /*##############################################################################

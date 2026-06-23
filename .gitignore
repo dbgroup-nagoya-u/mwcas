@@ -33,3 +33,6 @@
 
 # ignore build directories
 build
+
+# ignore log data for perf
+perf.data*
