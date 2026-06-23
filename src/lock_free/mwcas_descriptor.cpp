@@ -71,9 +71,6 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
-/// @brief The maximum number of retries for spin-locking.
-constexpr int kMaxSpinlockCount = 10;
-
 /*##############################################################################
  * Local global variable
  *############################################################################*/
