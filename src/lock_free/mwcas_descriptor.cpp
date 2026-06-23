@@ -188,12 +188,11 @@ MwCASDescriptor::MwCASInternal(  //
       const auto desc_addr = base_addr | (i << kPosShift);
       auto &target = targets_[i];
       auto *addr = target.addr;
-      auto &old_val = target.old_val;
+      const auto expected = target.old_val;
       const auto fence = target.fence;
       auto word = addr->load(kRelaxed);
 
       // try to embed the descriptor
-      auto expected = old_val.load(kRelaxed);
       if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
         continue;
       }
