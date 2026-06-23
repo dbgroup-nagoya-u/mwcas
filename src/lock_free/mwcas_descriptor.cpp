@@ -147,7 +147,7 @@ MwCASDescriptor::FollowIfNeeded(  //
     const std::memory_order fence)
 {
   const auto another_word = word;
-  for (uint32_t i = 0; i < kMaxSpinlockCount; ++i) {
+  for (uint32_t i = 0; i < kRetryNum; ++i) {
     CPP_UTILITY_SPINLOCK_HINT
     word = addr->load(fence);
     if (word != another_word) return;
