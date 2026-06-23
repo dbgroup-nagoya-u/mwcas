@@ -152,7 +152,7 @@ MwCASDescriptor::FollowIfNeeded(  //
     word = addr->load(fence);
     if (word != another_word) return;
   }
-  for (uint32_t i = 0; i < kMaxSpinlockCount; ++i) {
+  for (uint32_t i = 0; i < kRetryNum; ++i) {
     std::this_thread::yield();
     word = addr->load(fence);
     if (word != another_word) return;
