@@ -217,13 +217,13 @@ MwCASDescriptor::MwCASInternal(  //
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      const auto ver = (target.old_val.load(kRelaxed) + kVersionUnit) & kVersionMask;
+      const auto ver = (target.old_val + kVersionUnit) & kVersionMask;
       referred = Finalize(base_addr, target, (target.new_val | ver)) || referred;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto &target = targets_[i];
-      const auto val = target.old_val.load(kRelaxed) & kVerAndValMask;
+      const auto val = target.old_val & kVerAndValMask;
       referred = Finalize(base_addr, target, val) || referred;
     }
   }
