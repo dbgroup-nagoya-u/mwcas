@@ -79,8 +79,11 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   target_compile_features(${PROJECT_NAME} PUBLIC
     "cxx_std_20"
   )
-  target_include_directories(${PROJECT_NAME} PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<STREQUAL:"${CMAKE_BUILD_TYPE}","Release">:-march=native>
+    $<$<STREQUAL:"${CMAKE_BUILD_TYPE}","Debug">:-g3>
+    -Wall
+    -Wextra
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC
     MWCAS_CAPACITY=${MWCAS_CAPACITY}
@@ -88,6 +91,9 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     MWCAS_RETRY_THRESHOLD=${MWCAS_RETRY_THRESHOLD}
     MWCAS_BACKOFF_TIME=${MWCAS_BACKOFF_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
+  )
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
   )
   target_link_libraries(${PROJECT_NAME} PUBLIC
     dbgroup::cpp_utility
