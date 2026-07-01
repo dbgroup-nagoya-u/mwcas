@@ -27,7 +27,7 @@
 #include <utility>
 
 // external C++ libraries
-#include <dbgroup/lock/common.hpp>
+#include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources

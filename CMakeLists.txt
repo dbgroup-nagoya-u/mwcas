@@ -49,19 +49,19 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   # Configurations
   #----------------------------------------------------------------------------#
 
-  # use our utility
+  # use our C++ utilities
   FetchContent_Declare(
     cpp-utility
-    GIT_REPOSITORY "https://github.com/dbgroup-nagoya-u/cpp-utility.git"
-    GIT_TAG "14008188d31fd77c99efec12c368b0aa874c1c2b"
+    GIT_REPOSITORY "https://github.com/dbgroup-nagoya-u/cpp-utility"
+    GIT_TAG "1b790bf1a89cf29b5d759e4dd84ce814e727b06d" # v0.17.1
   )
   FetchContent_MakeAvailable(cpp-utility)
 
-  # use our GC
+   # use our GC
   FetchContent_Declare(
     memory-manager
-    GIT_REPOSITORY "https://github.com/dbgroup-nagoya-u/memory-manager.git"
-    GIT_TAG "89b58245bf22bb7a6ce05f9e108a19961a7f1f79"
+    GIT_REPOSITORY "https://github.com/dbgroup-nagoya-u/memory-manager"
+    GIT_TAG "5982e394ff15d14db39c8ecd0c4516d65faf4074" # v0.5.1
   )
   FetchContent_MakeAvailable(memory-manager)
 

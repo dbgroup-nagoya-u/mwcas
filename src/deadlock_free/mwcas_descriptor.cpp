@@ -22,7 +22,7 @@
 #include <cstddef>
 
 // external C++ libraries
-#include <dbgroup/lock/common.hpp>
+#include <dbgroup/lock/utility.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
