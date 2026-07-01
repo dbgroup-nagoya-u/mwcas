@@ -22,6 +22,7 @@
 
 // C++ standard libraries
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <random>
 #include <shared_mutex>
@@ -74,7 +75,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   using Target = uint64_t;
   using MwCASTargets = std::vector<size_t>;
-  using Zipf = ::dbgroup::random::ApproxZipfDistribution<size_t>;
+  using Zipf = ::dbgroup::random::ApproxZipfDistribution<uint64_t>;
 
   /*##########################################################################*
    * Internal constants
