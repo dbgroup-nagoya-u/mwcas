@@ -47,16 +47,16 @@ class MyClass
   constexpr MyClass() = default;
   ~MyClass() = default;
 
-  constexpr MyClass(const MyClass &) = default;
-  constexpr MyClass(MyClass &&) noexcept = default;
+  constexpr MyClass(const MyClass&) = default;
+  constexpr MyClass(MyClass&&) noexcept = default;
 
-  constexpr auto operator=(const MyClass &) -> MyClass & = default;
-  constexpr auto operator=(MyClass &&) noexcept -> MyClass & = default;
+  constexpr auto operator=(const MyClass&) -> MyClass& = default;
+  constexpr auto operator=(MyClass&&) noexcept -> MyClass& = default;
 
   constexpr auto
   operator=(                 //
       const uint64_t value)  //
-      -> MyClass &
+      -> MyClass&
   {
     data_ = value;
     return *this;
@@ -64,7 +64,7 @@ class MyClass
 
   constexpr auto
   operator==(                     //
-      const MyClass &comp) const  //
+      const MyClass& comp) const  //
       -> bool
   {
     return data_ == comp.data_;
@@ -72,7 +72,7 @@ class MyClass
 
   constexpr auto
   operator!=(                     //
-      const MyClass &comp) const  //
+      const MyClass& comp) const  //
       -> bool
   {
     return !(*this == comp);

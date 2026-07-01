@@ -119,7 +119,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     // check the target fields are correctly incremented
     size_t sum = 0;
-    for (auto &target : target_fields_) {
+    for (auto& target : target_fields_) {
       if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
         sum += MwCASDesc::template Read<Target>(&target).first;
       } else {
@@ -137,13 +137,13 @@ class MwCASDescriptorFixture : public ::testing::Test
 
   void
   MwCAS(  //
-      const MwCASTargets &targets)
+      const MwCASTargets& targets)
   {
     if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS>) {
       while (true) {
         MwCASDesc desc{};
         for (auto idx : targets) {
-          auto *addr = &(target_fields_[idx]);
+          auto* const addr = &(target_fields_[idx]);
           const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
           desc.AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
@@ -152,10 +152,10 @@ class MwCASDescriptorFixture : public ::testing::Test
       }
     } else if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
       while (true) {
-        [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
-        auto *desc = MwCASDesc::GetDescriptor();
+        [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
+        auto* const desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {
-          auto *addr = &(target_fields_[idx]);
+          auto* const addr = &(target_fields_[idx]);
           const auto [cur_val, word] = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
           desc->AddMwCASTarget(addr, word, new_val, kRelaxed);
@@ -164,10 +164,10 @@ class MwCASDescriptorFixture : public ::testing::Test
       }
     } else {
       while (true) {
-        [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
-        auto *desc = MwCASDesc::GetDescriptor();
+        [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
+        auto* const desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {
-          auto *addr = &(target_fields_[idx]);
+          auto* const addr = &(target_fields_[idx]);
           const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
           desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
@@ -199,7 +199,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
 
     // wait for all workers to finish
-    for (auto &&t : threads) t.join();
+    for (auto&& t : threads) t.join();
   }
 
   void
@@ -234,7 +234,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     {  // wait for a main thread to release a lock
       const std::shared_lock<std::shared_mutex> lock{worker_lock_};
-      for (auto &&targets : operations) {
+      for (auto&& targets : operations) {
         MwCAS(targets);
       }
     }

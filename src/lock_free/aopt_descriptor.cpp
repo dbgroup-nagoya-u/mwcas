@@ -80,10 +80,10 @@ AOPTDescriptor::CreateEpochGuard()  //
 
 auto
 AOPTDescriptor::GetDescriptor()  //
-    -> AOPTDescriptor *
+    -> AOPTDescriptor*
 {
-  auto *page = _gc->GetPageIfPossible<AOPTDescriptor>();
-  auto *desc = (page == nullptr) ? new AOPTDescriptor{} : static_cast<AOPTDescriptor *>(page);
+  auto* const page = _gc->GetPageIfPossible<AOPTDescriptor>();
+  auto* const desc = (page == nullptr) ? new AOPTDescriptor{} : static_cast<AOPTDescriptor*>(page);
   desc->target_cnt_ = 0;
   return desc;
 }
@@ -103,8 +103,8 @@ AOPTDescriptor::MwCAS()  //
 
 auto
 AOPTDescriptor::ReadInternal(  //
-    const std::atomic_uint64_t *addr,
-    const AOPTDescriptor *self,
+    const std::atomic_uint64_t* const addr,
+    const AOPTDescriptor* const self,
     const std::memory_order fence)  //
     -> std::pair<uint64_t, uint64_t>
 {
@@ -118,7 +118,7 @@ AOPTDescriptor::ReadInternal(  //
     }
 
     // found a word descriptor
-    auto *desc = std::bit_cast<AOPTDescriptor *>(word & kPtrMask);
+    auto* const desc = std::bit_cast<AOPTDescriptor*>(word & kPtrMask);
     const auto pos = (word & kCntMask) >> kCntPos;
     const auto stat = desc->stat_.load(kAcquire);
     if (desc == self || stat != kActive) {
@@ -145,7 +145,7 @@ AOPTDescriptor::MwCASInternal(  //
   // serialize MwCAS operations by embedding a descriptor
   auto mwcas_success = true;
   for (size_t i = begin_pos; i < target_cnt_; ++i) {
-    auto &word_desc = targets_[i];
+    auto& word_desc = targets_[i];
     const auto desc_addr = base_addr | (i << kCntPos);
 
   retry_word:
@@ -197,7 +197,7 @@ AOPTDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
 
 void
 AOPTDescriptor::CompletedDescriptors::RetireForCleanUp(  //
-    AOPTDescriptor *desc)
+    AOPTDescriptor* const desc)
 {
   if (desc_num_ >= kMaxReusableDescriptors) {
     FinalizeCompletedDescriptors();
@@ -209,19 +209,19 @@ void
 AOPTDescriptor::CompletedDescriptors::FinalizeCompletedDescriptors()
 {
   for (size_t i = 0; i < desc_num_; ++i) {
-    auto *desc = desc_arr_[i];
+    auto* const desc = desc_arr_[i];
     const auto desc_addr = std::bit_cast<uint64_t>(desc) | kMwCASFlag;
     const auto target_num = desc->target_cnt_;
     if (desc->stat_.load(kRelaxed) == kSuccessful) {
       for (size_t i = 0; i < target_num; ++i) {
-        auto &target = desc->targets_[i];
+        auto& target = desc->targets_[i];
         auto cur = target.addr->load(kRelaxed);
         if (cur != (desc_addr | (i << kCntPos))) continue;
         target.addr->compare_exchange_strong(cur, target.new_val, kRelaxed, kRelaxed);
       }
     } else {
       for (size_t i = 0; i < target_num; ++i) {
-        auto &target = desc->targets_[i];
+        auto& target = desc->targets_[i];
         auto cur = target.addr->load(kRelaxed);
         if (cur != (desc_addr | (i << kCntPos))) continue;
         target.addr->compare_exchange_strong(cur, target.old_val, kRelaxed, kRelaxed);

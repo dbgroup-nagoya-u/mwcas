@@ -48,12 +48,12 @@ MwCASDescriptor::MwCAS()  //
   // complete MwCAS
   if (mwcas_success) {
     for (size_t i = 0; i < embedded_count; ++i) {
-      auto &target = targets_[i];
+      auto& target = targets_[i];
       target.addr->store(target.new_val, kRelaxed);
     }
   } else {
     for (size_t i = 0; i < embedded_count; ++i) {
-      auto &target = targets_[i];
+      auto& target = targets_[i];
       target.addr->store(target.old_val, kRelaxed);
     }
   }
@@ -67,8 +67,8 @@ MwCASDescriptor::EmbedDescriptor(  //
     const size_t pos)  //
     -> bool
 {
-  auto &target = targets_[pos];
-  auto *addr = target.addr;
+  auto& target = targets_[pos];
+  auto* const addr = target.addr;
   const auto old_val = target.old_val;
   const auto fence = target.fence;
 

@@ -66,11 +66,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   constexpr MwCASDescriptor() = default;
 
-  MwCASDescriptor(const MwCASDescriptor &) = delete;
-  MwCASDescriptor(MwCASDescriptor &&) = delete;
+  MwCASDescriptor(const MwCASDescriptor&) = delete;
+  MwCASDescriptor(MwCASDescriptor&&) = delete;
 
-  auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = delete;
-  auto operator=(MwCASDescriptor &&) -> MwCASDescriptor & = delete;
+  auto operator=(const MwCASDescriptor& obj) -> MwCASDescriptor& = delete;
+  auto operator=(MwCASDescriptor&&) -> MwCASDescriptor& = delete;
 
   /*############################################################################
    * Public destructors
@@ -129,7 +129,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * the MwCAS function.
    */
   [[nodiscard]] static auto GetDescriptor()  //
-      -> MwCASDescriptor *;
+      -> MwCASDescriptor*;
 
   /*############################################################################
    * Public utility functions
@@ -148,13 +148,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
   template <class T>
   static auto
   Read(  //
-      void *addr,
+      void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> std::pair<T, T>
   {
     static_assert(CanMwCAS<T>());
 
-    auto *target_addr = static_cast<std::atomic_uint64_t *>(addr);
+    auto* const target_addr = static_cast<std::atomic_uint64_t*>(addr);
     auto word = target_addr->load(fence);
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
@@ -174,7 +174,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   template <class T>
   constexpr void
   AddMwCASTarget(  //
-      void *addr,
+      void* const addr,
       const T old_val,
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
@@ -182,7 +182,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     static_assert(CanMwCAS<T>());
 
     new (&(targets_.at(target_cnt_++)))
-        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -221,7 +221,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   struct alignas(kCacheLineSize / 2) MwCASTarget {
     /// @brief A target memory address.
-    std::atomic_uint64_t *addr;
+    std::atomic_uint64_t* addr;
 
     /// @brief An expected value of a target field.
     uint64_t old_val;
@@ -264,8 +264,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @param[in] fence A memory fence.
    */
   static void FollowIfNeeded(  //
-      std::atomic_uint64_t *addr,
-      uint64_t &word,
+      std::atomic_uint64_t* addr,
+      uint64_t& word,
       std::memory_order fence);
 
   /**
@@ -288,7 +288,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   auto Finalize(            //
       uint64_t desc_addr,   //
-      MwCASTarget &target,  //
+      MwCASTarget& target,  //
       uint64_t desired)     //
       -> bool;
 

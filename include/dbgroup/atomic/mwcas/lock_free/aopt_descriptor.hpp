@@ -68,11 +68,11 @@ class alignas(kCacheLineSize) AOPTDescriptor
    */
   constexpr AOPTDescriptor() = default;
 
-  AOPTDescriptor(const AOPTDescriptor &) = delete;
-  AOPTDescriptor(AOPTDescriptor &&) = delete;
+  AOPTDescriptor(const AOPTDescriptor&) = delete;
+  AOPTDescriptor(AOPTDescriptor&&) = delete;
 
-  AOPTDescriptor &operator=(const AOPTDescriptor &obj) = delete;
-  AOPTDescriptor &operator=(AOPTDescriptor &&) = delete;
+  AOPTDescriptor& operator=(const AOPTDescriptor& obj) = delete;
+  AOPTDescriptor& operator=(AOPTDescriptor&&) = delete;
 
   /*############################################################################
    * Public destructors
@@ -133,7 +133,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * the MwCAS function.
    */
   [[nodiscard]] static auto GetDescriptor()  //
-      -> AOPTDescriptor *;
+      -> AOPTDescriptor*;
 
   /*############################################################################
    * Public utility functions
@@ -152,14 +152,14 @@ class alignas(kCacheLineSize) AOPTDescriptor
   template <class T>
   static auto
   Read(  //
-      const void *addr,
+      const void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
     return std::bit_cast<T>(
-        ReadInternal(static_cast<const std::atomic_uint64_t *>(addr), nullptr, fence).second);
+        ReadInternal(static_cast<const std::atomic_uint64_t*>(addr), nullptr, fence).second);
   }
 
   /**
@@ -174,7 +174,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   template <class T>
   constexpr void
   AddMwCASTarget(  //
-      void *addr,
+      void* const addr,
       const T old_val,
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
@@ -182,7 +182,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
     static_assert(CanMwCAS<T>());
 
     targets_.at(target_cnt_++) =
-        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -221,7 +221,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    */
   struct MwCASTarget {
     /// @brief A target memory address.
-    std::atomic_uint64_t *addr;
+    std::atomic_uint64_t* addr;
 
     /// @brief An expected value of a target field.
     uint64_t old_val;
@@ -250,11 +250,11 @@ class alignas(kCacheLineSize) AOPTDescriptor
      */
     constexpr CompletedDescriptors() = default;
 
-    CompletedDescriptors(const CompletedDescriptors &) = delete;
-    CompletedDescriptors(CompletedDescriptors &&) = delete;
+    CompletedDescriptors(const CompletedDescriptors&) = delete;
+    CompletedDescriptors(CompletedDescriptors&&) = delete;
 
-    CompletedDescriptors &operator=(const CompletedDescriptors &obj) = delete;
-    CompletedDescriptors &operator=(CompletedDescriptors &&) = delete;
+    CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
+    CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
 
     /*##########################################################################
      * Public destructors
@@ -278,7 +278,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      * this function invoke their finalization.
      */
     void RetireForCleanUp(  //
-        AOPTDescriptor *desc);
+        AOPTDescriptor* desc);
 
    private:
     /*##########################################################################
@@ -297,7 +297,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      *########################################################################*/
 
     /// @brief Completed (i.e., embedded) descriptors.
-    std::array<AOPTDescriptor *, kMaxReusableDescriptors> desc_arr_ = {};
+    std::array<AOPTDescriptor*, kMaxReusableDescriptors> desc_arr_ = {};
 
     /// @brief The current number of completed descriptors.
     size_t desc_num_{};
@@ -317,8 +317,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @retval 2nd: the current value.
    */
   static auto ReadInternal(  //
-      const std::atomic_uint64_t *addr,
-      const AOPTDescriptor *self,
+      const std::atomic_uint64_t* addr,
+      const AOPTDescriptor* self,
       std::memory_order fence)  //
       -> std::pair<uint64_t, uint64_t>;
 

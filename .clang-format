@@ -1,9 +1,11 @@
 BasedOnStyle: Google
 ColumnLimit: 100
-AllowShortEnumsOnASingleLine: false
 AlwaysBreakAfterReturnType: AllDefinitions
 BinPackParameters: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Linux
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+PackConstructorInitializers: Never
 DerivePointerAlignment: false
-PointerAlignment: Right
+PointerAlignment: Left
