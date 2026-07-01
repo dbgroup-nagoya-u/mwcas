@@ -25,16 +25,16 @@
 #include <cstdint>
 #include <memory>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
+// external C++ libraries
+#include <dbgroup/lock/common.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
-/*##############################################################################
+/*############################################################################*
  * Static utilities
  *############################################################################*/
 
@@ -69,7 +69,7 @@ CASNDescriptor::GetDescriptor()  //
   return desc;
 }
 
-/*##############################################################################
+/*############################################################################*
  * Utilities
  *############################################################################*/
 

@@ -25,10 +25,10 @@
 #include <cstdint>
 #include <utility>
 
-// external libraries
-#include "dbgroup/memory/epoch_based_gc.hpp"
-#include "dbgroup/memory/utility.hpp"
-#include "dbgroup/thread/epoch_guard.hpp"
+// external C++ libraries
+#include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/memory/utility.hpp>
+#include <dbgroup/thread/epoch_guard.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -42,7 +42,7 @@ namespace dbgroup::atomic::mwcas::lock_free
 class alignas(kCacheLineSize) MwCASDescriptor
 {
  public:
-  /*############################################################################
+  /*##########################################################################*
    * GC settings
    *##########################################################################*/
 
@@ -55,7 +55,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /// @brief The number of retained descriptors in each thread.
   static constexpr size_t kMaxReusableDescriptors = 64;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public constructors and assignment operators
    *##########################################################################*/
 
@@ -71,7 +71,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto operator=(const MwCASDescriptor& obj) -> MwCASDescriptor& = delete;
   auto operator=(MwCASDescriptor&&) -> MwCASDescriptor& = delete;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
@@ -81,7 +81,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   ~MwCASDescriptor() = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
@@ -95,7 +95,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     return target_cnt_;
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Public APIs for managing memory
    *##########################################################################*/
 
@@ -130,7 +130,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   [[nodiscard]] static auto GetDescriptor()  //
       -> MwCASDescriptor*;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public utility functions
    *##########################################################################*/
 
@@ -194,13 +194,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> bool;
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Type aliases
    *##########################################################################*/
 
   using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptor>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
@@ -232,7 +232,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     std::memory_order fence;
   };
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
@@ -251,7 +251,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /// @brief A bit mask for extracting versions.
   static constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal APIs
    *##########################################################################*/
 
@@ -291,7 +291,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       size_t begin_pos = 0)  //
       -> std::pair<bool, bool>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 

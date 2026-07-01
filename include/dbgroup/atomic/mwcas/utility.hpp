@@ -26,7 +26,7 @@
 
 namespace dbgroup::atomic::mwcas
 {
-/*##############################################################################
+/*############################################################################*
  * Global enum and constants
  *############################################################################*/
 
@@ -42,7 +42,7 @@ constexpr std::memory_order kRelaxed = std::memory_order_relaxed;
 /// @brief The last significant bit indicates MwCAS descriptors.
 constexpr uint64_t kMwCASFlag = 1UL << 63UL;
 
-/*##############################################################################
+/*############################################################################*
  * Tuning parameters
  *############################################################################*/
 
@@ -61,7 +61,7 @@ constexpr size_t kRetryNum = (MWCAS_RETRY_THRESHOLD);
 /// @brief A sleep time for preventing busy loops [us].
 constexpr std::chrono::microseconds kBackOffTime{MWCAS_BACKOFF_TIME};
 
-/*##############################################################################
+/*############################################################################*
  * Global utility functions
  *############################################################################*/
 

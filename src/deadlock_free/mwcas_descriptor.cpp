@@ -21,8 +21,8 @@
 #include <atomic>
 #include <cstddef>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
+// external C++ libraries
+#include <dbgroup/lock/common.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"

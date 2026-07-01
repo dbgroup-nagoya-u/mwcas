@@ -25,8 +25,8 @@
 #include <cstdint>
 #include <thread>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
+// external C++ libraries
+#include <dbgroup/lock/common.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -40,7 +40,7 @@ namespace dbgroup::atomic::mwcas::deadlock_free
 class alignas(kCacheLineSize) MwCASDescriptor
 {
  public:
-  /*############################################################################
+  /*##########################################################################*
    * Public constructors and assignment operators
    *##########################################################################*/
 
@@ -56,7 +56,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   constexpr auto operator=(const MwCASDescriptor& obj) -> MwCASDescriptor& = default;
   constexpr auto operator=(MwCASDescriptor&&) noexcept -> MwCASDescriptor& = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
@@ -66,7 +66,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   ~MwCASDescriptor() = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
@@ -80,7 +80,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     return target_cnt_;
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Public utility functions
    *##########################################################################*/
 
@@ -149,7 +149,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> bool;
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
@@ -171,7 +171,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     std::memory_order fence;
   };
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal APIs
    *##########################################################################*/
 
@@ -188,7 +188,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       size_t pos)  //
       -> bool;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 

@@ -26,9 +26,9 @@
 #include <thread>
 #include <utility>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
+// external C++ libraries
+#include <dbgroup/lock/common.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -45,7 +45,7 @@ namespace dbgroup::atomic::mwcas::lock_free
 {
 namespace
 {
-/*##############################################################################
+/*############################################################################*
  * Local constants
  *############################################################################*/
 
@@ -70,7 +70,7 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
-/*##############################################################################
+/*############################################################################*
  * Local global variable
  *############################################################################*/
 
@@ -79,7 +79,7 @@ thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
 
 }  // namespace
 
-/*##############################################################################
+/*############################################################################*
  * Static utilities
  *############################################################################*/
 
@@ -104,7 +104,7 @@ MwCASDescriptor::CreateEpochGuard()  //
   return _gc->CreateEpochGuard();
 }
 
-/*##############################################################################
+/*############################################################################*
  * Public APIs
  *############################################################################*/
 
@@ -135,7 +135,7 @@ MwCASDescriptor::MwCAS()  //
   return succeeded;
 }
 
-/*##############################################################################
+/*############################################################################*
  * Internal APIs
  *############################################################################*/
 

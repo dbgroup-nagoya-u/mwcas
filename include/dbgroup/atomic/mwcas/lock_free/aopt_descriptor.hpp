@@ -26,10 +26,10 @@
 #include <memory>
 #include <utility>
 
-// external libraries
-#include "dbgroup/memory/epoch_based_gc.hpp"
-#include "dbgroup/memory/utility.hpp"
-#include "dbgroup/thread/epoch_guard.hpp"
+// external C++ libraries
+#include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/memory/utility.hpp>
+#include <dbgroup/thread/epoch_guard.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -43,7 +43,7 @@ namespace dbgroup::atomic::mwcas::lock_free
 class alignas(kCacheLineSize) AOPTDescriptor
 {
  public:
-  /*############################################################################
+  /*##########################################################################*
    * GC settings
    *##########################################################################*/
 
@@ -56,7 +56,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   /// @brief The number of retained descriptors in each thread.
   static constexpr size_t kMaxReusableDescriptors = 64;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public constructors and assignment operators
    *##########################################################################*/
 
@@ -72,7 +72,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   AOPTDescriptor& operator=(const AOPTDescriptor& obj) = delete;
   AOPTDescriptor& operator=(AOPTDescriptor&&) = delete;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
@@ -84,7 +84,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    */
   ~AOPTDescriptor() = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
@@ -98,7 +98,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
     return target_cnt_;
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Public APIs for managing memory
    *##########################################################################*/
 
@@ -133,7 +133,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   [[nodiscard]] static auto GetDescriptor()  //
       -> AOPTDescriptor*;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public utility functions
    *##########################################################################*/
 
@@ -193,13 +193,13 @@ class alignas(kCacheLineSize) AOPTDescriptor
       -> bool;
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Type aliases
    *##########################################################################*/
 
   using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<AOPTDescriptor>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
@@ -238,7 +238,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   class CompletedDescriptors
   {
    public:
-    /*##########################################################################
+    /*########################################################################*
      * Public constructors and assignment operators
      *########################################################################*/
 
@@ -254,7 +254,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
     CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
     CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
 
-    /*##########################################################################
+    /*########################################################################*
      * Public destructors
      *########################################################################*/
 
@@ -264,7 +264,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      */
     ~CompletedDescriptors();
 
-    /*##########################################################################
+    /*########################################################################*
      * Public utility functions
      *########################################################################*/
 
@@ -279,7 +279,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
         AOPTDescriptor* desc);
 
    private:
-    /*##########################################################################
+    /*########################################################################*
      * Internal utility functions
      *########################################################################*/
 
@@ -290,7 +290,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      */
     void FinalizeCompletedDescriptors();
 
-    /*##########################################################################
+    /*########################################################################*
      * Internal member variables
      *########################################################################*/
 
@@ -301,7 +301,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
     size_t desc_num_{};
   };
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
 
@@ -331,7 +331,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
       size_t begin_pos = 0)  //
       -> bool;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 

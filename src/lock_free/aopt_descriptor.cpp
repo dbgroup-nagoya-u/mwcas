@@ -26,16 +26,16 @@
 #include <memory>
 #include <utility>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
+// external C++ libraries
+#include <dbgroup/lock/common.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 namespace
 {
-/*##############################################################################
+/*############################################################################*
  * Local constants
  *############################################################################*/
 
@@ -52,7 +52,7 @@ constexpr uint64_t kCntMask = ~kPtrMask ^ ::dbgroup::atomic::mwcas::kMwCASFlag;
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
-/*##############################################################################
+/*############################################################################*
  * Static utilities
  *############################################################################*/
 
@@ -87,7 +87,7 @@ AOPTDescriptor::GetDescriptor()  //
   return desc;
 }
 
-/*##############################################################################
+/*############################################################################*
  * Utilities
  *############################################################################*/
 
@@ -185,7 +185,7 @@ AOPTDescriptor::MwCASInternal(  // NOLINT
   return expected == kSuccessful;
 }
 
-/*##############################################################################
+/*############################################################################*
  * Internal classes
  *############################################################################*/
 

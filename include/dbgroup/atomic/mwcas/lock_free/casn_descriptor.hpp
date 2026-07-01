@@ -25,11 +25,11 @@
 #include <cstdint>
 #include <memory>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
-#include "dbgroup/memory/utility.hpp"
-#include "dbgroup/thread/epoch_guard.hpp"
+// external C++ libraries
+#include <dbgroup/lock/common.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/memory/utility.hpp>
+#include <dbgroup/thread/epoch_guard.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -37,13 +37,13 @@
 namespace dbgroup::atomic::mwcas::lock_free
 {
 /**
- * @brief A class for performaing MwCAS with the CASN algorithm.
+ * @brief A class for performing MwCAS with the CASN algorithm.
  *
  */
 class alignas(kCacheLineSize) CASNDescriptor
 {
  public:
-  /*############################################################################
+  /*##########################################################################*
    * GC settings
    *##########################################################################*/
 
@@ -56,7 +56,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief The number of retained descriptors in each thread.
   static constexpr size_t kMaxReusableDescriptors = 64;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public constructors and assignment operators
    *##########################################################################*/
 
@@ -72,7 +72,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   CASNDescriptor& operator=(const CASNDescriptor& obj) = delete;
   CASNDescriptor& operator=(CASNDescriptor&&) = delete;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
@@ -82,7 +82,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    */
   ~CASNDescriptor() = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
@@ -96,7 +96,7 @@ class alignas(kCacheLineSize) CASNDescriptor
     return target_cnt_;
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Public APIs for managing memory
    *##########################################################################*/
 
@@ -131,7 +131,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   [[nodiscard]] static auto GetDescriptor()  //
       -> CASNDescriptor*;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public utility functions
    *##########################################################################*/
 
@@ -204,13 +204,13 @@ class alignas(kCacheLineSize) CASNDescriptor
       -> bool;
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Type aliases
    *##########################################################################*/
 
   using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
@@ -242,7 +242,7 @@ class alignas(kCacheLineSize) CASNDescriptor
     std::memory_order fence;
   };
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
@@ -261,7 +261,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief A bit mask for extracting the original number of a target.
   static constexpr uint64_t kCntMask = ~kPtrMask ^ (kMwCASFlag | kRDCSSFlag);
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
 
@@ -296,7 +296,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       uint64_t casn_base)  //
       -> uint64_t;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 

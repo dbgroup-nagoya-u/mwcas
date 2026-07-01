@@ -15,10 +15,10 @@
  */
 
 // the corresponding headers
-#include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
-#include "dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp"
-#include "dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp"
-#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
+#include <dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp>
 
 // C++ standard libraries
 #include <cstddef>
@@ -31,15 +31,17 @@
 #include <vector>
 
 // external libraries
-#include "dbgroup/random/zipf.hpp"
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+
+// external C++ libraries
+#include <dbgroup/random/zipf.hpp>
 
 // local sources
 #include "common.hpp"
 
 namespace dbgroup::atomic::mwcas::test
 {
-/*##############################################################################
+/*############################################################################*
  * Target MwCAS implementations
  *############################################################################*/
 
@@ -48,7 +50,7 @@ using LFMwCAS = lock_free::MwCASDescriptor;
 using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
-/*##############################################################################
+/*############################################################################*
  * Internal constants
  *############################################################################*/
 
@@ -58,7 +60,7 @@ constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
 
 constexpr double kSkewParameter = 0.0;
 
-/*##############################################################################
+/*############################################################################*
  * Fixture definitions
  *############################################################################*/
 
@@ -66,7 +68,7 @@ template <class MwCASDesc>
 class MwCASDescriptorFixture : public ::testing::Test
 {
  protected:
-  /*############################################################################
+  /*##########################################################################*
    * Type aliases
    *##########################################################################*/
 
@@ -74,13 +76,13 @@ class MwCASDescriptorFixture : public ::testing::Test
   using MwCASTargets = std::vector<size_t>;
   using Zipf = ::dbgroup::random::ApproxZipfDistribution<size_t>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
   static constexpr size_t kOpsNum = std::is_same_v<MwCASDesc, CASN> ? 2e4 : kExecNum;
 
-  /*############################################################################
+  /*##########################################################################*
    * Setup/Teardown
    *##########################################################################*/
 
@@ -106,7 +108,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Functions for verification
    *##########################################################################*/
 
@@ -130,7 +132,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   }
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
 
@@ -239,7 +241,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 
@@ -252,14 +254,14 @@ class MwCASDescriptorFixture : public ::testing::Test
   std::shared_mutex worker_lock_{};
 };
 
-/*##############################################################################
+/*############################################################################*
  * Preparation for typed testing
  *############################################################################*/
 
 using MwCASDescriptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDescriptors);
 
-/*##############################################################################
+/*############################################################################*
  * Unit test definitions
  *############################################################################*/
 
