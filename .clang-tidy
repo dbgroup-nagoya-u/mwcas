@@ -5,9 +5,6 @@ clang-diagnostic-*,
 bugprone-*,
 -bugprone-easily-swappable-parameters,
 cert-*,
--cert-err58-cpp,
--cert-msc32-c,
--cert-msc51-cpp,
 cppcoreguidelines-*,
 -cppcoreguidelines-avoid-c-arrays,
 -cppcoreguidelines-init-variables,
@@ -23,20 +20,19 @@ llvm-*,
 -llvm-header-guard,
 misc-*,
 -misc-non-private-member-variables-in-classes,
--misc-unused-parameters,
 modernize-*,
 -modernize-avoid-c-arrays,
 -modernize-loop-convert,
 -modernize-use-trailing-return-type,
 readability-*,
 -readability-braces-around-statements,
--readability-convert-member-functions-to-static,
 -readability-function-cognitive-complexity,
+-readability-identifier-length,
 -readability-implicit-bool-conversion,
+-readability-redundant-member-init,
 performance-*,'
 WarningsAsErrors: ''
-HeaderFilterRegex: '(include|src|test)/.*\.hpp$'
-AnalyzeTemporaryDtors: false
+HeaderFilterRegex: '.*include/.*'
 FormatStyle:     none
 CheckOptions:
   - key:             readability-identifier-naming.ClassCase

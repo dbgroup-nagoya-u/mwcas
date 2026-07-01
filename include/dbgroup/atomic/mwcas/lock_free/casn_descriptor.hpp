@@ -24,14 +24,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
-#include <utility>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
-#include "dbgroup/memory/utility.hpp"
-#include "dbgroup/thread/epoch_guard.hpp"
+// external C++ libraries
+#include <dbgroup/lock/utility.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/memory/utility.hpp>
+#include <dbgroup/thread/epoch_guard.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -39,13 +37,13 @@
 namespace dbgroup::atomic::mwcas::lock_free
 {
 /**
- * @brief A class for performaing MwCAS with the CASN algorithm.
+ * @brief A class for performing MwCAS with the CASN algorithm.
  *
  */
 class alignas(kCacheLineSize) CASNDescriptor
 {
  public:
-  /*############################################################################
+  /*##########################################################################*
    * GC settings
    *##########################################################################*/
 
@@ -58,7 +56,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief The number of retained descriptors in each thread.
   static constexpr size_t kMaxReusableDescriptors = 64;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public constructors and assignment operators
    *##########################################################################*/
 
@@ -68,13 +66,13 @@ class alignas(kCacheLineSize) CASNDescriptor
    */
   constexpr CASNDescriptor() = default;
 
-  CASNDescriptor(const CASNDescriptor &) = delete;
-  CASNDescriptor(CASNDescriptor &&) = delete;
+  CASNDescriptor(const CASNDescriptor&) = delete;
+  CASNDescriptor(CASNDescriptor&&) = delete;
 
-  CASNDescriptor &operator=(const CASNDescriptor &obj) = delete;
-  CASNDescriptor &operator=(CASNDescriptor &&) = delete;
+  CASNDescriptor& operator=(const CASNDescriptor& obj) = delete;
+  CASNDescriptor& operator=(CASNDescriptor&&) = delete;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
@@ -84,21 +82,22 @@ class alignas(kCacheLineSize) CASNDescriptor
    */
   ~CASNDescriptor() = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
   /**
    * @return the number of registered MwCAS targets.
    */
-  [[nodiscard]] constexpr auto
+  [[nodiscard]]
+  constexpr auto
   Size() const  //
       -> size_t
   {
     return target_cnt_;
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Public APIs for managing memory
    *##########################################################################*/
 
@@ -130,10 +129,11 @@ class alignas(kCacheLineSize) CASNDescriptor
    * @note You must explicitly delete the given descriptor if you do not call
    * the MwCAS function.
    */
-  [[nodiscard]] static auto GetDescriptor()  //
-      -> CASNDescriptor *;
+  [[nodiscard]]
+  static auto GetDescriptor()  //
+      -> CASNDescriptor*;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public utility functions
    *##########################################################################*/
 
@@ -150,13 +150,13 @@ class alignas(kCacheLineSize) CASNDescriptor
   template <class T>
   static auto
   Read(  //
-      const void *addr,
+      const void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
-    const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
+    const auto* const target_addr = static_cast<const std::atomic_uint64_t*>(addr);
     auto cur = target_addr->load(fence);
     while (true) {
       while (cur & kRDCSSFlag) {
@@ -164,7 +164,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       }
       if ((cur & kMwCASFlag) == 0) break;
 
-      auto *desc = std::bit_cast<CASNDescriptor *>(cur & kPtrMask);
+      auto* const desc = std::bit_cast<CASNDescriptor*>(cur & kPtrMask);
       desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
       CPP_UTILITY_SPINLOCK_HINT
       cur = target_addr->load(fence);
@@ -185,7 +185,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   template <class T>
   constexpr void
   AddMwCASTarget(  //
-      void *addr,
+      void* const addr,
       const T old_val,
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
@@ -193,7 +193,7 @@ class alignas(kCacheLineSize) CASNDescriptor
     static_assert(CanMwCAS<T>());
 
     targets_.at(target_cnt_++) =
-        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -206,13 +206,13 @@ class alignas(kCacheLineSize) CASNDescriptor
       -> bool;
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Type aliases
    *##########################################################################*/
 
   using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
@@ -232,7 +232,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    */
   struct MwCASTarget {
     /// @brief A target memory address.
-    std::atomic_uint64_t *addr;
+    std::atomic_uint64_t* addr;
 
     /// @brief An expected value of a target field.
     uint64_t old_val;
@@ -244,7 +244,7 @@ class alignas(kCacheLineSize) CASNDescriptor
     std::memory_order fence;
   };
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
@@ -263,7 +263,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief A bit mask for extracting the original number of a target.
   static constexpr uint64_t kCntMask = ~kPtrMask ^ (kMwCASFlag | kRDCSSFlag);
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
 
@@ -273,7 +273,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    * @param[in,out] rdcss_addr The address af a target RDCSS descriptor.
    */
   static void CompleteRDCSS(  //
-      uint64_t &rdcss_addr);
+      uint64_t& rdcss_addr);
 
   /**
    * @brief An actual MwCAS procedure.
@@ -298,7 +298,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       uint64_t casn_base)  //
       -> uint64_t;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 

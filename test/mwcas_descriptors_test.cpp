@@ -15,14 +15,14 @@
  */
 
 // the corresponding headers
-#include "dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp"
-#include "dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp"
-#include "dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp"
-#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
+#include <dbgroup/atomic/mwcas/deadlock_free/mwcas_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp>
 
 // C++ standard libraries
 #include <cstddef>
-#include <future>
+#include <cstdint>
 #include <mutex>
 #include <random>
 #include <shared_mutex>
@@ -32,15 +32,17 @@
 #include <vector>
 
 // external libraries
-#include "dbgroup/random/zipf.hpp"
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+
+// external C++ libraries
+#include <dbgroup/random/zipf.hpp>
 
 // local sources
 #include "common.hpp"
 
 namespace dbgroup::atomic::mwcas::test
 {
-/*##############################################################################
+/*############################################################################*
  * Target MwCAS implementations
  *############################################################################*/
 
@@ -49,7 +51,7 @@ using LFMwCAS = lock_free::MwCASDescriptor;
 using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
-/*##############################################################################
+/*############################################################################*
  * Internal constants
  *############################################################################*/
 
@@ -59,7 +61,7 @@ constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
 
 constexpr double kSkewParameter = 0.0;
 
-/*##############################################################################
+/*############################################################################*
  * Fixture definitions
  *############################################################################*/
 
@@ -67,23 +69,29 @@ template <class MwCASDesc>
 class MwCASDescriptorFixture : public ::testing::Test
 {
  protected:
-  /*############################################################################
+  /*##########################################################################*
    * Type aliases
    *##########################################################################*/
 
   using Target = uint64_t;
   using MwCASTargets = std::vector<size_t>;
-  using Zipf = ::dbgroup::random::ApproxZipfDistribution<size_t>;
+  using Zipf = ::dbgroup::random::ApproxZipfDistribution<uint64_t>;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
   static constexpr size_t kOpsNum = std::is_same_v<MwCASDesc, CASN> ? 2e4 : kExecNum;
 
-  /*############################################################################
+  /*##########################################################################*
    * Setup/Teardown
    *##########################################################################*/
+
+  static void
+  SetUpTestSuite()
+  {
+    dbgroup::thread::IDManager::SetMaxThreadNum(dbgroup::kMaxThreadCapacity);
+  }
 
   void
   SetUp() override
@@ -107,7 +115,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Functions for verification
    *##########################################################################*/
 
@@ -119,7 +127,7 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     // check the target fields are correctly incremented
     size_t sum = 0;
-    for (auto &target : target_fields_) {
+    for (auto& target : target_fields_) {
       if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
         sum += MwCASDesc::template Read<Target>(&target).first;
       } else {
@@ -131,19 +139,19 @@ class MwCASDescriptorFixture : public ::testing::Test
   }
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
 
   void
   MwCAS(  //
-      const MwCASTargets &targets)
+      const MwCASTargets& targets)
   {
     if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS>) {
       while (true) {
         MwCASDesc desc{};
         for (auto idx : targets) {
-          auto *addr = &(target_fields_[idx]);
+          auto* const addr = &(target_fields_[idx]);
           const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
           desc.AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
@@ -152,10 +160,10 @@ class MwCASDescriptorFixture : public ::testing::Test
       }
     } else if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
       while (true) {
-        [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
-        auto *desc = MwCASDesc::GetDescriptor();
+        [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
+        auto* const desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {
-          auto *addr = &(target_fields_[idx]);
+          auto* const addr = &(target_fields_[idx]);
           const auto [cur_val, word] = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
           desc->AddMwCASTarget(addr, word, new_val, kRelaxed);
@@ -164,10 +172,10 @@ class MwCASDescriptorFixture : public ::testing::Test
       }
     } else {
       while (true) {
-        [[maybe_unused]] const auto &guard = MwCASDesc::CreateEpochGuard();
-        auto *desc = MwCASDesc::GetDescriptor();
+        [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
+        auto* const desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {
-          auto *addr = &(target_fields_[idx]);
+          auto* const addr = &(target_fields_[idx]);
           const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
           desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
@@ -199,7 +207,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
 
     // wait for all workers to finish
-    for (auto &&t : threads) t.join();
+    for (auto&& t : threads) t.join();
   }
 
   void
@@ -234,13 +242,13 @@ class MwCASDescriptorFixture : public ::testing::Test
 
     {  // wait for a main thread to release a lock
       const std::shared_lock<std::shared_mutex> lock{worker_lock_};
-      for (auto &&targets : operations) {
+      for (auto&& targets : operations) {
         MwCAS(targets);
       }
     }
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 
@@ -253,14 +261,14 @@ class MwCASDescriptorFixture : public ::testing::Test
   std::shared_mutex worker_lock_{};
 };
 
-/*##############################################################################
+/*############################################################################*
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
-TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
+using MwCASDescriptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
+TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDescriptors);
 
-/*##############################################################################
+/*############################################################################*
  * Unit test definitions
  *############################################################################*/
 

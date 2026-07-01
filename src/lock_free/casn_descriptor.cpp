@@ -24,19 +24,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
-#include <utility>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
+// external C++ libraries
+#include <dbgroup/lock/utility.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
-/*##############################################################################
+/*############################################################################*
  * Static utilities
  *############################################################################*/
 
@@ -63,15 +61,15 @@ CASNDescriptor::CreateEpochGuard()  //
 
 auto
 CASNDescriptor::GetDescriptor()  //
-    -> CASNDescriptor *
+    -> CASNDescriptor*
 {
-  auto *page = _gc->GetPageIfPossible<CASNDescriptor>();
-  auto *desc = (page == nullptr) ? new CASNDescriptor{} : static_cast<CASNDescriptor *>(page);
+  auto* const page = _gc->GetPageIfPossible<CASNDescriptor>();
+  auto* const desc = (page == nullptr) ? new CASNDescriptor{} : static_cast<CASNDescriptor*>(page);
   desc->target_cnt_ = 0;
   return desc;
 }
 
-/*##############################################################################
+/*############################################################################*
  * Utilities
  *############################################################################*/
 
@@ -87,7 +85,7 @@ CASNDescriptor::MwCAS()  //
 }
 
 auto
-CASNDescriptor::MwCASInternal(  //
+CASNDescriptor::MwCASInternal(  // NOLINT
     const size_t begin_pos)     //
     -> bool
 {
@@ -101,7 +99,7 @@ CASNDescriptor::MwCASInternal(  //
     retry_entry:
       auto cur = RDCSS(i, casn_base);
       if ((cur & kMwCASFlag) > 0 && cur != (casn_base | (i << kCntPos))) {
-        auto *desc = std::bit_cast<CASNDescriptor *>(cur & kPtrMask);
+        auto* const desc = std::bit_cast<CASNDescriptor*>(cur & kPtrMask);
         desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
         CPP_UTILITY_SPINLOCK_HINT
         goto retry_entry;  // NOLINT
@@ -122,14 +120,14 @@ CASNDescriptor::MwCASInternal(  //
   const auto succeeded = stat == kSucceeded;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      auto &target = targets_[i];
+      auto& target = targets_[i];
       auto expected = target.addr->load(kRelaxed);
       if (expected != (casn_base | (i << kCntPos))) continue;
       target.addr->compare_exchange_strong(expected, target.new_val, kRelaxed, kRelaxed);
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      auto &target = targets_[i];
+      auto& target = targets_[i];
       auto expected = target.addr->load(kRelaxed);
       if (expected != (casn_base | (i << kCntPos))) continue;
       target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
@@ -147,7 +145,7 @@ CASNDescriptor::RDCSS(  //
 {
   const auto pos_bit = (pos << kCntPos);
   auto rdcss_addr = (casn_base ^ kFlagSwap) | pos_bit;
-  auto &target = targets_[pos];
+  auto& target = targets_[pos];
   auto cur = target.addr->load(kRelaxed);
   while (true) {
     if (cur & kRDCSSFlag) {
@@ -171,11 +169,11 @@ CASNDescriptor::RDCSS(  //
 
 void
 CASNDescriptor::CompleteRDCSS(  //
-    uint64_t &rdcss_addr)
+    uint64_t& rdcss_addr)
 {
   const auto casn_addr = rdcss_addr ^ kFlagSwap;
-  auto *desc = std::bit_cast<CASNDescriptor *>(rdcss_addr & kPtrMask);
-  auto &target = desc->targets_[(rdcss_addr & kCntMask) >> kCntPos];
+  auto* const desc = std::bit_cast<CASNDescriptor*>(rdcss_addr & kPtrMask);
+  auto& target = desc->targets_[(rdcss_addr & kCntMask) >> kCntPos];
 
   if (desc->stat_.load(kAcquire) != kUndecided) {
     // CASN embedding has already finished

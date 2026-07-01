@@ -26,10 +26,9 @@
 #include <thread>
 #include <utility>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
-#include "dbgroup/memory/epoch_based_gc.hpp"
-#include "dbgroup/memory/utility.hpp"
+// external C++ libraries
+#include <dbgroup/lock/utility.hpp>
+#include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -46,7 +45,7 @@ namespace dbgroup::atomic::mwcas::lock_free
 {
 namespace
 {
-/*##############################################################################
+/*############################################################################*
  * Local constants
  *############################################################################*/
 
@@ -71,7 +70,7 @@ constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
-/*##############################################################################
+/*############################################################################*
  * Local global variable
  *############################################################################*/
 
@@ -80,7 +79,7 @@ thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
 
 }  // namespace
 
-/*##############################################################################
+/*############################################################################*
  * Static utilities
  *############################################################################*/
 
@@ -105,18 +104,18 @@ MwCASDescriptor::CreateEpochGuard()  //
   return _gc->CreateEpochGuard();
 }
 
-/*##############################################################################
+/*############################################################################*
  * Public APIs
  *############################################################################*/
 
 auto
 MwCASDescriptor::GetDescriptor()  //
-    -> MwCASDescriptor *
+    -> MwCASDescriptor*
 {
-  auto *desc = _tls.release();
+  auto* desc = _tls.release();
   if (!desc) {
-    auto *page = _gc->GetPageIfPossible<MwCASDescriptor>();
-    desc = (page) ? static_cast<MwCASDescriptor *>(page) : new MwCASDescriptor{};
+    auto* const page = _gc->GetPageIfPossible<MwCASDescriptor>();
+    desc = (page) ? static_cast<MwCASDescriptor*>(page) : new MwCASDescriptor{};
   }
   desc->target_cnt_ = 0;
   return desc;
@@ -136,14 +135,14 @@ MwCASDescriptor::MwCAS()  //
   return succeeded;
 }
 
-/*##############################################################################
+/*############################################################################*
  * Internal APIs
  *############################################################################*/
 
 void
 MwCASDescriptor::FollowIfNeeded(  //
-    std::atomic_uint64_t *addr,
-    uint64_t &word,
+    std::atomic_uint64_t* const addr,
+    uint64_t& word,
     const std::memory_order fence)
 {
   const auto another_word = word;
@@ -168,10 +167,27 @@ MwCASDescriptor::FollowIfNeeded(  //
   const auto incremented = word + kCntUnit;
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
-    auto *another_desc = std::bit_cast<MwCASDescriptor *>(word & kAddrMask);
+    auto* const another_desc = std::bit_cast<MwCASDescriptor*>(word & kAddrMask);
     const auto pos = (word & kPosMask) >> kPosShift;
     another_desc->MwCASInternal(pos + 1);
     word = addr->load(fence);
+  }
+}
+
+auto
+MwCASDescriptor::Finalize(  //
+    uint64_t desc_addr,     //
+    MwCASTarget& target,    //
+    uint64_t desired)       //
+    -> bool
+{
+  auto expected = target.addr->load(kRelaxed);
+  while (true) {
+    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
+      return (expected & kCntMask) != 0;
+    }
+    CPP_UTILITY_SPINLOCK_HINT
   }
 }
 
@@ -186,8 +202,8 @@ MwCASDescriptor::MwCASInternal(  //
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
       const auto desc_addr = base_addr | (i << kPosShift);
-      auto &target = targets_[i];
-      auto *addr = target.addr;
+      auto& target = targets_[i];
+      auto* const addr = target.addr;
       const auto expected = target.old_val;
       const auto fence = target.fence;
       auto word = addr->load(kRelaxed);
@@ -216,36 +232,19 @@ MwCASDescriptor::MwCASInternal(  //
   bool referred = false;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      auto &target = targets_[i];
+      auto& target = targets_[i];
       const auto ver = (target.old_val + kVersionUnit) & kVersionMask;
       referred = Finalize(base_addr, target, (target.new_val | ver)) || referred;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      auto &target = targets_[i];
+      auto& target = targets_[i];
       const auto val = target.old_val & kVerAndValMask;
       referred = Finalize(base_addr, target, val) || referred;
     }
   }
 
   return std::pair{succeeded, referred};
-}
-
-auto
-MwCASDescriptor::Finalize(  //
-    uint64_t desc_addr,     //
-    MwCASTarget &target,    //
-    uint64_t desired)       //
-    -> bool
-{
-  auto expected = target.addr->load(kRelaxed);
-  while (true) {
-    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
-      return (expected & kCntMask) != 0;
-    }
-    CPP_UTILITY_SPINLOCK_HINT
-  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

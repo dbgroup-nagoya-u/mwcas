@@ -20,12 +20,11 @@
 // C++ standard libraries
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 
 // target library
-#include "dbgroup/atomic/mwcas/utility.hpp"
+#include <dbgroup/atomic/mwcas/utility.hpp>
 
-/*##############################################################################
+/*############################################################################*
  * Global constants
  *############################################################################*/
 
@@ -33,7 +32,7 @@ constexpr size_t kTestThreadNum = (DBGROUP_TEST_THREAD_NUM);
 
 constexpr size_t kRandomSeed = (DBGROUP_TEST_RANDOM_SEED);
 
-/*##############################################################################
+/*############################################################################*
  * Global utility classes
  *############################################################################*/
 
@@ -47,16 +46,16 @@ class MyClass
   constexpr MyClass() = default;
   ~MyClass() = default;
 
-  constexpr MyClass(const MyClass &) = default;
-  constexpr MyClass(MyClass &&) noexcept = default;
+  constexpr MyClass(const MyClass&) = default;
+  constexpr MyClass(MyClass&&) noexcept = default;
 
-  constexpr auto operator=(const MyClass &) -> MyClass & = default;
-  constexpr auto operator=(MyClass &&) noexcept -> MyClass & = default;
+  constexpr auto operator=(const MyClass&) -> MyClass& = default;
+  constexpr auto operator=(MyClass&&) noexcept -> MyClass& = default;
 
   constexpr auto
   operator=(                 //
       const uint64_t value)  //
-      -> MyClass &
+      -> MyClass&
   {
     data_ = value;
     return *this;
@@ -64,15 +63,15 @@ class MyClass
 
   constexpr auto
   operator==(                     //
-      const MyClass &comp) const  //
+      const MyClass& comp) const  //
       -> bool
   {
-    return data_ == comp.data_;
+    return data_ == comp.data_ && control_bits_ == comp.control_bits_;
   }
 
   constexpr auto
   operator!=(                     //
-      const MyClass &comp) const  //
+      const MyClass& comp) const  //
       -> bool
   {
     return !(*this == comp);
@@ -80,7 +79,7 @@ class MyClass
 
  private:
   uint64_t data_ : 63 {};
-  uint64_t control_bits_ : 1 {};  // NOLINT
+  uint64_t control_bits_ : 1 {};
 };
 
 namespace dbgroup::atomic::mwcas

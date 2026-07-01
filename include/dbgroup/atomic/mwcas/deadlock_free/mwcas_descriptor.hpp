@@ -25,8 +25,8 @@
 #include <cstdint>
 #include <thread>
 
-// external libraries
-#include "dbgroup/lock/common.hpp"
+// external C++ libraries
+#include <dbgroup/lock/utility.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -40,7 +40,7 @@ namespace dbgroup::atomic::mwcas::deadlock_free
 class alignas(kCacheLineSize) MwCASDescriptor
 {
  public:
-  /*############################################################################
+  /*##########################################################################*
    * Public constructors and assignment operators
    *##########################################################################*/
 
@@ -50,13 +50,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   constexpr MwCASDescriptor() = default;
 
-  constexpr MwCASDescriptor(const MwCASDescriptor &) = default;
-  constexpr MwCASDescriptor(MwCASDescriptor &&) noexcept = default;
+  constexpr MwCASDescriptor(const MwCASDescriptor&) = default;
+  constexpr MwCASDescriptor(MwCASDescriptor&&) noexcept = default;
 
-  constexpr auto operator=(const MwCASDescriptor &obj) -> MwCASDescriptor & = default;
-  constexpr auto operator=(MwCASDescriptor &&) noexcept -> MwCASDescriptor & = default;
+  constexpr auto operator=(const MwCASDescriptor& obj) -> MwCASDescriptor& = default;
+  constexpr auto operator=(MwCASDescriptor&&) noexcept -> MwCASDescriptor& = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
@@ -66,21 +66,22 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   ~MwCASDescriptor() = default;
 
-  /*############################################################################
+  /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
   /**
    * @return The number of registered MwCAS targets.
    */
-  [[nodiscard]] constexpr auto
+  [[nodiscard]]
+  constexpr auto
   Size() const  //
       -> size_t
   {
     return target_cnt_;
   }
 
-  /*############################################################################
+  /*##########################################################################*
    * Public utility functions
    *##########################################################################*/
 
@@ -97,13 +98,13 @@ class alignas(kCacheLineSize) MwCASDescriptor
   template <class T>
   static auto
   Read(  //
-      const void *addr,
+      const void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
-    const auto *target_addr = static_cast<const std::atomic_uint64_t *>(addr);
+    const auto* const target_addr = static_cast<const std::atomic_uint64_t*>(addr);
     uint64_t word{};
     while (true) {
       for (size_t i = 1; true; ++i) {
@@ -128,7 +129,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   template <class T>
   constexpr void
   AddMwCASTarget(  //
-      void *addr,
+      void* const addr,
       const T old_val,
       const T new_val,
       const std::memory_order fence = std::memory_order_seq_cst)
@@ -136,7 +137,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     static_assert(CanMwCAS<T>());
 
     targets_.at(target_cnt_++) =
-        MwCASTarget{static_cast<std::atomic_uint64_t *>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -149,7 +150,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       -> bool;
 
  private:
-  /*############################################################################
+  /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
@@ -159,7 +160,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   struct MwCASTarget {
     /// @brief A target memory address.
-    std::atomic_uint64_t *addr;
+    std::atomic_uint64_t* addr;
 
     /// @brief An expected value of a target field.
     uint64_t old_val;
@@ -171,7 +172,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     std::memory_order fence;
   };
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal APIs
    *##########################################################################*/
 
@@ -188,7 +189,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
       size_t pos)  //
       -> bool;
 
-  /*############################################################################
+  /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 
