@@ -100,6 +100,10 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     dbgroup::memory_manager
   )
 
+  if(DEFINED ENV{CI})
+    target_compile_options(${PROJECT_NAME} PRIVATE -Werror)
+  endif()
+
   #----------------------------------------------------------------------------#
   # Build Unit Tests
   #----------------------------------------------------------------------------#

@@ -107,6 +107,7 @@
     "RDCSS",
     "STREQUAL",
     "struct",
+    "Werror",
     "Wextra",
     "xmmintrin",
     "Zipf"
