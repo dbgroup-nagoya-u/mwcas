@@ -6,23 +6,37 @@ buildType:
       short: Debug
       long: Include debugging information without optimizations
       buildType: Debug
-      settings:
-        MWCAS_BUILD_TESTS: ON
-        DBGROUP_TEST_THREAD_NUM: 8
-        DBGROUP_TEST_RANDOM_SEED: 0
     relWithDebInfo:
       short: RelWithDebInfo
       long: Perform optimizations and include debugging informatin
       buildType: RelWithDebInfo
-      settings:
-        MWCAS_BUILD_TESTS: ON
-        DBGROUP_TEST_THREAD_NUM: 8
-        DBGROUP_TEST_RANDOM_SEED: 0
     release:
       short: Release
       long: Perform optimizations and omit debugging informatin
       buildType: Release
+
+threadNumbers:
+  default: 8threads
+  description: Thread counts
+  choices:
+    8threads:
+      short: w/8T
+      long: Use 8 threads for unit tests
+      settings:
+        DBGROUP_TEST_THREAD_NUM: 8
+    256threads:
+      short: w/256T
+      long: Use 256 threads for unit tests
+      settings:
+        DBGROUP_TEST_THREAD_NUM: 256
+
+defaltSettings:
+  default: default
+  description: "Default parameters"
+  choices:
+    default:
+      short: "w/Test"
+      long: "Build unit tests"
       settings:
         MWCAS_BUILD_TESTS: ON
-        DBGROUP_TEST_THREAD_NUM: 8
         DBGROUP_TEST_RANDOM_SEED: 0
