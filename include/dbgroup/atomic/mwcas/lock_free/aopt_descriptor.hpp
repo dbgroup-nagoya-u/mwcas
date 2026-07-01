@@ -91,7 +91,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
   /**
    * @return the number of registered MwCAS targets.
    */
-  [[nodiscard]] constexpr auto
+  [[nodiscard]]
+  constexpr auto
   Size() const  //
       -> size_t
   {
@@ -130,7 +131,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @note You must explicitly delete the given descriptor if you do not call
    * the MwCAS function.
    */
-  [[nodiscard]] static auto GetDescriptor()  //
+  [[nodiscard]]
+  static auto GetDescriptor()  //
       -> AOPTDescriptor*;
 
   /*##########################################################################*

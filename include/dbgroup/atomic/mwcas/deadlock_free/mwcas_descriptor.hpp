@@ -73,7 +73,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /**
    * @return The number of registered MwCAS targets.
    */
-  [[nodiscard]] constexpr auto
+  [[nodiscard]]
+  constexpr auto
   Size() const  //
       -> size_t
   {
