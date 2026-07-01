@@ -86,6 +86,12 @@ class MwCASDescriptorFixture : public ::testing::Test
    * Setup/Teardown
    *##########################################################################*/
 
+  static void
+  SetUpTestSuite()
+  {
+    dbgroup::thread::IDManager::SetMaxThreadNum(dbgroup::kMaxThreadCapacity);
+  }
+
   void
   SetUp() override
   {
