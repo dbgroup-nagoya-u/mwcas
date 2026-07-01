@@ -29,7 +29,6 @@
 // external libraries
 #include "dbgroup/lock/common.hpp"
 #include "dbgroup/memory/epoch_based_gc.hpp"
-#include "dbgroup/memory/utility.hpp"
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -176,6 +175,23 @@ MwCASDescriptor::FollowIfNeeded(  //
 }
 
 auto
+MwCASDescriptor::Finalize(  //
+    uint64_t desc_addr,     //
+    MwCASTarget& target,    //
+    uint64_t desired)       //
+    -> bool
+{
+  auto expected = target.addr->load(kRelaxed);
+  while (true) {
+    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
+      return (expected & kCntMask) != 0;
+    }
+    CPP_UTILITY_SPINLOCK_HINT
+  }
+}
+
+auto
 MwCASDescriptor::MwCASInternal(  //
     const size_t begin_pos)      //
     -> std::pair<bool, bool>
@@ -229,23 +245,6 @@ MwCASDescriptor::MwCASInternal(  //
   }
 
   return std::pair{succeeded, referred};
-}
-
-auto
-MwCASDescriptor::Finalize(  //
-    uint64_t desc_addr,     //
-    MwCASTarget& target,    //
-    uint64_t desired)       //
-    -> bool
-{
-  auto expected = target.addr->load(kRelaxed);
-  while (true) {
-    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
-      return (expected & kCntMask) != 0;
-    }
-    CPP_UTILITY_SPINLOCK_HINT
-  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

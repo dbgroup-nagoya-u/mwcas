@@ -22,7 +22,6 @@
 
 // C++ standard libraries
 #include <cstddef>
-#include <future>
 #include <mutex>
 #include <random>
 #include <shared_mutex>
@@ -257,8 +256,8 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDesctiptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
-TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDesctiptors);
+using MwCASDescriptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
+TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDescriptors);
 
 /*##############################################################################
  * Unit test definitions

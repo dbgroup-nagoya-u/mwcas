@@ -24,11 +24,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
 #include <utility>
 
 // external libraries
-#include "dbgroup/lock/common.hpp"
 #include "dbgroup/memory/epoch_based_gc.hpp"
 #include "dbgroup/memory/utility.hpp"
 #include "dbgroup/thread/epoch_guard.hpp"
@@ -39,7 +37,7 @@
 namespace dbgroup::atomic::mwcas::lock_free
 {
 /**
- * @brief A class for performaing MwCAS with the AOPT algorithm.
+ * @brief A class for performing MwCAS with the AOPT algorithm.
  *
  */
 class alignas(kCacheLineSize) AOPTDescriptor

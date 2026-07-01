@@ -26,7 +26,6 @@
 #include <utility>
 
 // external libraries
-#include "dbgroup/lock/common.hpp"
 #include "dbgroup/memory/epoch_based_gc.hpp"
 #include "dbgroup/memory/utility.hpp"
 #include "dbgroup/thread/epoch_guard.hpp"
@@ -269,6 +268,19 @@ class alignas(kCacheLineSize) MwCASDescriptor
       std::memory_order fence);
 
   /**
+   * @brief Swap an embedded descriptor into a desired value.
+   *
+   * @param desc_addr The address of this descriptor with the flag.
+   * @param target A target MwCAS information.
+   * @param desired A desired value to be embedded.
+   */
+  static auto Finalize(     //
+      uint64_t desc_addr,   //
+      MwCASTarget& target,  //
+      uint64_t desired)     //
+      -> bool;
+
+  /**
    * @brief An actual MwCAS procedure.
    *
    * @param begin_pos The begin position of target words.
@@ -278,19 +290,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
       -> std::pair<bool, bool>;
-
-  /**
-   * @brief Swap an embedded descriptor into a desired value.
-   *
-   * @param desc_addr The address of this descriptor with the flag.
-   * @param target A target MwCAS information.
-   * @param desired A desired value to be embedded.
-   */
-  auto Finalize(            //
-      uint64_t desc_addr,   //
-      MwCASTarget& target,  //
-      uint64_t desired)     //
-      -> bool;
 
   /*############################################################################
    * Internal member variables

@@ -24,8 +24,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
-#include <utility>
 
 // external libraries
 #include "dbgroup/lock/common.hpp"

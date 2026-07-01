@@ -20,7 +20,6 @@
 // C++ standard libraries
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 
 // target library
 #include "dbgroup/atomic/mwcas/utility.hpp"
@@ -67,7 +66,7 @@ class MyClass
       const MyClass& comp) const  //
       -> bool
   {
-    return data_ == comp.data_;
+    return data_ == comp.data_ && control_bits_ == comp.control_bits_;
   }
 
   constexpr auto
@@ -80,7 +79,7 @@ class MyClass
 
  private:
   uint64_t data_ : 63 {};
-  uint64_t control_bits_ : 1 {};  // NOLINT
+  uint64_t control_bits_ : 1 {};
 };
 
 namespace dbgroup::atomic::mwcas

@@ -24,7 +24,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
 #include <utility>
 
 // external libraries
@@ -102,7 +101,7 @@ AOPTDescriptor::MwCAS()  //
 }
 
 auto
-AOPTDescriptor::ReadInternal(  //
+AOPTDescriptor::ReadInternal(  // NOLINT
     const std::atomic_uint64_t* const addr,
     const AOPTDescriptor* const self,
     const std::memory_order fence)  //
@@ -135,7 +134,7 @@ AOPTDescriptor::ReadInternal(  //
 }
 
 auto
-AOPTDescriptor::MwCASInternal(  //
+AOPTDescriptor::MwCASInternal(  // NOLINT
     const size_t begin_pos)     //
     -> bool
 {

@@ -24,8 +24,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
-#include <utility>
 
 // external libraries
 #include "dbgroup/lock/common.hpp"
@@ -87,7 +85,7 @@ CASNDescriptor::MwCAS()  //
 }
 
 auto
-CASNDescriptor::MwCASInternal(  //
+CASNDescriptor::MwCASInternal(  // NOLINT
     const size_t begin_pos)     //
     -> bool
 {
