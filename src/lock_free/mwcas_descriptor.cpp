@@ -187,7 +187,7 @@ MwCASDescriptor::FollowIfNeeded(  //
     auto* const another_desc =
         std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
     const auto pos = (word & kPosMask) >> kPosShift;
-    another_desc->MwCASInternal(pos + 1);
+    another_desc->MwCASInternal(pos);
     word = addr->load(fence);
   }
 }
