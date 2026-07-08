@@ -35,14 +35,14 @@
 
 // clang-format off
 //                                   Bit allocation of a word.
-// |     63     |      62-60     |       59       |      58-(N+1)     |   N-41   |        40-0        |
-// | MwCAS Flag | Begin Position | Reference Flag | Reference Counter | ThreadID | Descriptor Address |
+// |    63     |      62-60     |       59       |      58-(N+1)     |   N-41   |        40-0        |
+// | MCAS Flag | Begin Position | Reference Flag | Reference Counter | ThreadID | Descriptor Address |
 //
 // clang-format on
 
 //        Bit allocation of an actual value.
-//          |     63     |     62-0     |
-//          | MwCAS Flag | Actual Value |
+//          |    63     |     62-0     |
+//          | MCAS Flag | Actual Value |
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
