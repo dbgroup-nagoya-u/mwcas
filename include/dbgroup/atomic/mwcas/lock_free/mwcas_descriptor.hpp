@@ -183,7 +183,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     static_assert(CanMwCAS<T>());
 
     new (&(targets_.at(target_cnt_++)))
-        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
+        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence, kInitialThreadId};
   }
 
   /**
@@ -241,20 +241,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Internal constants
    *##########################################################################*/
 
-  /// @brief The begin bit position of versions.
-  static constexpr uint64_t kVersionShift = kValueBitNum;
-
-  /// @brief A unit value for incrementing versions.
-  static constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
-
   /// @brief A bit mask for extracting actual values.
-  static constexpr uint64_t kValueMask = kVersionUnit - 1UL;
+  static constexpr uint64_t kValueMask = ~kMwCASFlag;
 
-  /// @brief A bit mask for extracting versions and actual values.
-  static constexpr uint64_t kVerAndValMask = ~kMwCASFlag;
-
-  /// @brief A bit mask for extracting versions.
-  static constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
+  /// @brief An initial thread ID assigned before the target is processed.
+  static constexpr size_t kInitialThreadId = static_cast<size_t>(-1);
 
   /*##########################################################################*
    * Internal APIs
