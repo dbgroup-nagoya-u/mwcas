@@ -33,13 +33,16 @@
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
-//                       Bit allocation of a word.
-// |     63     |       62-50       |      49-47     |         46-0       |
-// | MwCAS Flag | Reference Counter | Begin Position | Descriptor Address |
+// clang-format off
+//                                   Bit allocation of a word.
+// |     63     |      62-60     |       59       |      58-(N+1)     |   N-41   |        40-0        |
+// | MwCAS Flag | Begin Position | Reference Flag | Reference Counter | ThreadID | Descriptor Address |
+//
+// clang-format on
 
-//                   Bit allocation of an actual value.
-//          |           63           |  62-(N+1) |     N-0      |
-//          | Version Confirmed Flag |  Version  | Actual Value |
+//        Bit allocation of an actual value.
+//          |     63     |     62-0     |
+//          | MwCAS Flag | Actual Value |
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
