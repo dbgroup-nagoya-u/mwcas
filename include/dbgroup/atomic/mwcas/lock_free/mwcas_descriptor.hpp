@@ -151,7 +151,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   Read(  //
       void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
-      -> std::pair<T, T>
+      -> T
   {
     static_assert(CanMwCAS<T>());
 
@@ -160,7 +160,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
-    return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
+    return std::bit_cast<T>(word & kValueMask);
   }
 
   /**
