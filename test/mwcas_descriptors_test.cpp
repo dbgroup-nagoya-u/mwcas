@@ -128,11 +128,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     // check the target fields are correctly incremented
     size_t sum = 0;
     for (auto& target : target_fields_) {
-      if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
-        sum += MwCASDesc::template Read<Target>(&target).first;
-      } else {
-        sum += MwCASDesc::template Read<Target>(&target);
-      }
+      sum += MwCASDesc::template Read<Target>(&target);
     }
 
     EXPECT_EQ(kOpsNum * thread_num * kMwCASCapacity, sum);
@@ -164,9 +160,9 @@ class MwCASDescriptorFixture : public ::testing::Test
         auto* const desc = MwCASDesc::GetDescriptor();
         for (auto idx : targets) {
           auto* const addr = &(target_fields_[idx]);
-          const auto [cur_val, word] = MwCASDesc::template Read<Target>(addr, kRelaxed);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
           const auto new_val = cur_val + 1;
-          desc->AddMwCASTarget(addr, word, new_val, kRelaxed);
+          desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc->MwCAS()) return;
       }
