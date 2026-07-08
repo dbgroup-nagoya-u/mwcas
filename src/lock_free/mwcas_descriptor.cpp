@@ -184,7 +184,8 @@ MwCASDescriptor::FollowIfNeeded(  //
 
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
-    auto* const another_desc = std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
+    auto* const another_desc =
+        std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
     const auto pos = (word & kPosMask) >> kPosShift;
     another_desc->MwCASInternal(pos + 1);
     word = addr->load(fence);
@@ -195,7 +196,7 @@ auto
 MwCASDescriptor::Finalize(  //
     uint64_t desc_addr,     //
     MwCASTarget& target,    //
-    bool succeeded)       //
+    bool succeeded)         //
     -> bool
 {
   auto expected = target.addr->load(kRelaxed);
@@ -249,7 +250,8 @@ MwCASDescriptor::MwCASInternal(  //
 
         if (target.thread_id.load(kRelaxed) == kInitialThreadId) {
           auto expected_tid = kInitialThreadId;
-          while (!target.thread_id.compare_exchange_weak(expected_tid, embedded_tid, kRelaxed, kRelaxed)) {
+          while (!target.thread_id.compare_exchange_weak(expected_tid, embedded_tid, kRelaxed,
+                                                         kRelaxed)) {
             if (expected_tid != kInitialThreadId) {
               break;
             }
@@ -262,7 +264,6 @@ MwCASDescriptor::MwCASInternal(  //
 
       stat = kFailed;
       break;
-
     }
 
     // set a linearization point
