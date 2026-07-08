@@ -273,7 +273,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   static auto Finalize(     //
       uint64_t desc_addr,   //
       MwCASTarget& target,  //
-      uint64_t desired)     //
+      bool succeeded)     //
       -> bool;
 
   /**

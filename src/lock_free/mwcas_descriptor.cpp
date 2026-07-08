@@ -33,12 +33,10 @@
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
-// clang-format off
 //                                   Bit allocation of a word.
-// |    63     |      62-60     |       59       |      58-(N+1)     |   N-41   |        40-0        |
-// | MCAS Flag | Begin Position | Reference Flag | Reference Counter | ThreadID | Descriptor Address |
+// |    63     |      62-60     |      59-(N+1)     |   N-41   |        40-0        |
+// | MCAS Flag | Begin Position | Reference Counter | ThreadID | Descriptor Address |
 //
-// clang-format on
 
 //        Bit allocation of an actual value.
 //          |    63     |     62-0     |
@@ -52,23 +50,35 @@ namespace
  * Local constants
  *############################################################################*/
 
-/// @brief An offset for right-shifting to extract the "begin position".
-constexpr uint64_t kPosShift = 47;
+/// @brief The bit width of the ThreadID field.
+constexpr uint64_t kThreadIdBitnum = 13;
+
+/// @brief An offset to shift descriptor addresses (due to 64-byte alignment).
+constexpr uint64_t kAddrAlignShift = 6;
+
+/// @brief An offset for right-shifting to extract the "thread ID".
+constexpr uint64_t kThreadIdShift = 41;
 
 /// @brief An offset for right-shifting to extract the "reference counter".
-constexpr uint64_t kCntShift = 50;
+constexpr uint64_t kCntShift = kThreadIdShift + kThreadIdBitnum;
+
+/// @brief An offset for right-shifting to extract the "begin position".
+constexpr uint64_t kPosShift = 60;
 
 /// @brief A constant for incrementing the "reference counter".
 constexpr uint64_t kCntUnit = 1UL << kCntShift;
 
 /// @brief A bitmask with only the "descriptor address" portion set to 1.
-constexpr uint64_t kAddrMask = (1UL << 47UL) - 1UL;
+constexpr uint64_t kAddrMask = (1UL << kThreadIdShift) - 1UL;
 
-/// @brief A bitmask with only the "begin position" portion set to 1.
-constexpr uint64_t kPosMask = (kCntUnit - 1UL) ^ kAddrMask;
+/// @brief A bitmask with only the "thread ID" portion set to 1.
+constexpr uint64_t kThreadIdMask = ((1UL << kThreadIdBitnum) - 1UL) << kThreadIdShift;
 
 /// @brief A bitmask with only the "reference counter" portion set to 1.
-constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
+constexpr uint64_t kCntMask = ((1UL << (kPosShift - kCntShift)) - 1UL) << kCntShift;
+
+/// @brief A bitmask with only the "begin position" portion set to 1.
+constexpr uint64_t kPosMask = 7UL << kPosShift;
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
@@ -167,10 +177,14 @@ MwCASDescriptor::FollowIfNeeded(  //
   if (word != another_word) return;  // other threads modified this field
 
   // a long CPU stall has been detected, so perform another MwCAS
-  const auto incremented = word + kCntUnit;
+  auto incremented = word;
+  if ((word & kCntMask) != kCntMask) [[likely]] {
+    incremented += kCntUnit;
+  }
+
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
-    auto* const another_desc = std::bit_cast<MwCASDescriptor*>(word & kAddrMask);
+    auto* const another_desc = std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
     const auto pos = (word & kPosMask) >> kPosShift;
     another_desc->MwCASInternal(pos + 1);
     word = addr->load(fence);
@@ -181,12 +195,22 @@ auto
 MwCASDescriptor::Finalize(  //
     uint64_t desc_addr,     //
     MwCASTarget& target,    //
-    uint64_t desired)       //
+    bool succeeded)       //
     -> bool
 {
   auto expected = target.addr->load(kRelaxed);
   while (true) {
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+
+    auto desired = target.old_val;
+    if (succeeded) {
+      const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
+      // validation of thread ID
+      if (embedded_tid == target.thread_id.load(kRelaxed)) {
+        desired = target.new_val;
+      }
+    }
+
     if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
       return (expected & kCntMask) != 0;
     }
@@ -199,12 +223,15 @@ MwCASDescriptor::MwCASInternal(  //
     const size_t begin_pos)      //
     -> std::pair<bool, bool>
 {
-  const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
+  const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
+  const auto desc_addr = std::bit_cast<uint64_t>(this) >> kAddrAlignShift;
+  const auto base_addr = kMwCASFlag | desc_addr;
+  const auto owned_addr = base_addr | (thread_id << kThreadIdShift);
   auto cur_stat = stat_.load(kAcquire);  // set a memory fence for followers
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
-      const auto desc_addr = base_addr | (i << kPosShift);
+      const auto desc_addr = owned_addr | (i << kPosShift);
       auto& target = targets_[i];
       auto* const addr = target.addr;
       const auto expected = target.old_val;
@@ -213,14 +240,29 @@ MwCASDescriptor::MwCASInternal(  //
 
       // try to embed the descriptor
       if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
-        continue;
+        word = desc_addr;
       }
 
       // check another thread has embedded the descriptor
-      if ((word & kDescMask) != base_addr) {
-        stat = kFailed;
-        break;
+      if ((word & kDescMask) == base_addr) {
+        const auto embedded_tid = (word & kThreadIdMask) >> kThreadIdShift;
+
+        if (target.thread_id.load(kRelaxed) == kInitialThreadId) {
+          auto expected_tid = kInitialThreadId;
+          while (!target.thread_id.compare_exchange_weak(expected_tid, embedded_tid, kRelaxed, kRelaxed)) {
+            if (expected_tid != kInitialThreadId) {
+              break;
+            }
+            CPP_UTILITY_SPINLOCK_HINT
+          }
+        }
+
+        continue;
       }
+
+      stat = kFailed;
+      break;
+
     }
 
     // set a linearization point
@@ -233,18 +275,8 @@ MwCASDescriptor::MwCASInternal(  //
 
   const auto succeeded = (cur_stat == kSucceeded);
   bool referred = false;
-  if (succeeded) {
-    for (size_t i = 0; i < target_cnt_; ++i) {
-      auto& target = targets_[i];
-      const auto ver = (target.old_val + kVersionUnit) & kVersionMask;
-      referred = Finalize(base_addr, target, (target.new_val | ver)) || referred;
-    }
-  } else {
-    for (size_t i = 0; i < target_cnt_; ++i) {
-      auto& target = targets_[i];
-      const auto val = target.old_val & kVerAndValMask;
-      referred = Finalize(base_addr, target, val) || referred;
-    }
+  for (size_t i = 0; i < target_cnt_; ++i) {
+    referred = Finalize(base_addr, targets_[i], succeeded) || referred;
   }
 
   return std::pair{succeeded, referred};
