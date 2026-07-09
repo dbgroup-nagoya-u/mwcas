@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_HPP_
-#define DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_HPP_
+#ifndef DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
+#define DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
 
 // C++ standard libraries
 #include <array>
@@ -39,7 +39,7 @@ namespace dbgroup::atomic::mwcas::lock_free
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
-class alignas(kCacheLineSize) MwCASDescriptor
+class alignas(kCacheLineSize) MwCASDescriptorWeak
 {
  public:
   /*##########################################################################*
@@ -63,23 +63,23 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief Construct an empty descriptor for MwCAS operations.
    *
    */
-  constexpr MwCASDescriptor() = default;
+  constexpr MwCASDescriptorWeak() = default;
 
-  MwCASDescriptor(const MwCASDescriptor&) = delete;
-  MwCASDescriptor(MwCASDescriptor&&) = delete;
+  MwCASDescriptorWeak(const MwCASDescriptorWeak&) = delete;
+  MwCASDescriptorWeak(MwCASDescriptorWeak&&) = delete;
 
-  auto operator=(const MwCASDescriptor& obj) -> MwCASDescriptor& = delete;
-  auto operator=(MwCASDescriptor&&) -> MwCASDescriptor& = delete;
+  auto operator=(const MwCASDescriptorWeak& obj) -> MwCASDescriptorWeak& = delete;
+  auto operator=(MwCASDescriptorWeak&&) -> MwCASDescriptorWeak& = delete;
 
   /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
   /**
-   * @brief Destroy the MwCASDescriptor object.
+   * @brief Destroy the MwCASDescriptorWeak object.
    *
    */
-  ~MwCASDescriptor() = default;
+  ~MwCASDescriptorWeak() = default;
 
   /*##########################################################################*
    * Public getters/setters
@@ -130,7 +130,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   [[nodiscard]]
   static auto GetDescriptor()  //
-      -> MwCASDescriptor*;
+      -> MwCASDescriptorWeak*;
 
   /*##########################################################################*
    * Public utility functions
@@ -200,7 +200,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Type aliases
    *##########################################################################*/
 
-  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptor>;
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptorWeak>;
 
   /*##########################################################################*
    * Internal types

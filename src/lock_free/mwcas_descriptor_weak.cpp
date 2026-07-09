@@ -75,7 +75,7 @@ constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
  *############################################################################*/
 
 /// @brief A thread local descriptor for reuse.
-thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
+thread_local std::unique_ptr<MwCASDescriptorWeak> _tls = nullptr;  // NOLINT
 
 }  // namespace
 
@@ -84,7 +84,7 @@ thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
  *############################################################################*/
 
 void
-MwCASDescriptor::StartGC(  //
+MwCASDescriptorWeak::StartGC(  //
     const size_t gc_interval,
     const size_t gc_thread_num)
 {
@@ -92,13 +92,13 @@ MwCASDescriptor::StartGC(  //
 }
 
 void
-MwCASDescriptor::StopGC()
+MwCASDescriptorWeak::StopGC()
 {
   _gc.reset();
 }
 
 auto
-MwCASDescriptor::CreateEpochGuard()  //
+MwCASDescriptorWeak::CreateEpochGuard()  //
     -> ::dbgroup::thread::EpochGuard
 {
   return _gc->CreateEpochGuard();
@@ -109,26 +109,26 @@ MwCASDescriptor::CreateEpochGuard()  //
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetDescriptor()  //
-    -> MwCASDescriptor*
+MwCASDescriptorWeak::GetDescriptor()  //
+    -> MwCASDescriptorWeak*
 {
   auto* desc = _tls.release();
   if (!desc) {
-    auto* const page = _gc->GetPageIfPossible<MwCASDescriptor>();
-    desc = (page) ? static_cast<MwCASDescriptor*>(page) : new MwCASDescriptor{};
+    auto* const page = _gc->GetPageIfPossible<MwCASDescriptorWeak>();
+    desc = (page) ? static_cast<MwCASDescriptorWeak*>(page) : new MwCASDescriptorWeak{};
   }
   desc->target_cnt_ = 0;
   return desc;
 }
 
 auto
-MwCASDescriptor::MwCAS()  //
+MwCASDescriptorWeak::MwCAS()  //
     -> bool
 {
   stat_.store(kUndecided, kRelease);  // set a memory fence
   const auto [succeeded, referred] = MwCASInternal();
   if (referred) {
-    _gc->AddGarbage<MwCASDescriptor>(this);
+    _gc->AddGarbage<MwCASDescriptorWeak>(this);
   } else {
     _tls.reset(this);
   }
@@ -140,7 +140,7 @@ MwCASDescriptor::MwCAS()  //
  *############################################################################*/
 
 void
-MwCASDescriptor::FollowIfNeeded(  //
+MwCASDescriptorWeak::FollowIfNeeded(  //
     std::atomic_uint64_t* const addr,
     uint64_t& word,
     const std::memory_order fence)
@@ -167,7 +167,7 @@ MwCASDescriptor::FollowIfNeeded(  //
   const auto incremented = word + kCntUnit;
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
-    auto* const another_desc = std::bit_cast<MwCASDescriptor*>(word & kAddrMask);
+    auto* const another_desc = std::bit_cast<MwCASDescriptorWeak*>(word & kAddrMask);
     const auto pos = (word & kPosMask) >> kPosShift;
     another_desc->MwCASInternal(pos + 1);
     word = addr->load(fence);
@@ -175,10 +175,10 @@ MwCASDescriptor::FollowIfNeeded(  //
 }
 
 auto
-MwCASDescriptor::Finalize(  //
-    uint64_t desc_addr,     //
-    MwCASTarget& target,    //
-    uint64_t desired)       //
+MwCASDescriptorWeak::Finalize(  //
+    uint64_t desc_addr,         //
+    MwCASTarget& target,        //
+    uint64_t desired)           //
     -> bool
 {
   auto expected = target.addr->load(kRelaxed);
@@ -192,8 +192,8 @@ MwCASDescriptor::Finalize(  //
 }
 
 auto
-MwCASDescriptor::MwCASInternal(  //
-    const size_t begin_pos)      //
+MwCASDescriptorWeak::MwCASInternal(  //
+    const size_t begin_pos)          //
     -> std::pair<bool, bool>
 {
   const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
