@@ -72,6 +72,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   add_library(${PROJECT_NAME} STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/deadlock_free/mwcas_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor_weak.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/casn_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/aopt_descriptor.cpp"
   )
