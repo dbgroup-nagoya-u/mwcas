@@ -160,7 +160,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
-    return std::bit_cast<T>(word & kValueMask);
+    return std::bit_cast<T>(word);
   }
 
   /**
