@@ -220,9 +220,9 @@ MwCASDescriptor::Complete(  //
   auto expected = target.addr->load(kRelaxed);
   while (true) {
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-    const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
 
     // verification of thread ID
+    const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
     if (embedded_tid != target.thread_id.load(kRelaxed)) {
       target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
       return true;
