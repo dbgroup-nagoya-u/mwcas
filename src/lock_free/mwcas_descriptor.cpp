@@ -51,7 +51,7 @@ namespace
  *############################################################################*/
 
 /// @brief The bit width of the ThreadID field.
-constexpr uint64_t kThreadIdBitnum = 13;
+constexpr uint64_t kThreadIdBitNum = 13;
 
 /// @brief An offset to shift descriptor addresses (due to 64-byte alignment).
 constexpr uint64_t kAddrAlignShift = 6;
