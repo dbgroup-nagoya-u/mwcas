@@ -190,7 +190,9 @@ MwCASDescriptor::FollowIfNeeded(  //
     auto* const another_desc =
         std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
     const auto pos = (word & kPosMask) >> kPosShift;
-    another_desc->MwCASInternal(pos);
+    if (another_desc->DetermineThreadId(pos, word)) {
+      another_desc->MwCASInternal(pos + 1);
+    }
     word = addr->load(fence);
   }
 }
@@ -249,19 +251,9 @@ MwCASDescriptor::MwCASInternal(  //
 
       // check another thread has embedded the descriptor
       if ((word & kDescMask) == base_addr) {
-        const auto embedded_tid = (word & kThreadIdMask) >> kThreadIdShift;
-
-        if (target.thread_id.load(kRelaxed) == kInitialThreadId) {
-          auto expected_tid = kInitialThreadId;
-          while (!target.thread_id.compare_exchange_weak(expected_tid, embedded_tid, kRelaxed,
-                                                         kRelaxed)) {
-            if (expected_tid != kInitialThreadId) {
-              break;
-            }
-            CPP_UTILITY_SPINLOCK_HINT
-          }
+        if (!DetermineThreadId(i, word)) {
+          break;
         }
-
         continue;
       }
 
