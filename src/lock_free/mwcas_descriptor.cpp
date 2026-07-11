@@ -177,10 +177,13 @@ MwCASDescriptor::FollowIfNeeded(  //
   if (word != another_word) return;  // other threads modified this field
 
   // a long CPU stall has been detected, so perform another MwCAS
-  auto incremented = word;
+  uint64_t incremented;
   if ((word & kCntMask) != kCntMask) [[likely]] {
-    incremented += kCntUnit;
+    incremented = word;
+  } else {
+    incremented = word & ~kCntMask;
   }
+  incremented += kCntMask;
 
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
