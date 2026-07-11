@@ -233,7 +233,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
 
-    /// @brief a thread ID to be compared for validation.
+    /// @brief A thread ID to be compared for verification.
     std::atomic_size_t thread_id;
   };
 
