@@ -183,7 +183,7 @@ MwCASDescriptor::FollowIfNeeded(  //
   } else {
     incremented = word & ~kCntMask;
   }
-  incremented += kCntMask;
+  incremented += kCntUnit;
 
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
