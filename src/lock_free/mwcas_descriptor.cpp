@@ -286,4 +286,33 @@ MwCASDescriptor::MwCASInternal(  //
   return std::pair{succeeded, referred};
 }
 
+auto
+MwCASDescriptor::DetermineThreadId(  //
+    const size_t pos,                //
+    const uint64_t word)             //
+    -> bool
+{
+  auto& target = targets_[pos];
+  const auto embedded_tid = (word & kThreadIdMask) >> kThreadIdShift;
+  auto current_tid = target.thread_id.load(kRelaxed);
+
+  if (current_tid == kInitialThreadId) {
+    auto expected_tid = kInitialThreadId;
+    if (target.thread_id.compare_exchange_strong(expected_tid, embedded_tid, kRelaxed, kRelaxed)) {
+      return true;
+    }
+    current_tid = expected_tid;
+  }
+
+  if (current_tid == embedded_tid) {
+    return true;
+  }
+
+  // clean up the duplicated embedded descriptor.
+  auto expected_word = word;
+  target.addr->compare_exchange_strong(expected_word, target.old_val, kRelaxed, kRelaxed);
+
+  return false;
+}
+
 }  // namespace dbgroup::atomic::mwcas::lock_free

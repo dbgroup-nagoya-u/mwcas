@@ -182,8 +182,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    new (&(targets_.at(target_cnt_++)))
-        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence, kInitialThreadId};
+    new (&(targets_.at(target_cnt_++))) MwCASTarget{static_cast<std::atomic_uint64_t*>(addr),
+                                                    old_val, new_val, fence, kInitialThreadId};
   }
 
   /**
@@ -272,7 +272,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   static auto Finalize(     //
       uint64_t desc_addr,   //
       MwCASTarget& target,  //
-      bool succeeded)     //
+      bool succeeded)       //
       -> bool;
 
   /**
@@ -285,6 +285,20 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
       -> std::pair<bool, bool>;
+
+  /**
+   * @brief Determine and verify the thread ID of a target and clean up if it's a duplicated
+   * embedded descriptor.
+   *
+   * @param pos The index of a target.
+   * @param word The value read from the target address.
+   * @retval true if the finalized thread ID matches the embedded thread ID.
+   * @retval false otherwise.
+   */
+  auto DetermineThreadId(  //
+      size_t pos,          //
+      uint64_t word)       //
+      -> bool;
 
   /*##########################################################################*
    * Internal member variables
