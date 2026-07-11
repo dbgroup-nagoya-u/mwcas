@@ -60,7 +60,7 @@ constexpr uint64_t kAddrAlignShift = 6;
 constexpr uint64_t kThreadIdShift = 41;
 
 /// @brief An offset for right-shifting to extract the "reference counter".
-constexpr uint64_t kCntShift = kThreadIdShift + kThreadIdBitnum;
+constexpr uint64_t kCntShift = kThreadIdShift + kThreadIdBitNum;
 
 /// @brief An offset for right-shifting to extract the "begin position".
 constexpr uint64_t kPosShift = 60;
@@ -72,7 +72,7 @@ constexpr uint64_t kCntUnit = 1UL << kCntShift;
 constexpr uint64_t kAddrMask = (1UL << kThreadIdShift) - 1UL;
 
 /// @brief A bitmask with only the "thread ID" portion set to 1.
-constexpr uint64_t kThreadIdMask = ((1UL << kThreadIdBitnum) - 1UL) << kThreadIdShift;
+constexpr uint64_t kThreadIdMask = ((1UL << kThreadIdBitNum) - 1UL) << kThreadIdShift;
 
 /// @brief A bitmask with only the "reference counter" portion set to 1.
 constexpr uint64_t kCntMask = ((1UL << (kPosShift - kCntShift)) - 1UL) << kCntShift;
