@@ -242,7 +242,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *##########################################################################*/
 
   /// @brief A bit mask for extracting actual values.
-  static constexpr uint64_t kValueMask = ~kMwCASFlag;
 
   /// @brief An initial thread ID assigned before the target is processed.
   static constexpr size_t kInitialThreadId = static_cast<size_t>(-1);
