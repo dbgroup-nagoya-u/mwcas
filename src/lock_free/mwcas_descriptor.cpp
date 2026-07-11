@@ -209,7 +209,7 @@ MwCASDescriptor::Finalize(  //
     auto desired = target.old_val;
     if (succeeded) {
       const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
-      // validation of thread ID
+      // verification of thread ID
       if (embedded_tid == target.thread_id.load(kRelaxed)) {
         desired = target.new_val;
       }
