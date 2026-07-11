@@ -198,26 +198,37 @@ MwCASDescriptor::FollowIfNeeded(  //
 }
 
 auto
-MwCASDescriptor::Finalize(  //
-    uint64_t desc_addr,     //
-    MwCASTarget& target,    //
-    bool succeeded)         //
-    -> bool
+MwCASDescriptor::Abort(  //
+    uint64_t desc_addr,  //
+    MwCASTarget& target) -> bool
 {
   auto expected = target.addr->load(kRelaxed);
   while (true) {
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+    if (target.addr->compare_exchange_weak(expected, target.old_val, kRelaxed, kRelaxed)) {
+      return (expected & kCntMask) != 0;
+    }
+    CPP_UTILITY_SPINLOCK_HINT
+  }
+}
 
-    auto desired = target.old_val;
-    if (succeeded) {
-      const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
-      // verification of thread ID
-      if (embedded_tid == target.thread_id.load(kRelaxed)) {
-        desired = target.new_val;
-      }
+auto
+MwCASDescriptor::Complete(  //
+    uint64_t desc_addr,     //
+    MwCASTarget& target) -> bool
+{
+  auto expected = target.addr->load(kRelaxed);
+  while (true) {
+    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+    const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
+
+    // verification of thread ID
+    if (embedded_tid != target.thread_id.load(kRelaxed)) {
+      target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
+      return true;
     }
 
-    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
+    if (target.addr->compare_exchange_weak(expected, target.new_val, kRelaxed, kRelaxed)) {
       return (expected & kCntMask) != 0;
     }
     CPP_UTILITY_SPINLOCK_HINT
@@ -271,8 +282,14 @@ MwCASDescriptor::MwCASInternal(  //
 
   const auto succeeded = (cur_stat == kSucceeded);
   bool referred = false;
-  for (size_t i = 0; i < target_cnt_; ++i) {
-    referred = Finalize(base_addr, targets_[i], succeeded) || referred;
+  if (succeeded) {
+    for (size_t i = 0; i < target_cnt_; ++i) {
+      referred = Complete(base_addr, targets_[i]) || referred;
+    }
+  } else {
+    for (size_t i = 0; i < target_cnt_; ++i) {
+      referred = Abort(base_addr, targets_[i]) || referred;
+    }
   }
 
   return std::pair{succeeded, referred};

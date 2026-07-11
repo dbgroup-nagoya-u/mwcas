@@ -263,17 +263,24 @@ class alignas(kCacheLineSize) MwCASDescriptor
       std::memory_order fence);
 
   /**
-   * @brief Swap an embedded descriptor into a desired value.
+   * @brief Swap an embedded descriptor into a old value.
    *
    * @param desc_addr The address of this descriptor with the flag.
    * @param target A target MwCAS information.
-   * @param desired A desired value to be embedded.
    */
-  static auto Finalize(     //
-      uint64_t desc_addr,   //
-      MwCASTarget& target,  //
-      bool succeeded)       //
-      -> bool;
+  static auto Abort(       //
+      uint64_t desc_addr,  //
+      MwCASTarget& target) -> bool;
+
+  /**
+   * @brief Swap an embedded descriptor into a new value.
+   *
+   * @param desc_addr The address of this descriptor with the flag.
+   * @param target A target MwCAS information.
+   */
+  static auto Complete(    //
+      uint64_t desc_addr,  //
+      MwCASTarget& target) -> bool;
 
   /**
    * @brief An actual MwCAS procedure.
