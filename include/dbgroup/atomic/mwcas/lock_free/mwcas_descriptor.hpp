@@ -244,7 +244,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /// @brief A bit mask for extracting actual values.
 
   /// @brief An initial thread ID assigned before the target is processed.
-  static constexpr size_t kInitialThreadId = static_cast<size_t>(-1);
+  static constexpr size_t kInitialThreadId = ~0UL;
 
   /*##########################################################################*
    * Internal APIs
