@@ -284,11 +284,11 @@ MwCASDescriptor::MwCASInternal(  //
   bool referred = false;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred = Complete(base_addr, targets_[i]) || referred;
+      referred |= Complete(base_addr, targets_[i]);
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred = Abort(base_addr, targets_[i]) || referred;
+      referred |= Abort(base_addr, targets_[i]);
     }
   }
 
