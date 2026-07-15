@@ -257,19 +257,16 @@ MwCASDescriptor::MwCASInternal(  //
 
       // try to embed the descriptor
       if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
-        word = desc_addr;
+        if (DetermineThreadId(i, desc_addr)) continue;
+        break;  // this MCAS has been completed
       }
 
       // check another thread has embedded the descriptor
-      if ((word & kDescMask) == base_addr) {
-        if (!DetermineThreadId(i, word)) {
-          break;
-        }
-        continue;
+      if ((word & kDescMask) != base_addr) {
+        stat = kFailed;
+        break;
       }
-
-      stat = kFailed;
-      break;
+      if (!DetermineThreadId(i, word)) break;  // this MCAS has been completed
     }
 
     // set a linearization point
