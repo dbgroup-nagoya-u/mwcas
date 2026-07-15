@@ -15,7 +15,7 @@
  */
 
 // the corresponding header
-#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp"
+#include "dbgroup/atomic/mwcas/lock_free/mwcas_descriptor_weak.hpp"
 
 // C++ standard libraries
 #include <atomic>
@@ -33,14 +33,13 @@
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
-//                                   Bit allocation of a word.
-// |    63     |      62-60     |      59-(N+1)     |   N-41   |        40-0        |
-// | MCAS Flag | Begin Position | Reference Counter | ThreadID | Descriptor Address |
-//
+//                       Bit allocation of a word.
+// |     63     |       62-50       |      49-47     |         46-0       |
+// | MwCAS Flag | Reference Counter | Begin Position | Descriptor Address |
 
-//        Bit allocation of an actual value.
-//          |    63     |     62-0     |
-//          | MCAS Flag | Actual Value |
+//                   Bit allocation of an actual value.
+//          |           63           |  62-(N+1) |     N-0      |
+//          | Version Confirmed Flag |  Version  | Actual Value |
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
@@ -50,35 +49,23 @@ namespace
  * Local constants
  *############################################################################*/
 
-/// @brief The bit width of the ThreadID field.
-constexpr uint64_t kThreadIdBitNum = 13;
-
-/// @brief An offset to shift descriptor addresses (due to 64-byte alignment).
-constexpr uint64_t kAddrAlignShift = 6;
-
-/// @brief An offset for right-shifting to extract the "thread ID".
-constexpr uint64_t kThreadIdShift = 41;
+/// @brief An offset for right-shifting to extract the "begin position".
+constexpr uint64_t kPosShift = 47;
 
 /// @brief An offset for right-shifting to extract the "reference counter".
-constexpr uint64_t kCntShift = kThreadIdShift + kThreadIdBitNum;
-
-/// @brief An offset for right-shifting to extract the "begin position".
-constexpr uint64_t kPosShift = 60;
+constexpr uint64_t kCntShift = 50;
 
 /// @brief A constant for incrementing the "reference counter".
 constexpr uint64_t kCntUnit = 1UL << kCntShift;
 
 /// @brief A bitmask with only the "descriptor address" portion set to 1.
-constexpr uint64_t kAddrMask = (1UL << kThreadIdShift) - 1UL;
-
-/// @brief A bitmask with only the "thread ID" portion set to 1.
-constexpr uint64_t kThreadIdMask = ((1UL << kThreadIdBitNum) - 1UL) << kThreadIdShift;
-
-/// @brief A bitmask with only the "reference counter" portion set to 1.
-constexpr uint64_t kCntMask = ((1UL << (kPosShift - kCntShift)) - 1UL) << kCntShift;
+constexpr uint64_t kAddrMask = (1UL << 47UL) - 1UL;
 
 /// @brief A bitmask with only the "begin position" portion set to 1.
-constexpr uint64_t kPosMask = 7UL << kPosShift;
+constexpr uint64_t kPosMask = (kCntUnit - 1UL) ^ kAddrMask;
+
+/// @brief A bitmask with only the "reference counter" portion set to 1.
+constexpr uint64_t kCntMask = (kMwCASFlag - 1UL) ^ (kPosMask | kAddrMask);
 
 /// @brief A bitmask with only the "MwCAS FLAG" and "descriptor address" portions set to 1.
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
@@ -88,7 +75,7 @@ constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
  *############################################################################*/
 
 /// @brief A thread local descriptor for reuse.
-thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
+thread_local std::unique_ptr<MwCASDescriptorWeak> _tls = nullptr;  // NOLINT
 
 }  // namespace
 
@@ -97,7 +84,7 @@ thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
  *############################################################################*/
 
 void
-MwCASDescriptor::StartGC(  //
+MwCASDescriptorWeak::StartGC(  //
     const size_t gc_interval,
     const size_t gc_thread_num)
 {
@@ -105,13 +92,13 @@ MwCASDescriptor::StartGC(  //
 }
 
 void
-MwCASDescriptor::StopGC()
+MwCASDescriptorWeak::StopGC()
 {
   _gc.reset();
 }
 
 auto
-MwCASDescriptor::CreateEpochGuard()  //
+MwCASDescriptorWeak::CreateEpochGuard()  //
     -> ::dbgroup::thread::EpochGuard
 {
   return _gc->CreateEpochGuard();
@@ -122,26 +109,26 @@ MwCASDescriptor::CreateEpochGuard()  //
  *############################################################################*/
 
 auto
-MwCASDescriptor::GetDescriptor()  //
-    -> MwCASDescriptor*
+MwCASDescriptorWeak::GetDescriptor()  //
+    -> MwCASDescriptorWeak*
 {
   auto* desc = _tls.release();
   if (!desc) {
-    auto* const page = _gc->GetPageIfPossible<MwCASDescriptor>();
-    desc = (page) ? static_cast<MwCASDescriptor*>(page) : new MwCASDescriptor{};
+    auto* const page = _gc->GetPageIfPossible<MwCASDescriptorWeak>();
+    desc = (page) ? static_cast<MwCASDescriptorWeak*>(page) : new MwCASDescriptorWeak{};
   }
   desc->target_cnt_ = 0;
   return desc;
 }
 
 auto
-MwCASDescriptor::MwCAS()  //
+MwCASDescriptorWeak::MwCAS()  //
     -> bool
 {
   stat_.store(kUndecided, kRelease);  // set a memory fence
   const auto [succeeded, referred] = MwCASInternal();
   if (referred) {
-    _gc->AddGarbage<MwCASDescriptor>(this);
+    _gc->AddGarbage<MwCASDescriptorWeak>(this);
   } else {
     _tls.reset(this);
   }
@@ -153,7 +140,7 @@ MwCASDescriptor::MwCAS()  //
  *############################################################################*/
 
 void
-MwCASDescriptor::FollowIfNeeded(  //
+MwCASDescriptorWeak::FollowIfNeeded(  //
     std::atomic_uint64_t* const addr,
     uint64_t& word,
     const std::memory_order fence)
@@ -177,35 +164,27 @@ MwCASDescriptor::FollowIfNeeded(  //
   if (word != another_word) return;  // other threads modified this field
 
   // a long CPU stall has been detected, so perform another MwCAS
-  uint64_t incremented;
-  if ((word & kCntMask) != kCntMask) [[likely]] {
-    incremented = word;
-  } else {
-    incremented = word & ~kCntMask;
-  }
-  incremented += kCntUnit;
-
+  const auto incremented = word + kCntUnit;
   if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
     // follow another MwCAS
-    auto* const another_desc =
-        std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
+    auto* const another_desc = std::bit_cast<MwCASDescriptorWeak*>(word & kAddrMask);
     const auto pos = (word & kPosMask) >> kPosShift;
-    if (another_desc->DetermineThreadId(pos, word)) {
-      another_desc->MwCASInternal(pos + 1);
-    }
+    another_desc->MwCASInternal(pos + 1);
     word = addr->load(fence);
   }
 }
 
 auto
-MwCASDescriptor::Abort(  //
-    uint64_t desc_addr,  //
-    MwCASTarget& target) -> bool
+MwCASDescriptorWeak::Finalize(  //
+    uint64_t desc_addr,         //
+    MwCASTarget& target,        //
+    uint64_t desired)           //
+    -> bool
 {
   auto expected = target.addr->load(kRelaxed);
   while (true) {
     if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-    if (target.addr->compare_exchange_weak(expected, target.old_val, kRelaxed, kRelaxed)) {
+    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
       return (expected & kCntMask) != 0;
     }
     CPP_UTILITY_SPINLOCK_HINT
@@ -213,42 +192,16 @@ MwCASDescriptor::Abort(  //
 }
 
 auto
-MwCASDescriptor::Complete(  //
-    uint64_t desc_addr,     //
-    MwCASTarget& target) -> bool
-{
-  auto expected = target.addr->load(kRelaxed);
-  while (true) {
-    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-
-    // verification of thread ID
-    const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
-    if (embedded_tid != target.thread_id.load(kRelaxed)) {
-      target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
-      return true;
-    }
-
-    if (target.addr->compare_exchange_weak(expected, target.new_val, kRelaxed, kRelaxed)) {
-      return (expected & kCntMask) != 0;
-    }
-    CPP_UTILITY_SPINLOCK_HINT
-  }
-}
-
-auto
-MwCASDescriptor::MwCASInternal(  //
-    const size_t begin_pos)      //
+MwCASDescriptorWeak::MwCASInternal(  //
+    const size_t begin_pos)          //
     -> std::pair<bool, bool>
 {
-  const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
-  const auto desc_addr = std::bit_cast<uint64_t>(this) >> kAddrAlignShift;
-  const auto base_addr = kMwCASFlag | desc_addr;
-  const auto owned_addr = base_addr | (thread_id << kThreadIdShift);
+  const auto base_addr = std::bit_cast<uint64_t>(this) | kMwCASFlag;
   auto cur_stat = stat_.load(kAcquire);  // set a memory fence for followers
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
-      const auto desc_addr = owned_addr | (i << kPosShift);
+      const auto desc_addr = base_addr | (i << kPosShift);
       auto& target = targets_[i];
       auto* const addr = target.addr;
       const auto expected = target.old_val;
@@ -257,8 +210,7 @@ MwCASDescriptor::MwCASInternal(  //
 
       // try to embed the descriptor
       if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
-        if (DetermineThreadId(i, desc_addr)) continue;
-        break;  // this MCAS has been completed
+        continue;
       }
 
       // check another thread has embedded the descriptor
@@ -266,7 +218,6 @@ MwCASDescriptor::MwCASInternal(  //
         stat = kFailed;
         break;
       }
-      if (!DetermineThreadId(i, word)) break;  // this MCAS has been completed
     }
 
     // set a linearization point
@@ -281,36 +232,19 @@ MwCASDescriptor::MwCASInternal(  //
   bool referred = false;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred |= Complete(base_addr, targets_[i]);
+      auto& target = targets_[i];
+      const auto ver = (target.old_val + kVersionUnit) & kVersionMask;
+      referred = Finalize(base_addr, target, (target.new_val | ver)) || referred;
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred |= Abort(base_addr, targets_[i]);
+      auto& target = targets_[i];
+      const auto val = target.old_val & kVerAndValMask;
+      referred = Finalize(base_addr, target, val) || referred;
     }
   }
 
   return std::pair{succeeded, referred};
-}
-
-auto
-MwCASDescriptor::DetermineThreadId(  //
-    const size_t pos,                //
-    uint64_t word)                   //
-    -> bool
-{
-  auto& target = targets_[pos];
-  const auto embedded_tid = (word & kThreadIdMask) >> kThreadIdShift;
-  auto current_tid = target.thread_id.load(kRelaxed);
-
-  if (current_tid == kInitialThreadId
-      && target.thread_id.compare_exchange_strong(current_tid, embedded_tid, kRelaxed, kRelaxed)) {
-    return true;
-  }
-  if (current_tid == embedded_tid) return true;
-
-  // clean up the duplicated embedded descriptor.
-  target.addr->compare_exchange_strong(word, target.old_val, kRelaxed, kRelaxed);
-  return false;
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

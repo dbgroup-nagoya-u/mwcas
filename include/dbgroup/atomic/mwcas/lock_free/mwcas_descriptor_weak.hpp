@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_HPP_
-#define DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_HPP_
+#ifndef DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
+#define DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
 
 // C++ standard libraries
 #include <array>
@@ -39,7 +39,7 @@ namespace dbgroup::atomic::mwcas::lock_free
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
-class alignas(kCacheLineSize) MwCASDescriptor
+class alignas(kCacheLineSize) MwCASDescriptorWeak
 {
  public:
   /*##########################################################################*
@@ -63,23 +63,23 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief Construct an empty descriptor for MwCAS operations.
    *
    */
-  constexpr MwCASDescriptor() = default;
+  constexpr MwCASDescriptorWeak() = default;
 
-  MwCASDescriptor(const MwCASDescriptor&) = delete;
-  MwCASDescriptor(MwCASDescriptor&&) = delete;
+  MwCASDescriptorWeak(const MwCASDescriptorWeak&) = delete;
+  MwCASDescriptorWeak(MwCASDescriptorWeak&&) = delete;
 
-  auto operator=(const MwCASDescriptor& obj) -> MwCASDescriptor& = delete;
-  auto operator=(MwCASDescriptor&&) -> MwCASDescriptor& = delete;
+  auto operator=(const MwCASDescriptorWeak& obj) -> MwCASDescriptorWeak& = delete;
+  auto operator=(MwCASDescriptorWeak&&) -> MwCASDescriptorWeak& = delete;
 
   /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
   /**
-   * @brief Destroy the MwCASDescriptor object.
+   * @brief Destroy the MwCASDescriptorWeak object.
    *
    */
-  ~MwCASDescriptor() = default;
+  ~MwCASDescriptorWeak() = default;
 
   /*##########################################################################*
    * Public getters/setters
@@ -130,7 +130,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    */
   [[nodiscard]]
   static auto GetDescriptor()  //
-      -> MwCASDescriptor*;
+      -> MwCASDescriptorWeak*;
 
   /*##########################################################################*
    * Public utility functions
@@ -151,7 +151,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   Read(  //
       void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
-      -> T
+      -> std::pair<T, T>
   {
     static_assert(CanMwCAS<T>());
 
@@ -160,7 +160,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
-    return std::bit_cast<T>(word);
+    return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
   }
 
   /**
@@ -182,8 +182,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    new (&(targets_.at(target_cnt_++))) MwCASTarget{static_cast<std::atomic_uint64_t*>(addr),
-                                                    old_val, new_val, fence, kInitialThreadId};
+    new (&(targets_.at(target_cnt_++)))
+        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
   }
 
   /**
@@ -200,7 +200,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * Type aliases
    *##########################################################################*/
 
-  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptor>;
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptorWeak>;
 
   /*##########################################################################*
    * Internal types
@@ -220,7 +220,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief A class for representing MwCAS targets.
    *
    */
-  struct MwCASTarget {
+  struct alignas(kCacheLineSize / 2) MwCASTarget {
     /// @brief A target memory address.
     std::atomic_uint64_t* addr;
 
@@ -232,19 +232,26 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
-
-    /// @brief A thread ID to be compared for verification.
-    std::atomic_size_t thread_id;
   };
 
   /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
-  /// @brief A bit mask for extracting actual values.
+  /// @brief The begin bit position of versions.
+  static constexpr uint64_t kVersionShift = kValueBitNum;
 
-  /// @brief An initial thread ID assigned before the target is processed.
-  static constexpr size_t kInitialThreadId = ~0UL;
+  /// @brief A unit value for incrementing versions.
+  static constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
+
+  /// @brief A bit mask for extracting actual values.
+  static constexpr uint64_t kValueMask = kVersionUnit - 1UL;
+
+  /// @brief A bit mask for extracting versions and actual values.
+  static constexpr uint64_t kVerAndValMask = ~kMwCASFlag;
+
+  /// @brief A bit mask for extracting versions.
+  static constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
 
   /*##########################################################################*
    * Internal APIs
@@ -263,24 +270,17 @@ class alignas(kCacheLineSize) MwCASDescriptor
       std::memory_order fence);
 
   /**
-   * @brief Swap an embedded descriptor into a old value.
+   * @brief Swap an embedded descriptor into a desired value.
    *
    * @param desc_addr The address of this descriptor with the flag.
    * @param target A target MwCAS information.
+   * @param desired A desired value to be embedded.
    */
-  static auto Abort(       //
-      uint64_t desc_addr,  //
-      MwCASTarget& target) -> bool;
-
-  /**
-   * @brief Swap an embedded descriptor into a new value.
-   *
-   * @param desc_addr The address of this descriptor with the flag.
-   * @param target A target MwCAS information.
-   */
-  static auto Complete(    //
-      uint64_t desc_addr,  //
-      MwCASTarget& target) -> bool;
+  static auto Finalize(     //
+      uint64_t desc_addr,   //
+      MwCASTarget& target,  //
+      uint64_t desired)     //
+      -> bool;
 
   /**
    * @brief An actual MwCAS procedure.
@@ -292,20 +292,6 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
       -> std::pair<bool, bool>;
-
-  /**
-   * @brief Determine and verify the thread ID of a target and clean up if it's a duplicated
-   * embedded descriptor.
-   *
-   * @param pos The index of a target.
-   * @param word The value read from the target address.
-   * @retval true if the finalized thread ID matches the embedded thread ID.
-   * @retval false otherwise.
-   */
-  auto DetermineThreadId(  //
-      size_t pos,          //
-      uint64_t word)       //
-      -> bool;
 
   /*##########################################################################*
    * Internal member variables

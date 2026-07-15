@@ -19,6 +19,7 @@
 #include <dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp>
 #include <dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp>
 #include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor_weak.hpp>
 
 // C++ standard libraries
 #include <cstddef>
@@ -48,6 +49,7 @@ namespace dbgroup::atomic::mwcas::test
 
 using DLFMwCAS = deadlock_free::MwCASDescriptor;
 using LFMwCAS = lock_free::MwCASDescriptor;
+using LFMwCASWeak = lock_free::MwCASDescriptorWeak;
 using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
@@ -101,7 +103,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     }
 
     if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
-                  || std::is_same_v<MwCASDesc, LFMwCAS>) {
+                  || std::is_same_v<MwCASDesc, LFMwCAS> || std::is_same_v<MwCASDesc, LFMwCASWeak>) {
       MwCASDesc::StartGC();
     }
   }
@@ -110,7 +112,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   TearDown() override
   {
     if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
-                  || std::is_same_v<MwCASDesc, LFMwCAS>) {
+                  || std::is_same_v<MwCASDesc, LFMwCAS> || std::is_same_v<MwCASDesc, LFMwCASWeak>) {
       MwCASDesc::StopGC();
     }
   }
@@ -128,7 +130,7 @@ class MwCASDescriptorFixture : public ::testing::Test
     // check the target fields are correctly incremented
     size_t sum = 0;
     for (auto& target : target_fields_) {
-      if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
+      if constexpr (std::is_same_v<MwCASDesc, LFMwCASWeak>) {
         sum += MwCASDesc::template Read<Target>(&target).first;
       } else {
         sum += MwCASDesc::template Read<Target>(&target);
@@ -158,7 +160,7 @@ class MwCASDescriptorFixture : public ::testing::Test
         }
         if (desc.MwCAS()) return;
       }
-    } else if constexpr (std::is_same_v<MwCASDesc, LFMwCAS>) {
+    } else if constexpr (std::is_same_v<MwCASDesc, LFMwCASWeak>) {
       while (true) {
         [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
         auto* const desc = MwCASDesc::GetDescriptor();
@@ -265,7 +267,7 @@ class MwCASDescriptorFixture : public ::testing::Test
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDescriptors = ::testing::Types<DLFMwCAS, LFMwCAS, AOPT, CASN>;
+using MwCASDescriptors = ::testing::Types<DLFMwCAS, LFMwCAS, LFMwCASWeak, AOPT, CASN>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDescriptors);
 
 /*############################################################################*
