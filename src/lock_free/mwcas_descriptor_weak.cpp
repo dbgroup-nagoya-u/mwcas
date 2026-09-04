@@ -151,11 +151,6 @@ MwCASDescriptorWeak::FollowIfNeeded(  //
     word = addr->load(fence);
     if (word != another_word) return;
   }
-  for (uint32_t i = 0; i < kRetryNum; ++i) {
-    std::this_thread::yield();
-    word = addr->load(fence);
-    if (word != another_word) return;
-  }
 
   const auto count = (word & kCntMask) >> kCntShift;
   std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
