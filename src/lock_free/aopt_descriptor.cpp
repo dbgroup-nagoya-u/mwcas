@@ -23,6 +23,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <utility>
 
@@ -191,24 +192,27 @@ AOPTDescriptor::MwCASInternal(  // NOLINT
 
 AOPTDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
 {
-  FinalizeCompletedDescriptors();
+  // Temporarily skip calling FinalizeCompletedDescriptors() here to avoid a segmentation fault.
+  // FinalizeCompletedDescriptors();
 }
 
 void
 AOPTDescriptor::CompletedDescriptors::RetireForCleanUp(  //
     AOPTDescriptor* const desc)
 {
-  if (desc_num_ >= kMaxReusableDescriptors) {
+  if (desc_deq_.size() >= kMaxReusableDescriptors) {
     FinalizeCompletedDescriptors();
   }
-  desc_arr_[desc_num_++] = desc;
+  desc_deq_.emplace_back(desc, _gc->GetCurrentEpoch());
 }
 
 void
 AOPTDescriptor::CompletedDescriptors::FinalizeCompletedDescriptors()
 {
-  for (size_t i = 0; i < desc_num_; ++i) {
-    auto* const desc = desc_arr_[i];
+  const auto min_epoch = _gc->GetMinEpoch();
+  while (!desc_deq_.empty() && desc_deq_.front().second < min_epoch) {
+    auto* const desc = desc_deq_.front().first;
+    desc_deq_.pop_front();
     const auto desc_addr = std::bit_cast<uint64_t>(desc) | kMwCASFlag;
     const auto target_num = desc->target_cnt_;
     if (desc->stat_.load(kRelaxed) == kSuccessful) {
@@ -228,7 +232,6 @@ AOPTDescriptor::CompletedDescriptors::FinalizeCompletedDescriptors()
     }
     _gc->AddGarbage<AOPTDescriptor>(desc);
   }
-  desc_num_ = 0;
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

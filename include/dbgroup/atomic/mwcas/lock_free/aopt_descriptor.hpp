@@ -23,6 +23,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <utility>
 
@@ -275,7 +276,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      *
      * @param desc A completed descriptor.
      * @note If the number of completed descriptors reaches a certain threshold,
-     * this function invoke their finalization.
+     * this function invoke the finalization of expired ones.
      */
     void RetireForCleanUp(  //
         AOPTDescriptor* desc);
@@ -296,11 +297,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
      * Internal member variables
      *########################################################################*/
 
-    /// @brief Completed (i.e., embedded) descriptors.
-    std::array<AOPTDescriptor*, kMaxReusableDescriptors> desc_arr_ = {};
-
-    /// @brief The current number of completed descriptors.
-    size_t desc_num_{};
+    /// @brief Completed (i.e., embedded) descriptors and their retired epochs.
+    std::deque<std::pair<AOPTDescriptor*, ::dbgroup::Serial64_t>> desc_deq_{};
   };
 
   /*##########################################################################*
