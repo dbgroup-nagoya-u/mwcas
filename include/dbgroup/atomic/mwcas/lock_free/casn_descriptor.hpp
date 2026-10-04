@@ -36,6 +36,22 @@
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
+class CASNDescriptor;
+
+/**
+ * @brief A class for representing RDCSS descriptors.
+ */
+struct RDCSSDescriptor {
+  /// @brief Do not call destructors.
+  using T = void;
+
+  /// @brief Reuse allocated descriptors.
+  static constexpr bool kReusePages = true;
+
+  /// @brief The enclosing CASN descriptor.
+  CASNDescriptor* casn{nullptr};
+};
+
 /**
  * @brief A class for performing MwCAS with the CASN algorithm.
  *
@@ -210,7 +226,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    * Type aliases
    *##########################################################################*/
 
-  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor>;
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor, RDCSSDescriptor>;
 
   /*##########################################################################*
    * Internal types
@@ -251,9 +267,6 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief The second bit from the last indicates RDCSS descriptors.
   static constexpr uint64_t kRDCSSFlag = 1UL << 62UL;
 
-  /// @brief A bit mask for swapping flags with XOR.
-  static constexpr uint64_t kFlagSwap = kMwCASFlag | kRDCSSFlag;
-
   /// @brief The bit position for indicating the original number of a target.
   static constexpr uint64_t kCntPos = 47;
 
@@ -266,6 +279,13 @@ class alignas(kCacheLineSize) CASNDescriptor
   /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
+
+  /**
+   * @return A fresh RDCSS descriptor for an invocation of CASN phase 1.
+   */
+  [[nodiscard]]
+  static auto GetRDCSSDescriptor()  //
+      -> RDCSSDescriptor*;
 
   /**
    * @brief Complete a found RDCSS operation.
@@ -291,11 +311,13 @@ class alignas(kCacheLineSize) CASNDescriptor
    *
    * @param pos The position of a MwCAS target.
    * @param casn_base The address of a CASN descriptor to be embedded.
+   * @param rdcss_base The address of an RDCSS descriptor to be embedded.
    * @return The current value of a target address.
    */
   auto RDCSS(  //
       size_t pos,
-      uint64_t casn_base)  //
+      uint64_t casn_base,
+      uint64_t rdcss_base)  //
       -> uint64_t;
 
   /*##########################################################################*
