@@ -21,10 +21,12 @@
 #include <array>
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <memory>
+#include <thread>
 #include <utility>
 
 // external C++ libraries
@@ -33,6 +35,7 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
+#include "dbgroup/memory/utility.hpp"
 
 namespace
 {
@@ -192,8 +195,10 @@ AOPTDescriptor::MwCASInternal(  // NOLINT
 
 AOPTDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
 {
-  // Temporarily skip calling FinalizeCompletedDescriptors() here to avoid a segmentation fault.
-  // FinalizeCompletedDescriptors();
+  while (!desc_deq_.empty()) {
+    FinalizeCompletedDescriptors();
+    std::this_thread::sleep_for(std::chrono::milliseconds{dbgroup::memory::kDefaultGCTime});
+  }
 }
 
 void
