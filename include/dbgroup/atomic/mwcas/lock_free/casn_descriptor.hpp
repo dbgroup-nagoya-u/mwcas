@@ -105,8 +105,7 @@ class alignas(kCacheLineSize) CASNDescriptor
   /**
    * @return the number of registered MwCAS targets.
    */
-  [[nodiscard]]
-  constexpr auto
+  [[nodiscard]] constexpr auto
   Size() const  //
       -> size_t
   {
@@ -145,8 +144,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    * @note You must explicitly delete the given descriptor if you do not call
    * the MwCAS function.
    */
-  [[nodiscard]]
-  static auto GetDescriptor()  //
+  [[nodiscard]] static auto GetDescriptor()  //
       -> CASNDescriptor*;
 
   /*##########################################################################*
@@ -180,8 +178,8 @@ class alignas(kCacheLineSize) CASNDescriptor
       }
       if ((cur & kMwCASFlag) == 0) break;
 
-      auto* const desc = std::bit_cast<CASNDescriptor*>(cur & kPtrMask);
-      desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
+      auto* const mutable_addr = const_cast<std::atomic_uint64_t*>(target_addr);  // NOLINT
+      FollowIfNeeded(mutable_addr, cur, fence);
       CPP_UTILITY_SPINLOCK_HINT
       cur = target_addr->load(fence);
     }
@@ -270,11 +268,22 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief The bit position for indicating the original number of a target.
   static constexpr uint64_t kCntPos = 47;
 
+  /// @brief An offset for right-shifting to extract reference counter.
+  static constexpr uint64_t kRefCntShift = 56;
+
+  /// @brief A constant for incrementing reference counter.
+  static constexpr uint64_t kRefCntUnit = 1UL << kRefCntShift;
+
   /// @brief A bit mask for extracting pointers.
   static constexpr uint64_t kPtrMask = (1UL << kCntPos) - 1UL;
 
   /// @brief A bit mask for extracting the original number of a target.
-  static constexpr uint64_t kCntMask = ~kPtrMask ^ (kMwCASFlag | kRDCSSFlag);
+  static constexpr uint64_t kCntMask = (kRefCntUnit - 1UL) ^ kPtrMask;
+
+  /// @brief A bit mask for extracting reference counter.
+  static constexpr uint64_t kRefCntMask = (kRDCSSFlag - 1UL) ^ (kCntMask | kPtrMask);
+
+  static_assert(kMwCASCapacity <= (kCntMask >> kCntPos) + 1);
 
   /*##########################################################################*
    * Internal utility functions
@@ -283,9 +292,20 @@ class alignas(kCacheLineSize) CASNDescriptor
   /**
    * @return A fresh RDCSS descriptor for an invocation of CASN phase 1.
    */
-  [[nodiscard]]
-  static auto GetRDCSSDescriptor()  //
+  [[nodiscard]] static auto GetRDCSSDescriptor()  //
       -> RDCSSDescriptor*;
+
+  /**
+   * @brief @brief Insert back-off and follow the existing MwCAS if needed.
+   *
+   * @param addr A target memory address.
+   * @param word The current value of a target address.
+   * @param fence A memory fence.
+   */
+  static void FollowIfNeeded(  //
+      std::atomic_uint64_t* addr,
+      uint64_t word,
+      std::memory_order fence);
 
   /**
    * @brief Complete a found RDCSS operation.

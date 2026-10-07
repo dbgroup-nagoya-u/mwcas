@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <thread>
 
 // external C++ libraries
 #include <dbgroup/lock/utility.hpp>
@@ -31,6 +32,11 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
+
+//                           Bit allocation of a word.
+// |     63     |     62     |       61-56       |   55-47  |        46-0        |
+// | MwCAS Flag | RDCSS Flag | Reference Counter | Position | Descriptor Address |
+//
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
@@ -111,9 +117,10 @@ CASNDescriptor::MwCASInternal(  // NOLINT
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
     retry_entry:
       auto cur = RDCSS(i, casn_base, rdcss_base);
-      if ((cur & kMwCASFlag) > 0 && cur != (casn_base | (i << kCntPos))) {
-        auto* const desc = std::bit_cast<CASNDescriptor*>(cur & kPtrMask);
-        desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
+      if ((cur & kMwCASFlag) > 0) {
+        // this entry has already been embedded by helpers
+        if ((cur & ~kRefCntMask) == (casn_base | (i << kCntPos))) continue;
+        FollowIfNeeded(targets_[i].addr, cur, kRelaxed);
         CPP_UTILITY_SPINLOCK_HINT
         goto retry_entry;  // NOLINT
       }
@@ -138,16 +145,24 @@ CASNDescriptor::MwCASInternal(  // NOLINT
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto& target = targets_[i];
+      const auto casn_addr = casn_base | (i << kCntPos);
       auto expected = target.addr->load(kRelaxed);
-      if (expected != (casn_base | (i << kCntPos))) continue;
-      target.addr->compare_exchange_strong(expected, target.new_val, kRelaxed, kRelaxed);
+      while ((expected & ~kRefCntMask) == casn_addr) {
+        // retry if other threads have incremented the reference counter
+        if (target.addr->compare_exchange_weak(expected, target.new_val, kRelaxed, kRelaxed)) break;
+        CPP_UTILITY_SPINLOCK_HINT
+      }
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto& target = targets_[i];
+      const auto casn_addr = casn_base | (i << kCntPos);
       auto expected = target.addr->load(kRelaxed);
-      if (expected != (casn_base | (i << kCntPos))) continue;
-      target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
+      while ((expected & ~kRefCntMask) == casn_addr) {
+        // retry if other threads have incremented the reference counter
+        if (target.addr->compare_exchange_weak(expected, target.old_val, kRelaxed, kRelaxed)) break;
+        CPP_UTILITY_SPINLOCK_HINT
+      }
     }
   }
 
@@ -183,6 +198,41 @@ CASNDescriptor::RDCSS(  //
     target.addr->compare_exchange_strong(rdcss_addr, casn_base | pos_bit, target.fence, kRelaxed);
   }
   return target.old_val;
+}
+
+void
+CASNDescriptor::FollowIfNeeded(  // NOLINT
+    [[maybe_unused]] std::atomic_uint64_t* const addr,
+    uint64_t word,
+    [[maybe_unused]] const std::memory_order fence)
+{
+#ifdef MWCAS_USE_BACKOFF
+  // wait for the incomplete MwCAS to be completed by its owner
+  const auto another_word = word;
+  for (uint32_t i = 0; i < kRetryNum && word == another_word; ++i) {
+    CPP_UTILITY_SPINLOCK_HINT
+    word = addr->load(fence);
+  }
+  if (word != another_word) return;  // other threads modified this field
+
+  const auto count = (word & kRefCntMask) >> kRefCntShift;
+  std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
+  if (addr->load(fence) != another_word) return;               // other threads modified this field
+
+  // a long CPU stall has been detected, so increment the reference counter
+  uint64_t incremented;
+  if ((word & kRefCntMask) != kRefCntMask) [[likely]] {
+    incremented = word;
+  } else {
+    incremented = word & ~kRefCntMask;
+  }
+  incremented += kRefCntUnit;
+  if (!addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) return;
+#endif
+
+  // follow the incomplete MwCAS
+  auto* const desc = std::bit_cast<CASNDescriptor*>(word & kPtrMask);
+  desc->MwCASInternal(((word & kCntMask) >> kCntPos) + 1);
 }
 
 void
