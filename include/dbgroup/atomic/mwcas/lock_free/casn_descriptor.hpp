@@ -296,7 +296,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       -> RDCSSDescriptor*;
 
   /**
-   * @brief @brief Insert back-off and follow the existing MwCAS if needed.
+   * @brief Insert back-off and follow the existing MwCAS if needed.
    *
    * @param addr A target memory address.
    * @param word The current value of a target address.
