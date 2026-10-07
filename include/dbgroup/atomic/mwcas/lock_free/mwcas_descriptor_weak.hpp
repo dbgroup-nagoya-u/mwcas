@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Database Group, Nagoya University
+ * Copyright 2025 Database Group, Nagoya University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef DBGROUP_ATOMIC_MWCAS_LOCK_FREE_AOPT_DESCRIPTOR_HPP_
-#define DBGROUP_ATOMIC_MWCAS_LOCK_FREE_AOPT_DESCRIPTOR_HPP_
+#ifndef DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
+#define DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
 
 // C++ standard libraries
 #include <array>
@@ -23,8 +23,6 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
-#include <memory>
 #include <utility>
 
 // external C++ libraries
@@ -38,10 +36,10 @@
 namespace dbgroup::atomic::mwcas::lock_free
 {
 /**
- * @brief A class for performing MwCAS with the AOPT algorithm.
+ * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
  */
-class alignas(kCacheLineSize) AOPTDescriptor
+class alignas(kCacheLineSize) MwCASDescriptorWeak
 {
  public:
   /*##########################################################################*
@@ -65,32 +63,30 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @brief Construct an empty descriptor for MwCAS operations.
    *
    */
-  constexpr AOPTDescriptor() = default;
+  constexpr MwCASDescriptorWeak() = default;
 
-  AOPTDescriptor(const AOPTDescriptor&) = delete;
-  AOPTDescriptor(AOPTDescriptor&&) = delete;
+  MwCASDescriptorWeak(const MwCASDescriptorWeak&) = delete;
+  MwCASDescriptorWeak(MwCASDescriptorWeak&&) = delete;
 
-  AOPTDescriptor& operator=(const AOPTDescriptor& obj) = delete;
-  AOPTDescriptor& operator=(AOPTDescriptor&&) = delete;
+  auto operator=(const MwCASDescriptorWeak& obj) -> MwCASDescriptorWeak& = delete;
+  auto operator=(MwCASDescriptorWeak&&) -> MwCASDescriptorWeak& = delete;
 
   /*##########################################################################*
    * Public destructors
    *##########################################################################*/
 
   /**
-   * @brief Destroy the AOPTDescriptor object.
+   * @brief Destroy the MwCASDescriptorWeak object.
    *
-   * @note This destructor casts `target_cnt_` to an atomic variable to
-   * prevent compilers from optimizing out it.
    */
-  ~AOPTDescriptor() = default;
+  ~MwCASDescriptorWeak() = default;
 
   /*##########################################################################*
    * Public getters/setters
    *##########################################################################*/
 
   /**
-   * @return the number of registered MwCAS targets.
+   * @return The number of registered MwCAS targets.
    */
   [[nodiscard]]
   constexpr auto
@@ -105,18 +101,18 @@ class alignas(kCacheLineSize) AOPTDescriptor
    *##########################################################################*/
 
   /**
-   * @brief Start garbage collection for AOPT descriptors.
+   * @brief Start garbage collection for this descriptors.
    *
    * @param gc_interval Interval for GC in microseconds.
    * @param gc_thread_num The number of worker threads to release garbages.
-   * @note This function must be called before performing AOPT-based MwCAS.
+   * @note This function must be called before performing MwCAS.
    */
   static void StartGC(  //
       size_t gc_interval = ::dbgroup::memory::kDefaultGCTime,
       size_t gc_thread_num = ::dbgroup::memory::kDefaultGCThreadNum);
 
   /**
-   * @brief Stop garbage collection for AOPT descriptors.
+   * @brief Stop garbage collection for this descriptors.
    *
    */
   static void StopGC();
@@ -128,13 +124,13 @@ class alignas(kCacheLineSize) AOPTDescriptor
       -> ::dbgroup::thread::EpochGuard;
 
   /**
-   * @return A new MwCAS descriptor for the AOPT algorithm.
+   * @return A new descriptor for the MwCAS algorithm.
    * @note You must explicitly delete the given descriptor if you do not call
    * the MwCAS function.
    */
   [[nodiscard]]
   static auto GetDescriptor()  //
-      -> AOPTDescriptor*;
+      -> MwCASDescriptorWeak*;
 
   /*##########################################################################*
    * Public utility functions
@@ -153,14 +149,18 @@ class alignas(kCacheLineSize) AOPTDescriptor
   template <class T>
   static auto
   Read(  //
-      const void* const addr,
+      void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
-      -> T
+      -> std::pair<T, T>
   {
     static_assert(CanMwCAS<T>());
 
-    return std::bit_cast<T>(
-        ReadInternal(static_cast<const std::atomic_uint64_t*>(addr), nullptr, fence).second);
+    auto* const target_addr = static_cast<std::atomic_uint64_t*>(addr);
+    auto word = target_addr->load(fence);
+    while (word & kMwCASFlag) {
+      FollowIfNeeded(target_addr, word, fence);
+    }
+    return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
   }
 
   /**
@@ -182,7 +182,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    targets_.at(target_cnt_++) =
+    new (&(targets_.at(target_cnt_++)))
         MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
   }
 
@@ -200,19 +200,19 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * Type aliases
    *##########################################################################*/
 
-  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<AOPTDescriptor>;
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<MwCASDescriptorWeak>;
 
   /*##########################################################################*
    * Internal types
    *##########################################################################*/
 
   /**
-   * @brief An enumeration for representing AOPT status.
+   * @brief An enumeration for representing MwCAS status.
    *
    */
   enum Status : uint64_t {
-    kActive = 0,
-    kSuccessful,
+    kUndecided = 0,
+    kSucceeded,
     kFailed,
   };
 
@@ -220,7 +220,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @brief A class for representing MwCAS targets.
    *
    */
-  struct MwCASTarget {
+  struct alignas(kCacheLineSize / 2) MwCASTarget {
     /// @brief A target memory address.
     std::atomic_uint64_t* addr;
 
@@ -234,91 +234,53 @@ class alignas(kCacheLineSize) AOPTDescriptor
     std::memory_order fence;
   };
 
-  /**
-   * @brief A class for managing completed (i.e., embedded) AOPT descriptors.
-   *
-   */
-  class CompletedDescriptors
-  {
-   public:
-    /*########################################################################*
-     * Public constructors and assignment operators
-     *########################################################################*/
+  /*##########################################################################*
+   * Internal constants
+   *##########################################################################*/
 
-    /**
-     * @brief Create a new CompletedDescriptors object.
-     *
-     */
-    constexpr CompletedDescriptors() = default;
+  /// @brief The begin bit position of versions.
+  static constexpr uint64_t kVersionShift = kValueBitNum;
 
-    CompletedDescriptors(const CompletedDescriptors&) = delete;
-    CompletedDescriptors(CompletedDescriptors&&) = delete;
+  /// @brief A unit value for incrementing versions.
+  static constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
 
-    CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
-    CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
+  /// @brief A bit mask for extracting actual values.
+  static constexpr uint64_t kValueMask = kVersionUnit - 1UL;
 
-    /*########################################################################*
-     * Public destructors
-     *########################################################################*/
+  /// @brief A bit mask for extracting versions and actual values.
+  static constexpr uint64_t kVerAndValMask = ~kMwCASFlag;
 
-    /**
-     * @brief Destroy the CompletedDescriptors object.
-     *
-     */
-    ~CompletedDescriptors();
-
-    /*########################################################################*
-     * Public utility functions
-     *########################################################################*/
-
-    /**
-     * @brief Register a completed descriptor with the internal list.
-     *
-     * @param desc A completed descriptor.
-     * @note If the number of completed descriptors reaches a certain threshold,
-     * this function invoke the finalization of expired ones.
-     */
-    void RetireForCleanUp(  //
-        AOPTDescriptor* desc);
-
-   private:
-    /*########################################################################*
-     * Internal utility functions
-     *########################################################################*/
-
-    /**
-     * @brief Perform finalization for AOPT-based descriptors.
-     *
-     * After this function, the descriptors will be garbage collected.
-     */
-    void FinalizeCompletedDescriptors();
-
-    /*########################################################################*
-     * Internal member variables
-     *########################################################################*/
-
-    /// @brief Completed (i.e., embedded) descriptors and their retired epochs.
-    std::deque<std::pair<AOPTDescriptor*, ::dbgroup::Serial64_t>> desc_deq_{};
-  };
+  /// @brief A bit mask for extracting versions.
+  static constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
 
   /*##########################################################################*
-   * Internal utility functions
+   * Internal APIs
    *##########################################################################*/
 
   /**
-   * @brief Read a value from a given memory address.
+   * @brief Insert back-off and follow the existing MwCAS if needed.
    *
-   * @param addr A target memory address to be read.
-   * @param self A source descriptor if exist.
-   * @param fence A flag for controling std::memory_order.
-   * @retval 1st: the actual current word including embedded descriptors.
-   * @retval 2nd: the current value.
+   * @param[in] addr A target address.
+   * @param[in,out] word The current value of a target address.
+   * @param[in] fence A memory fence.
    */
-  static auto ReadInternal(  //
-      const std::atomic_uint64_t* addr,
-      const AOPTDescriptor* self,
-      std::memory_order fence)  //
-      -> std::pair<uint64_t, uint64_t>;
+  static void FollowIfNeeded(  //
+      std::atomic_uint64_t* addr,
+      uint64_t& word,
+      std::memory_order fence);
+
+  /**
+   * @brief Swap an embedded descriptor into a desired value.
+   *
+   * @param desc_addr The address of this descriptor with the flag.
+   * @param target A target MwCAS information.
+   * @param desired A desired value to be embedded.
+   */
+  static auto Finalize(     //
+      uint64_t desc_addr,   //
+      MwCASTarget& target,  //
+      uint64_t desired)     //
+      -> bool;
 
   /**
    * @brief An actual MwCAS procedure.
@@ -329,20 +291,20 @@ class alignas(kCacheLineSize) AOPTDescriptor
    */
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
-      -> bool;
+      -> std::pair<bool, bool>;
 
   /*##########################################################################*
    * Internal member variables
    *##########################################################################*/
 
-  /// @brief Target entries of MwCAS.
-  std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
-
-  /// @brief The status of this AOPT descriptor.
-  std::atomic<Status> stat_{};
+  /// @brief The status of this descriptor.
+  std::atomic<Status> stat_{kUndecided};
 
   /// @brief The number of registered MwCAS targets.
   size_t target_cnt_{};
+
+  /// @brief Target entries of MwCAS.
+  std::array<MwCASTarget, kMwCASCapacity> targets_ = {};
 
   /// @brief A garbage collector for expired descriptors.
   static inline std::unique_ptr<EpochBasedGC> _gc{};  // NOLINT
@@ -350,4 +312,4 @@ class alignas(kCacheLineSize) AOPTDescriptor
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
 
-#endif  // DBGROUP_ATOMIC_MWCAS_LOCK_FREE_AOPT_DESCRIPTOR_HPP_
+#endif  // DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_
