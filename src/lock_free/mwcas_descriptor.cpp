@@ -158,6 +158,7 @@ MwCASDescriptor::FollowIfNeeded(  //
     uint64_t& word,
     const std::memory_order fence)
 {
+#ifdef MWCAS_USE_BACKOFF
   const auto another_word = word;
   for (uint32_t i = 0; i < kRetryNum; ++i) {
     CPP_UTILITY_SPINLOCK_HINT
@@ -170,6 +171,7 @@ MwCASDescriptor::FollowIfNeeded(  //
 
   word = addr->load(fence);
   if (word != another_word) return;  // other threads modified this field
+#endif
 
   // a long CPU stall has been detected, so perform another MwCAS
   uint64_t incremented;

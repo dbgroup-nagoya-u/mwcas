@@ -45,6 +45,12 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     "A back-off time for preventing busy loops [us]."
   )
 
+  option(
+    MWCAS_USE_BACKOFF
+    "Use exponential back-off before helping other MwCAS operations."
+    ON
+  )
+
   #----------------------------------------------------------------------------#
   # Configurations
   #----------------------------------------------------------------------------#
@@ -92,6 +98,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     MWCAS_RETRY_THRESHOLD=${MWCAS_RETRY_THRESHOLD}
     MWCAS_BACKOFF_TIME=${MWCAS_BACKOFF_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
+    $<$<BOOL:${MWCAS_USE_BACKOFF}>:MWCAS_USE_BACKOFF>
   )
   target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
