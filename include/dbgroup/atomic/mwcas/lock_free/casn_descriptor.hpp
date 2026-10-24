@@ -36,7 +36,11 @@
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
-class CASNDescriptor;
+/**
+ * @brief A class for performing MwCAS with the CASN algorithm.
+ *
+ */
+ class CASNDescriptor;
 
 /**
  * @brief A class for representing RDCSS descriptors.
