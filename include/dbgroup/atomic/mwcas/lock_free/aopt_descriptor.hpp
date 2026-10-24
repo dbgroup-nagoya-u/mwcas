@@ -298,7 +298,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      *########################################################################*/
 
     /// @brief Completed (i.e., embedded) descriptors and their retired epochs.
-    std::deque<std::pair<AOPTDescriptor*, ::dbgroup::Serial64_t>> desc_deq_{};
+    std::deque<std::pair<AOPTDescriptor*, Serial64_t>> desc_deq_{};
   };
 
   /*##########################################################################*
