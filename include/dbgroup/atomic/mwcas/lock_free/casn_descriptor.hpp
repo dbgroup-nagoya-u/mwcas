@@ -57,7 +57,7 @@ struct RDCSSDescriptor {
 };
 
 /**
- * @brief A class for performing MwCAS with the CASN algorithm.
+ * The definition of CASNDescriptor.
  *
  */
 class alignas(kCacheLineSize) CASNDescriptor
