@@ -80,7 +80,7 @@ CASNDescriptor::GetRDCSSDescriptor()  //
     -> RDCSSDescriptor*
 {
   auto* const page = _gc->GetPageIfPossible<RDCSSDescriptor>();
-  return (page == nullptr) ? new RDCSSDescriptor{} : static_cast<RDCSSDescriptor*>(page);
+  return page ? static_cast<RDCSSDescriptor*>(page) : new RDCSSDescriptor{};
 }
 
 /*############################################################################*
