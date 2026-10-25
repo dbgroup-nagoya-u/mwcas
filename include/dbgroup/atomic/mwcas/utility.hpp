@@ -61,6 +61,9 @@ constexpr size_t kRetryNum = (MWCAS_RETRY_THRESHOLD);
 /// @brief A sleep time for preventing busy loops [us].
 constexpr std::chrono::microseconds kBackOffTime{MWCAS_BACKOFF_TIME};
 
+/// @brief A flag for using exponential back-off before helping other MwCAS operations.
+constexpr bool kUseBackOff = (MWCAS_USE_BACKOFF);
+
 /*############################################################################*
  * Global utility functions
  *############################################################################*/

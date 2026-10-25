@@ -145,29 +145,29 @@ AOPTDescriptor::ReadInternal(  // NOLINT
       break;
     }
 
-#ifdef MWCAS_USE_BACKOFF
-    // wait for the incomplete MwCAS to be completed by its owner
-    const auto another_word = word;
-    for (uint32_t i = 0; i < kRetryNum && word == another_word; ++i) {
-      CPP_UTILITY_SPINLOCK_HINT
-      word = addr->load(fence);
-    }
-    if (word != another_word) continue;  // other threads modified this field
+    if constexpr (kUseBackOff) {
+      // wait for the incomplete MwCAS to be completed by its owner
+      const auto another_word = word;
+      for (uint32_t i = 0; i < kRetryNum && word == another_word; ++i) {
+        CPP_UTILITY_SPINLOCK_HINT
+        word = addr->load(fence);
+      }
+      if (word != another_word) continue;  // other threads modified this field
 
-    const auto count = (word & kRefCntMask) >> kRefCntShift;
-    std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
-    if (addr->load(fence) != another_word) continue;  // other threads modified this field
+      const auto count = (word & kRefCntMask) >> kRefCntShift;
+      std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
+      if (addr->load(fence) != another_word) continue;  // other threads modified this field
 
-    // a long CPU stall has been detected, so increment the reference counter
-    uint64_t incremented;
-    if ((word & kRefCntMask) != kRefCntMask) [[likely]] {
-      incremented = word;
-    } else {
-      incremented = word & ~kRefCntMask;
+      // a long CPU stall has been detected, so increment the reference counter
+      uint64_t incremented;
+      if ((word & kRefCntMask) != kRefCntMask) [[likely]] {
+        incremented = word;
+      } else {
+        incremented = word & ~kRefCntMask;
+      }
+      incremented += kRefCntUnit;
+      if (!addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) continue;
     }
-    incremented += kRefCntUnit;
-    if (!addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) continue;
-#endif
 
     // found the incomplete MwCAS
     desc->MwCASInternal(pos + 1);
