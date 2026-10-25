@@ -153,14 +153,14 @@ class alignas(kCacheLineSize) AOPTDescriptor
   template <class T>
   static auto
   Read(  //
-      const void* const addr,
+      void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
     return std::bit_cast<T>(
-        ReadInternal(static_cast<const std::atomic_uint64_t*>(addr), nullptr, fence).second);
+        ReadInternal(static_cast<std::atomic_uint64_t*>(addr), nullptr, fence).second);
   }
 
   /**
@@ -315,7 +315,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @retval 2nd: the current value.
    */
   static auto ReadInternal(  //
-      const std::atomic_uint64_t* addr,
+      std::atomic_uint64_t* addr,
       const AOPTDescriptor* self,
       std::memory_order fence)  //
       -> std::pair<uint64_t, uint64_t>;

@@ -122,7 +122,7 @@ AOPTDescriptor::MwCAS()  //
 
 auto
 AOPTDescriptor::ReadInternal(  // NOLINT
-    const std::atomic_uint64_t* const addr,
+    std::atomic_uint64_t* const addr,
     const AOPTDescriptor* const self,
     const std::memory_order fence)  //
     -> std::pair<uint64_t, uint64_t>
@@ -166,8 +166,7 @@ AOPTDescriptor::ReadInternal(  // NOLINT
       incremented = word & ~kRefCntMask;
     }
     incremented += kRefCntUnit;
-    auto* const mutable_addr = const_cast<std::atomic_uint64_t*>(addr);  // NOLINT
-    if (!mutable_addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) continue;
+    if (!addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) continue;
 #endif
 
     // found the incomplete MwCAS

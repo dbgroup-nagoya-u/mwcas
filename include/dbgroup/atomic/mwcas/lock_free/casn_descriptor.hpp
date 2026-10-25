@@ -170,13 +170,13 @@ class alignas(kCacheLineSize) CASNDescriptor
   template <class T>
   static auto
   Read(  //
-      const void* const addr,
+      void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
-    const auto* const target_addr = static_cast<const std::atomic_uint64_t*>(addr);
+    auto* const target_addr = static_cast<std::atomic_uint64_t*>(addr);
     auto cur = target_addr->load(fence);
     while (true) {
       while (cur & kRDCSSFlag) {
@@ -184,8 +184,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       }
       if ((cur & kMwCASFlag) == 0) break;
 
-      auto* const mutable_addr = const_cast<std::atomic_uint64_t*>(target_addr);  // NOLINT
-      FollowIfNeeded(mutable_addr, cur, fence);
+      FollowIfNeeded(target_addr, cur, fence);
       CPP_UTILITY_SPINLOCK_HINT
       cur = target_addr->load(fence);
     }
