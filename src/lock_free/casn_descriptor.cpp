@@ -24,7 +24,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
 
 // external C++ libraries
 #include <dbgroup/lock/utility.hpp>
@@ -202,33 +201,11 @@ CASNDescriptor::RDCSS(  //
 
 void
 CASNDescriptor::FollowIfNeeded(  // NOLINT
-    [[maybe_unused]] std::atomic_uint64_t* const addr,
+    std::atomic_uint64_t* const addr,
     uint64_t word,
-    [[maybe_unused]] const std::memory_order fence)
+    const std::memory_order fence)
 {
-  if constexpr (kUseBackOff) {
-    // wait for the incomplete MwCAS to be completed by its owner
-    const auto another_word = word;
-    for (uint32_t i = 0; i < kRetryNum && word == another_word; ++i) {
-      CPP_UTILITY_SPINLOCK_HINT
-      word = addr->load(fence);
-    }
-    if (word != another_word) return;  // other threads modified this field
-
-    const auto count = (word & kRefCntMask) >> kRefCntShift;
-    std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
-    if (addr->load(fence) != another_word) return;  // other threads modified this field
-
-    // a long CPU stall has been detected, so increment the reference counter
-    uint64_t incremented;
-    if ((word & kRefCntMask) != kRefCntMask) [[likely]] {
-      incremented = word;
-    } else {
-      incremented = word & ~kRefCntMask;
-    }
-    incremented += kRefCntUnit;
-    if (!addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) return;
-  }
+  if (!PrepareToFollow<kRefCntMask, kRefCntShift, false>(addr, word, fence)) return;
 
   // follow the incomplete MwCAS
   auto* const desc = std::bit_cast<CASNDescriptor*>(word & kPtrMask);

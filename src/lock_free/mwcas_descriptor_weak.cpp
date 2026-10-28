@@ -23,7 +23,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
 #include <utility>
 
 // external C++ libraries
@@ -145,30 +144,13 @@ MwCASDescriptorWeak::FollowIfNeeded(  //
     uint64_t& word,
     const std::memory_order fence)
 {
-  if constexpr (kUseBackOff) {
-    const auto another_word = word;
-    for (uint32_t i = 0; i < kRetryNum; ++i) {
-      CPP_UTILITY_SPINLOCK_HINT
-      word = addr->load(fence);
-      if (word != another_word) return;
-    }
+  if (!PrepareToFollow<kCntMask, kCntShift, true>(addr, word, fence)) return;
 
-    const auto count = (word & kCntMask) >> kCntShift;
-    std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
-
-    word = addr->load(fence);
-    if (word != another_word) return;  // other threads modified this field
-  }
-
-  // a long CPU stall has been detected, so perform another MwCAS
-  const auto incremented = word + kCntUnit;
-  if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
-    // follow another MwCAS
-    auto* const another_desc = std::bit_cast<MwCASDescriptorWeak*>(word & kAddrMask);
-    const auto pos = (word & kPosMask) >> kPosShift;
-    another_desc->MwCASInternal(pos + 1);
-    word = addr->load(fence);
-  }
+  // follow another MwCAS
+  auto* const another_desc = std::bit_cast<MwCASDescriptorWeak*>(word & kAddrMask);
+  const auto pos = (word & kPosMask) >> kPosShift;
+  another_desc->MwCASInternal(pos + 1);
+  word = addr->load(fence);
 }
 
 auto

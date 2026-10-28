@@ -23,7 +23,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <thread>
 #include <utility>
 
 // external C++ libraries
@@ -64,9 +63,6 @@ constexpr uint64_t kCntShift = kThreadIdShift + kThreadIdBitNum;
 
 /// @brief An offset for right-shifting to extract the "begin position".
 constexpr uint64_t kPosShift = 60;
-
-/// @brief A constant for incrementing the "reference counter".
-constexpr uint64_t kCntUnit = 1UL << kCntShift;
 
 /// @brief A bitmask with only the "descriptor address" portion set to 1.
 constexpr uint64_t kAddrMask = (1UL << kThreadIdShift) - 1UL;
@@ -158,40 +154,16 @@ MwCASDescriptor::FollowIfNeeded(  //
     uint64_t& word,
     const std::memory_order fence)
 {
-  if constexpr (kUseBackOff) {
-    const auto another_word = word;
-    for (uint32_t i = 0; i < kRetryNum; ++i) {
-      CPP_UTILITY_SPINLOCK_HINT
-      word = addr->load(fence);
-      if (word != another_word) return;
-    }
+  if (!PrepareToFollow<kCntMask, kCntShift, true>(addr, word, fence)) return;
 
-    const auto count = (word & kCntMask) >> kCntShift;
-    std::this_thread::sleep_for(kBackOffTime * (1UL << count));  // exponential back-off
-
-    word = addr->load(fence);
-    if (word != another_word) return;  // other threads modified this field
+  // follow another MwCAS
+  auto* const another_desc =
+      std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
+  const auto pos = (word & kPosMask) >> kPosShift;
+  if (another_desc->DetermineThreadId(pos, word)) {
+    another_desc->MwCASInternal(pos + 1);
   }
-
-  // a long CPU stall has been detected, so perform another MwCAS
-  uint64_t incremented;
-  if ((word & kCntMask) != kCntMask) [[likely]] {
-    incremented = word;
-  } else {
-    incremented = word & ~kCntMask;
-  }
-  incremented += kCntUnit;
-
-  if (addr->compare_exchange_strong(word, incremented, kRelaxed, fence)) {
-    // follow another MwCAS
-    auto* const another_desc =
-        std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
-    const auto pos = (word & kPosMask) >> kPosShift;
-    if (another_desc->DetermineThreadId(pos, word)) {
-      another_desc->MwCASInternal(pos + 1);
-    }
-    word = addr->load(fence);
-  }
+  word = addr->load(fence);
 }
 
 auto
