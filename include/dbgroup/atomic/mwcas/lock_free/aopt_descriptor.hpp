@@ -23,6 +23,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <utility>
 
@@ -152,14 +153,14 @@ class alignas(kCacheLineSize) AOPTDescriptor
   template <class T>
   static auto
   Read(  //
-      const void* const addr,
+      void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
     return std::bit_cast<T>(
-        ReadInternal(static_cast<const std::atomic_uint64_t*>(addr), nullptr, fence).second);
+        ReadInternal(static_cast<std::atomic_uint64_t*>(addr), nullptr, fence).second);
   }
 
   /**
@@ -275,7 +276,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
      *
      * @param desc A completed descriptor.
      * @note If the number of completed descriptors reaches a certain threshold,
-     * this function invoke their finalization.
+     * this function invoke the finalization of expired ones.
      */
     void RetireForCleanUp(  //
         AOPTDescriptor* desc);
@@ -296,11 +297,8 @@ class alignas(kCacheLineSize) AOPTDescriptor
      * Internal member variables
      *########################################################################*/
 
-    /// @brief Completed (i.e., embedded) descriptors.
-    std::array<AOPTDescriptor*, kMaxReusableDescriptors> desc_arr_ = {};
-
-    /// @brief The current number of completed descriptors.
-    size_t desc_num_{};
+    /// @brief Completed (i.e., embedded) descriptors and their retired epochs.
+    std::deque<std::pair<AOPTDescriptor*, Serial64_t>> desc_deq_{};
   };
 
   /*##########################################################################*
@@ -317,7 +315,7 @@ class alignas(kCacheLineSize) AOPTDescriptor
    * @retval 2nd: the current value.
    */
   static auto ReadInternal(  //
-      const std::atomic_uint64_t* addr,
+      std::atomic_uint64_t* addr,
       const AOPTDescriptor* self,
       std::memory_order fence)  //
       -> std::pair<uint64_t, uint64_t>;

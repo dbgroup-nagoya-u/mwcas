@@ -21,9 +21,12 @@
 #include <array>
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
+#include <thread>
 #include <utility>
 
 // external C++ libraries
@@ -32,7 +35,15 @@
 
 // local sources
 #include "dbgroup/atomic/mwcas/utility.hpp"
+#include "dbgroup/memory/utility.hpp"
 
+//                    Bit allocation of a word.
+// |     63     |       62-57       |   56-47  |        46-0        |
+// | MwCAS Flag | Reference Counter | Position | Descriptor Address |
+//
+
+namespace dbgroup::atomic::mwcas::lock_free
+{
 namespace
 {
 /*############################################################################*
@@ -42,16 +53,25 @@ namespace
 /// @brief The bit position for indicating the original number of a target.
 constexpr uint64_t kCntPos = 47;
 
+/// @brief An offset for right-shifting to extract reference counter.
+constexpr uint64_t kRefCntShift = 57;
+
+/// @brief A constant for incrementing reference counter.
+constexpr uint64_t kRefCntUnit = 1UL << kRefCntShift;
+
 /// @brief A bit mask for extracting pointers.
 constexpr uint64_t kPtrMask = (1UL << kCntPos) - 1UL;
 
 /// @brief A bit mask for extracting the original number of a target.
-constexpr uint64_t kCntMask = ~kPtrMask ^ ::dbgroup::atomic::mwcas::kMwCASFlag;
+constexpr uint64_t kCntMask = (kRefCntUnit - 1UL) ^ kPtrMask;
+
+/// @brief A bit mask for extracting reference counter.
+constexpr uint64_t kRefCntMask = (kMwCASFlag - 1UL) ^ (kCntMask | kPtrMask);
+
+static_assert(kMwCASCapacity <= (kCntMask >> kCntPos) + 1);
 
 }  // namespace
 
-namespace dbgroup::atomic::mwcas::lock_free
-{
 /*############################################################################*
  * Static utilities
  *############################################################################*/
@@ -102,7 +122,7 @@ AOPTDescriptor::MwCAS()  //
 
 auto
 AOPTDescriptor::ReadInternal(  // NOLINT
-    const std::atomic_uint64_t* const addr,
+    std::atomic_uint64_t* const addr,
     const AOPTDescriptor* const self,
     const std::memory_order fence)  //
     -> std::pair<uint64_t, uint64_t>
@@ -124,6 +144,8 @@ AOPTDescriptor::ReadInternal(  // NOLINT
       value = (stat != kSuccessful) ? desc->targets_[pos].old_val : desc->targets_[pos].new_val;
       break;
     }
+
+    if (!PrepareToFollow<kRefCntMask, kRefCntShift, false>(addr, word, fence)) continue;
 
     // found the incomplete MwCAS
     desc->MwCASInternal(pos + 1);
@@ -149,7 +171,7 @@ AOPTDescriptor::MwCASInternal(  // NOLINT
 
   retry_word:
     auto [cur, value] = ReadInternal(word_desc.addr, this, kRelaxed);
-    if (cur == desc_addr) {
+    if ((cur & ~kRefCntMask) == desc_addr) {
       // this word already points to the right place, move on
       continue;
     }
@@ -191,44 +213,56 @@ AOPTDescriptor::MwCASInternal(  // NOLINT
 
 AOPTDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
 {
-  FinalizeCompletedDescriptors();
+  while (!desc_deq_.empty()) {
+    FinalizeCompletedDescriptors();
+    std::this_thread::sleep_for(std::chrono::milliseconds{dbgroup::memory::kDefaultGCTime});
+  }
 }
 
 void
 AOPTDescriptor::CompletedDescriptors::RetireForCleanUp(  //
     AOPTDescriptor* const desc)
 {
-  if (desc_num_ >= kMaxReusableDescriptors) {
+  if (desc_deq_.size() >= kMaxReusableDescriptors) {
     FinalizeCompletedDescriptors();
   }
-  desc_arr_[desc_num_++] = desc;
+  desc_deq_.emplace_back(desc, _gc->GetCurrentEpoch());
 }
 
 void
 AOPTDescriptor::CompletedDescriptors::FinalizeCompletedDescriptors()
 {
-  for (size_t i = 0; i < desc_num_; ++i) {
-    auto* const desc = desc_arr_[i];
+  const auto min_epoch = _gc->GetMinEpoch();
+  while (!desc_deq_.empty() && desc_deq_.front().second < min_epoch) {
+    auto* const desc = desc_deq_.front().first;
+    desc_deq_.pop_front();
     const auto desc_addr = std::bit_cast<uint64_t>(desc) | kMwCASFlag;
     const auto target_num = desc->target_cnt_;
     if (desc->stat_.load(kRelaxed) == kSuccessful) {
       for (size_t i = 0; i < target_num; ++i) {
         auto& target = desc->targets_[i];
+        const auto word_addr = desc_addr | (i << kCntPos);
         auto cur = target.addr->load(kRelaxed);
-        if (cur != (desc_addr | (i << kCntPos))) continue;
-        target.addr->compare_exchange_strong(cur, target.new_val, kRelaxed, kRelaxed);
+        while ((cur & ~kRefCntMask) == word_addr) {
+          // retry if other threads have incremented the reference counter
+          if (target.addr->compare_exchange_weak(cur, target.new_val, kRelaxed, kRelaxed)) break;
+          CPP_UTILITY_SPINLOCK_HINT
+        }
       }
     } else {
       for (size_t i = 0; i < target_num; ++i) {
         auto& target = desc->targets_[i];
+        const auto word_addr = desc_addr | (i << kCntPos);
         auto cur = target.addr->load(kRelaxed);
-        if (cur != (desc_addr | (i << kCntPos))) continue;
-        target.addr->compare_exchange_strong(cur, target.old_val, kRelaxed, kRelaxed);
+        while ((cur & ~kRefCntMask) == word_addr) {
+          // retry if other threads have incremented the reference counter
+          if (target.addr->compare_exchange_weak(cur, target.old_val, kRelaxed, kRelaxed)) break;
+          CPP_UTILITY_SPINLOCK_HINT
+        }
       }
     }
     _gc->AddGarbage<AOPTDescriptor>(desc);
   }
-  desc_num_ = 0;
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

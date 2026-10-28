@@ -45,6 +45,12 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     "A back-off time for preventing busy loops [us]."
   )
 
+  option(
+    MWCAS_USE_BACKOFF
+    "Use exponential back-off before helping other MwCAS operations."
+    ON
+  )
+
   #----------------------------------------------------------------------------#
   # Configurations
   #----------------------------------------------------------------------------#
@@ -61,7 +67,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   FetchContent_Declare(
     memory-manager
     GIT_REPOSITORY "https://github.com/dbgroup-nagoya-u/memory-manager"
-    GIT_TAG "5982e394ff15d14db39c8ecd0c4516d65faf4074" # v0.5.1
+    GIT_TAG "af018e1d8352e8ae6d2a8af3ad96af0608d21d64" # v0.6.0
   )
   FetchContent_MakeAvailable(memory-manager)
 
@@ -72,6 +78,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   add_library(${PROJECT_NAME} STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/deadlock_free/mwcas_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor_weak.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/casn_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/aopt_descriptor.cpp"
   )
@@ -91,6 +98,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     MWCAS_RETRY_THRESHOLD=${MWCAS_RETRY_THRESHOLD}
     MWCAS_BACKOFF_TIME=${MWCAS_BACKOFF_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
+    MWCAS_USE_BACKOFF=$<BOOL:${MWCAS_USE_BACKOFF}>
   )
   target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
