@@ -51,6 +51,12 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     ON
   )
 
+  option(
+    MWCAS_ENABLE_STATS
+    "Count events (follows, aborts, detachments, etc.) for analysis."
+    OFF
+  )
+
   #----------------------------------------------------------------------------#
   # Configurations
   #----------------------------------------------------------------------------#
@@ -78,7 +84,11 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
   add_library(${PROJECT_NAME} STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/deadlock_free/mwcas_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor_legacy.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor_rc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/mwcas_descriptor_weak.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/obstruction_free/mwcas_descriptor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/obstruction_free/mwcas_descriptor_rc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/casn_descriptor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/lock_free/aopt_descriptor.cpp"
   )
@@ -99,6 +109,7 @@ if(NOT TARGET dbgroup::${PROJECT_NAME})
     MWCAS_BACKOFF_TIME=${MWCAS_BACKOFF_TIME}
     $<$<BOOL:${MWCAS_HAS_SPINLOCK_HINT}>:MWCAS_HAS_SPINLOCK_HINT>
     MWCAS_USE_BACKOFF=$<BOOL:${MWCAS_USE_BACKOFF}>
+    $<$<BOOL:${MWCAS_ENABLE_STATS}>:MWCAS_ENABLE_STATS>
   )
   target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"

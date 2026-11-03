@@ -19,9 +19,15 @@
 #include <dbgroup/atomic/mwcas/lock_free/aopt_descriptor.hpp>
 #include <dbgroup/atomic/mwcas/lock_free/casn_descriptor.hpp>
 #include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor_legacy.hpp>
+#include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor_rc.hpp>
 #include <dbgroup/atomic/mwcas/lock_free/mwcas_descriptor_weak.hpp>
+#include <dbgroup/atomic/mwcas/obstruction_free/mwcas_descriptor.hpp>
+#include <dbgroup/atomic/mwcas/obstruction_free/mwcas_descriptor_rc.hpp>
 
 // C++ standard libraries
+#include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
@@ -49,7 +55,11 @@ namespace dbgroup::atomic::mwcas::test
 
 using DLFMwCAS = deadlock_free::MwCASDescriptor;
 using LFMwCAS = lock_free::MwCASDescriptor;
+using LFMwCASLegacy = lock_free::MwCASDescriptorLegacy;
+using LFMwCASRC = lock_free::MwCASDescriptorRC;
 using LFMwCASWeak = lock_free::MwCASDescriptorWeak;
+using OFMwCAS = obstruction_free::MwCASDescriptor;
+using OFMwCASRC = obstruction_free::MwCASDescriptorRC;
 using CASN = lock_free::CASNDescriptor;
 using AOPT = lock_free::AOPTDescriptor;
 
@@ -62,6 +72,9 @@ constexpr size_t kExecNum = 1e6;
 constexpr size_t kTargetFieldNum = kMwCASCapacity * kTestThreadNum;
 
 constexpr double kSkewParameter = 0.0;
+
+/// @brief An initial value for tests with decrements (to keep values positive).
+constexpr uint64_t kInitValForDecrement = 1UL << 30UL;
 
 /*############################################################################*
  * Fixture definitions
@@ -76,7 +89,7 @@ class MwCASDescriptorFixture : public ::testing::Test
    *##########################################################################*/
 
   using Target = uint64_t;
-  using MwCASTargets = std::vector<size_t>;
+  using MwCASTargets = std::vector<std::pair<size_t, int64_t>>;  // (index, delta)
   using Zipf = ::dbgroup::random::ApproxZipfDistribution<uint64_t>;
 
   /*##########################################################################*
@@ -84,6 +97,18 @@ class MwCASDescriptorFixture : public ::testing::Test
    *##########################################################################*/
 
   static constexpr size_t kOpsNum = std::is_same_v<MwCASDesc, CASN> ? 2e4 : kExecNum;
+
+  /// @brief Implementations that use EBR for descriptors.
+  static constexpr bool kUseEBR = std::is_same_v<MwCASDesc, AOPT>              //
+                                  || std::is_same_v<MwCASDesc, CASN>           //
+                                  || std::is_same_v<MwCASDesc, LFMwCAS>        //
+                                  || std::is_same_v<MwCASDesc, LFMwCASLegacy>  //
+                                  || std::is_same_v<MwCASDesc, OFMwCAS>        //
+                                  || std::is_same_v<MwCASDesc, LFMwCASWeak>;
+
+  /// @brief Implementations that use reference counting for descriptors.
+  static constexpr bool kUseRC = std::is_same_v<MwCASDesc, LFMwCASRC>  //
+                                 || std::is_same_v<MwCASDesc, OFMwCASRC>;
 
   /*##########################################################################*
    * Setup/Teardown
@@ -102,8 +127,7 @@ class MwCASDescriptorFixture : public ::testing::Test
       target_fields_[i] = 0UL;
     }
 
-    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
-                  || std::is_same_v<MwCASDesc, LFMwCAS> || std::is_same_v<MwCASDesc, LFMwCASWeak>) {
+    if constexpr (kUseEBR) {
       MwCASDesc::StartGC();
     }
   }
@@ -111,8 +135,7 @@ class MwCASDescriptorFixture : public ::testing::Test
   void
   TearDown() override
   {
-    if constexpr (std::is_same_v<MwCASDesc, AOPT> || std::is_same_v<MwCASDesc, CASN>
-                  || std::is_same_v<MwCASDesc, LFMwCAS> || std::is_same_v<MwCASDesc, LFMwCASWeak>) {
+    if constexpr (kUseEBR) {
       MwCASDesc::StopGC();
     }
   }
@@ -125,25 +148,58 @@ class MwCASDescriptorFixture : public ::testing::Test
   VerifyMwCAS(  //
       const size_t thread_num)
   {
+    with_decrement_ = false;
     RunMwCAS(thread_num);
 
     // check the target fields are correctly incremented
-    size_t sum = 0;
-    for (auto& target : target_fields_) {
-      if constexpr (std::is_same_v<MwCASDesc, LFMwCASWeak>) {
-        sum += MwCASDesc::template Read<Target>(&target).first;
-      } else {
-        sum += MwCASDesc::template Read<Target>(&target);
-      }
-    }
+    EXPECT_EQ(kOpsNum * thread_num * kMwCASCapacity, SumTargets());
+  }
 
-    EXPECT_EQ(kOpsNum * thread_num * kMwCASCapacity, sum);
+  /**
+   * @brief Verify MwCAS with random increments and decrements.
+   *
+   * Target fields can return to their old values (i.e., ABA), so stale helpers
+   * can embed descriptors after their completion.
+   */
+  void
+  VerifyMwCASWithDecrement(  //
+      const size_t thread_num)
+  {
+    with_decrement_ = true;
+    for (size_t i = 0; i < kTargetFieldNum; ++i) {
+      target_fields_[i] = kInitValForDecrement;
+    }
+    delta_sum_ = 0;
+    RunMwCAS(thread_num);
+
+    // check the sum of target fields is equal to the sum of applied deltas
+    const auto expected = static_cast<int64_t>(kInitValForDecrement * kTargetFieldNum)  //
+                          + delta_sum_.load();
+    EXPECT_EQ(expected, static_cast<int64_t>(SumTargets()));
   }
 
  private:
   /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
+
+  auto
+  SumTargets()  //
+      -> size_t
+  {
+    size_t sum = 0;
+    for (auto& target : target_fields_) {
+      if constexpr (std::is_same_v<MwCASDesc, LFMwCASWeak>) {
+        sum += MwCASDesc::template Read<Target>(&target).first;
+      } else if constexpr (kUseEBR) {
+        [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
+        sum += MwCASDesc::template Read<Target>(&target);
+      } else {
+        sum += MwCASDesc::template Read<Target>(&target);
+      }
+    }
+    return sum;
+  }
 
   void
   MwCAS(  //
@@ -152,10 +208,10 @@ class MwCASDescriptorFixture : public ::testing::Test
     if constexpr (std::is_same_v<MwCASDesc, DLFMwCAS>) {
       while (true) {
         MwCASDesc desc{};
-        for (auto idx : targets) {
+        for (const auto& [idx, delta] : targets) {
           auto* const addr = &(target_fields_[idx]);
           const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
-          const auto new_val = cur_val + 1;
+          const auto new_val = cur_val + delta;
           desc.AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc.MwCAS()) return;
@@ -164,11 +220,22 @@ class MwCASDescriptorFixture : public ::testing::Test
       while (true) {
         [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
         auto* const desc = MwCASDesc::GetDescriptor();
-        for (auto idx : targets) {
+        for (const auto& [idx, delta] : targets) {
           auto* const addr = &(target_fields_[idx]);
           const auto [cur_val, word] = MwCASDesc::template Read<Target>(addr, kRelaxed);
-          const auto new_val = cur_val + 1;
+          const auto new_val = cur_val + delta;
           desc->AddMwCASTarget(addr, word, new_val, kRelaxed);
+        }
+        if (desc->MwCAS()) return;
+      }
+    } else if constexpr (kUseRC) {
+      while (true) {  // descriptors are protected by reference counts
+        auto* const desc = MwCASDesc::GetDescriptor();
+        for (const auto& [idx, delta] : targets) {
+          auto* const addr = &(target_fields_[idx]);
+          const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
+          const auto new_val = cur_val + delta;
+          desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc->MwCAS()) return;
       }
@@ -176,10 +243,10 @@ class MwCASDescriptorFixture : public ::testing::Test
       while (true) {
         [[maybe_unused]] const auto& guard = MwCASDesc::CreateEpochGuard();
         auto* const desc = MwCASDesc::GetDescriptor();
-        for (auto idx : targets) {
+        for (const auto& [idx, delta] : targets) {
           auto* const addr = &(target_fields_[idx]);
           const auto cur_val = MwCASDesc::template Read<Target>(addr, kRelaxed);
-          const auto new_val = cur_val + 1;
+          const auto new_val = cur_val + delta;
           desc->AddMwCASTarget(addr, cur_val, new_val, kRelaxed);
         }
         if (desc->MwCAS()) return;
@@ -218,21 +285,26 @@ class MwCASDescriptorFixture : public ::testing::Test
   {
     std::vector<MwCASTargets> operations{};
     operations.reserve(kOpsNum);
+    int64_t delta_sum = 0;
 
     {  // create a lock to prevent a main thread
       const std::shared_lock<std::shared_mutex> guard{main_lock_};
 
       // prepare operations to be executed
       std::mt19937_64 rand_engine{rand_seed};  // NOLINT
+      std::bernoulli_distribution sign_dist{0.5};
       for (size_t i = 0; i < kOpsNum; ++i) {
         // select MwCAS target fields randomly
         MwCASTargets targets{};
         targets.reserve(kMwCASCapacity);
         while (targets.size() < kMwCASCapacity) {
           size_t idx = zipf_dist_(rand_engine);
-          const auto iter = std::find(targets.begin(), targets.end(), idx);
+          const auto iter = std::find_if(targets.begin(), targets.end(),
+                                         [idx](const auto& t) { return t.first == idx; });
           if (iter == targets.end()) {
-            targets.emplace_back(idx);
+            const int64_t delta = (with_decrement_ && sign_dist(rand_engine)) ? -1 : 1;
+            targets.emplace_back(idx, delta);
+            delta_sum += delta;
           }
         }
         std::sort(targets.begin(), targets.end());
@@ -248,6 +320,8 @@ class MwCASDescriptorFixture : public ::testing::Test
         MwCAS(targets);
       }
     }
+
+    delta_sum_ += delta_sum;
   }
 
   /*##########################################################################*
@@ -261,13 +335,27 @@ class MwCASDescriptorFixture : public ::testing::Test
   std::shared_mutex main_lock_{};
 
   std::shared_mutex worker_lock_{};
+
+  /// @brief A flag for using random decrements in addition to increments.
+  bool with_decrement_{false};
+
+  /// @brief The sum of all the applied deltas.
+  std::atomic_int64_t delta_sum_{0};
 };
 
 /*############################################################################*
  * Preparation for typed testing
  *############################################################################*/
 
-using MwCASDescriptors = ::testing::Types<DLFMwCAS, LFMwCAS, LFMwCASWeak, AOPT, CASN>;
+using MwCASDescriptors = ::testing::Types<DLFMwCAS,
+                                          LFMwCAS,
+                                          LFMwCASLegacy,
+                                          LFMwCASRC,
+                                          OFMwCAS,
+                                          OFMwCASRC,
+                                          LFMwCASWeak,
+                                          AOPT,
+                                          CASN>;
 TYPED_TEST_SUITE(MwCASDescriptorFixture, MwCASDescriptors);
 
 /*############################################################################*
@@ -286,6 +374,13 @@ TYPED_TEST(  //
     MwCASWithMultiThreadsCorrectlyIncrementTargets)
 {
   TestFixture::VerifyMwCAS(kTestThreadNum);
+}
+
+TYPED_TEST(  //
+    MwCASDescriptorFixture,
+    MwCASWithMultiThreadsCorrectlyIncrementAndDecrementTargets)
+{
+  TestFixture::VerifyMwCASWithDecrement(kTestThreadNum);
 }
 
 }  // namespace dbgroup::atomic::mwcas::test

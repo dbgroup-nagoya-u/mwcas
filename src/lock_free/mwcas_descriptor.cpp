@@ -20,16 +20,20 @@
 // C++ standard libraries
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <thread>
 #include <utility>
 
 // external C++ libraries
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/thread/id_manager.hpp>
 
 // local sources
+#include "dbgroup/atomic/mwcas/stats.hpp"
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 //                                   Bit allocation of a word.
@@ -80,11 +84,21 @@ constexpr uint64_t kPosMask = 7UL << kPosShift;
 constexpr uint64_t kDescMask = kMwCASFlag | kAddrMask;
 
 /*############################################################################*
- * Local global variable
+ * Local utilities
  *############################################################################*/
 
-/// @brief A thread local descriptor for reuse.
-thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
+/**
+ * @param fence A memory fence given by users.
+ * @return A memory fence that includes at least acquire and release semantics.
+ * @note Embedding a descriptor must publish its targets to followers (H3).
+ */
+constexpr auto
+WithAcqRel(  //
+    const std::memory_order fence)  //
+    -> std::memory_order
+{
+  return (fence == std::memory_order_seq_cst) ? fence : std::memory_order_acq_rel;
+}
 
 }  // namespace
 
@@ -121,10 +135,10 @@ auto
 MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor*
 {
-  auto* desc = _tls.release();
+  auto* desc = static_cast<MwCASDescriptor*>(_gc->GetPageIfPossible<MwCASDescriptor>());
   if (!desc) {
-    auto* const page = _gc->GetPageIfPossible<MwCASDescriptor>();
-    desc = (page) ? static_cast<MwCASDescriptor*>(page) : new MwCASDescriptor{};
+    desc = new MwCASDescriptor{};
+    MWCAS_STAT_INC(kDescNew);
   }
   desc->target_cnt_ = 0;
   return desc;
@@ -134,13 +148,14 @@ auto
 MwCASDescriptor::MwCAS()  //
     -> bool
 {
+  thread_local CompletedDescriptors completed_descriptors{};
+
   stat_.store(kUndecided, kRelease);  // set a memory fence
-  const auto [succeeded, referred] = MwCASInternal();
-  if (referred) {
-    _gc->AddGarbage<MwCASDescriptor>(this);
-  } else {
-    _tls.reset(this);
-  }
+  const auto succeeded = MwCASInternal();
+
+  // stale helpers may still embed this descriptor, so it cannot be reused or
+  // passed to GC immediately
+  completed_descriptors.Retire(this);
   return succeeded;
 }
 
@@ -155,6 +170,8 @@ MwCASDescriptor::FollowIfNeeded(  //
     const std::memory_order fence)
 {
   if (!PrepareToFollow<kCntMask, kCntShift, true>(addr, word, fence)) return;
+  std::atomic_thread_fence(kAcquire);  // synchronize with the embedding (H3)
+  MWCAS_STAT_INC(kFollow);
 
   // follow another MwCAS
   auto* const another_desc =
@@ -166,40 +183,42 @@ MwCASDescriptor::FollowIfNeeded(  //
   word = addr->load(fence);
 }
 
-auto
+void
 MwCASDescriptor::Abort(  //
     uint64_t desc_addr,  //
-    MwCASTarget& target) -> bool
+    MwCASTarget& target)
 {
   auto expected = target.addr->load(kRelaxed);
-  while (true) {
-    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
+  while (((expected ^ desc_addr) & kDescMask) == 0) {
     if (target.addr->compare_exchange_weak(expected, target.old_val, kRelaxed, kRelaxed)) {
-      return (expected & kCntMask) != 0;
+      if ((expected & kCntMask) != 0) {
+        MWCAS_STAT_INC(kDetachWithCnt);
+      }
+      return;
     }
+    MWCAS_STAT_INC(kDetachRetry);
     CPP_UTILITY_SPINLOCK_HINT
   }
 }
 
-auto
+void
 MwCASDescriptor::Complete(  //
     uint64_t desc_addr,     //
-    MwCASTarget& target) -> bool
+    MwCASTarget& target)
 {
   auto expected = target.addr->load(kRelaxed);
-  while (true) {
-    if (((expected ^ desc_addr) & kDescMask) != 0) return true;
-
-    // verification of thread ID
+  while (((expected ^ desc_addr) & kDescMask) == 0) {
+    // verification of thread ID: a duplicated embedded descriptor is restored
     const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
-    if (embedded_tid != target.thread_id.load(kRelaxed)) {
-      target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
-      return true;
+    const auto desired =
+        (embedded_tid == target.thread_id.load(kRelaxed)) ? target.new_val : target.old_val;
+    if (target.addr->compare_exchange_weak(expected, desired, kRelaxed, kRelaxed)) {
+      if ((expected & kCntMask) != 0) {
+        MWCAS_STAT_INC(kDetachWithCnt);
+      }
+      return;
     }
-
-    if (target.addr->compare_exchange_weak(expected, target.new_val, kRelaxed, kRelaxed)) {
-      return (expected & kCntMask) != 0;
-    }
+    MWCAS_STAT_INC(kDetachRetry);
     CPP_UTILITY_SPINLOCK_HINT
   }
 }
@@ -207,7 +226,7 @@ MwCASDescriptor::Complete(  //
 auto
 MwCASDescriptor::MwCASInternal(  //
     const size_t begin_pos)      //
-    -> std::pair<bool, bool>
+    -> bool
 {
   const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
   const auto desc_addr = std::bit_cast<uint64_t>(this) >> kAddrAlignShift;
@@ -221,7 +240,7 @@ MwCASDescriptor::MwCASInternal(  //
       auto& target = targets_[i];
       auto* const addr = target.addr;
       const auto expected = target.old_val;
-      const auto fence = target.fence;
+      const auto fence = WithAcqRel(target.fence);
       auto word = addr->load(kRelaxed);
 
       // try to embed the descriptor
@@ -246,25 +265,25 @@ MwCASDescriptor::MwCASInternal(  //
     }
   }
 
+  // detach all the embedded descriptors (including duplicated ones)
   const auto succeeded = (cur_stat == kSucceeded);
-  bool referred = false;
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred |= Complete(base_addr, targets_[i]);
+      Complete(base_addr, targets_[i]);
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred |= Abort(base_addr, targets_[i]);
+      Abort(base_addr, targets_[i]);
     }
   }
 
-  return std::pair{succeeded, referred};
+  return succeeded;
 }
 
 auto
 MwCASDescriptor::DetermineThreadId(  //
     const size_t pos,                //
-    uint64_t word)                   //
+    const uint64_t word)             //
     -> bool
 {
   auto& target = targets_[pos];
@@ -277,9 +296,52 @@ MwCASDescriptor::DetermineThreadId(  //
   }
   if (current_tid == embedded_tid) return true;
 
-  // clean up the duplicated embedded descriptor.
-  target.addr->compare_exchange_strong(word, target.old_val, kRelaxed, kRelaxed);
+  // clean up the duplicated embedded descriptor (retry if followers have
+  // incremented the counter)
+  auto cur = word;
+  while (((cur ^ word) & ~kCntMask) == 0) {
+    if (target.addr->compare_exchange_weak(cur, target.old_val, kRelaxed, kRelaxed)) break;
+    MWCAS_STAT_INC(kDetachRetry);
+    CPP_UTILITY_SPINLOCK_HINT
+  }
   return false;
+}
+
+/*############################################################################*
+ * Internal classes
+ *############################################################################*/
+
+MwCASDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
+{
+  while (!desc_deq_.empty()) {
+    PassExpiredToGC();
+    std::this_thread::sleep_for(std::chrono::milliseconds{dbgroup::memory::kDefaultGCTime});
+  }
+}
+
+void
+MwCASDescriptor::CompletedDescriptors::Retire(  //
+    MwCASDescriptor* const desc)
+{
+  if (desc_deq_.size() >= kMaxReusableDescriptors) {
+    PassExpiredToGC();
+  }
+  desc_deq_.emplace_back(desc, _gc->GetCurrentEpoch());
+  MWCAS_STAT_INC(kDescDeferred);
+}
+
+void
+MwCASDescriptor::CompletedDescriptors::PassExpiredToGC()
+{
+  // all the threads that could have embedded or referred to these descriptors
+  // before their completion have left, and every stale embedding has been
+  // detached by its creator; the GC protects threads that have referred to the
+  // descriptors after their completion
+  const auto min_epoch = _gc->GetMinEpoch();
+  while (!desc_deq_.empty() && desc_deq_.front().second < min_epoch) {
+    _gc->AddGarbage<MwCASDescriptor>(desc_deq_.front().first);
+    desc_deq_.pop_front();
+  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

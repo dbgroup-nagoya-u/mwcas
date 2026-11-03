@@ -23,7 +23,9 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
+#include <utility>
 
 // external C++ libraries
 #include <dbgroup/lock/utility.hpp>
@@ -261,6 +263,79 @@ class alignas(kCacheLineSize) CASNDescriptor
 
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
+  };
+
+  /**
+   * @brief A class for retaining completed descriptors until stale helpers have
+   * left their epochs.
+   *
+   * A helper (or a reader completing an RDCSS operation) that has read
+   * `kUndecided` may embed a CASN descriptor (directly or via an RDCSS
+   * descriptor) after its completion. Such a thread stays in its epoch until the
+   * stale embedding is detached, so a completed descriptor is passed to GC after
+   * all the threads in its completed epoch have left. GC then waits for another
+   * grace period to protect threads that have read the stale embedding.
+   */
+  class CompletedDescriptors
+  {
+   public:
+    /*########################################################################*
+     * Public constructors and assignment operators
+     *########################################################################*/
+
+    /**
+     * @brief Construct a new CompletedDescriptors object.
+     *
+     */
+    CompletedDescriptors() = default;
+
+    CompletedDescriptors(const CompletedDescriptors&) = delete;
+    CompletedDescriptors(CompletedDescriptors&&) = delete;
+
+    CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
+    CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
+
+    /*########################################################################*
+     * Public destructors
+     *########################################################################*/
+
+    /**
+     * @brief Destroy the CompletedDescriptors object.
+     *
+     */
+    ~CompletedDescriptors();
+
+    /*########################################################################*
+     * Public utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Register a completed descriptor with the internal list.
+     *
+     * @param desc A completed descriptor.
+     * @note If the number of completed descriptors reaches a certain threshold,
+     * this function invoke the retirement of expired ones.
+     */
+    void Retire(  //
+        CASNDescriptor* desc);
+
+   private:
+    /*########################################################################*
+     * Internal utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Pass the descriptors that no stale helper can reach to GC.
+     *
+     */
+    void PassExpiredToGC();
+
+    /*########################################################################*
+     * Internal member variables
+     *########################################################################*/
+
+    /// @brief Completed descriptors and their completed epochs.
+    std::deque<std::pair<CASNDescriptor*, Serial64_t>> desc_deq_{};
   };
 
   /*##########################################################################*

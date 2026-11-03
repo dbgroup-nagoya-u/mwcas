@@ -22,14 +22,18 @@
 #include <atomic>
 #include <bit>
 #include <cstddef>
+#include <chrono>
 #include <cstdint>
 #include <memory>
+#include <thread>
+#include <utility>
 
 // external C++ libraries
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
+#include "dbgroup/atomic/mwcas/stats.hpp"
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 //                           Bit allocation of a word.
@@ -69,7 +73,11 @@ CASNDescriptor::GetDescriptor()  //
     -> CASNDescriptor*
 {
   auto* const page = _gc->GetPageIfPossible<CASNDescriptor>();
-  auto* const desc = (page == nullptr) ? new CASNDescriptor{} : static_cast<CASNDescriptor*>(page);
+  auto* desc = static_cast<CASNDescriptor*>(page);
+  if (desc == nullptr) {
+    desc = new CASNDescriptor{};
+    MWCAS_STAT_INC(kDescNew);
+  }
   desc->target_cnt_ = 0;
   return desc;
 }
@@ -90,10 +98,15 @@ auto
 CASNDescriptor::MwCAS()  //
     -> bool
 {
+  thread_local CompletedDescriptors completed_descriptors{};
+
   // set a memory fence
   stat_.store(kUndecided, kRelease);
   const auto succeeded = MwCASInternal();
-  _gc->AddGarbage<CASNDescriptor>(this);
+
+  // stale helpers may still embed this descriptor, so it cannot be passed to GC
+  // immediately
+  completed_descriptors.Retire(this);
   return succeeded;
 }
 
@@ -237,6 +250,42 @@ CASNDescriptor::CompleteRDCSS(  //
     return;
   }
   CPP_UTILITY_SPINLOCK_HINT
+}
+
+/*############################################################################*
+ * Internal classes
+ *############################################################################*/
+
+CASNDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
+{
+  while (!desc_deq_.empty()) {
+    PassExpiredToGC();
+    std::this_thread::sleep_for(std::chrono::milliseconds{dbgroup::memory::kDefaultGCTime});
+  }
+}
+
+void
+CASNDescriptor::CompletedDescriptors::Retire(  //
+    CASNDescriptor* const desc)
+{
+  if (desc_deq_.size() >= kMaxReusableDescriptors) {
+    PassExpiredToGC();
+  }
+  desc_deq_.emplace_back(desc, _gc->GetCurrentEpoch());
+  MWCAS_STAT_INC(kDescDeferred);
+}
+
+void
+CASNDescriptor::CompletedDescriptors::PassExpiredToGC()
+{
+  // all the threads that could have embedded these descriptors after their
+  // completion have left, and they have detached their stale embeddings before
+  // leaving; GC protects threads that have read the stale embeddings
+  const auto min_epoch = _gc->GetMinEpoch();
+  while (!desc_deq_.empty() && desc_deq_.front().second < min_epoch) {
+    _gc->AddGarbage<CASNDescriptor>(desc_deq_.front().first);
+    desc_deq_.pop_front();
+  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
