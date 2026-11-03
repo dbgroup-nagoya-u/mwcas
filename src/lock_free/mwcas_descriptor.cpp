@@ -100,6 +100,13 @@ WithAcqRel(  //
   return (fence == std::memory_order_seq_cst) ? fence : std::memory_order_acq_rel;
 }
 
+/*############################################################################*
+ * Local global variable
+ *############################################################################*/
+
+/// @brief A thread local descriptor for reuse.
+thread_local std::unique_ptr<MwCASDescriptor> _tls = nullptr;  // NOLINT
+
 }  // namespace
 
 /*############################################################################*
@@ -135,7 +142,10 @@ auto
 MwCASDescriptor::GetDescriptor()  //
     -> MwCASDescriptor*
 {
-  auto* desc = static_cast<MwCASDescriptor*>(_gc->GetPageIfPossible<MwCASDescriptor>());
+  auto* desc = _tls.release();
+  if (!desc) {
+    desc = static_cast<MwCASDescriptor*>(_gc->GetPageIfPossible<MwCASDescriptor>());
+  }
   if (!desc) {
     desc = new MwCASDescriptor{};
     MWCAS_STAT_INC(kDescNew);
@@ -151,11 +161,17 @@ MwCASDescriptor::MwCAS()  //
   thread_local CompletedDescriptors completed_descriptors{};
 
   stat_.store(kUndecided, kRelease);  // set a memory fence
-  const auto succeeded = MwCASInternal();
+  auto referred = false;
+  const auto succeeded = MwCASInternal(0, &referred);
 
-  // stale helpers may still embed this descriptor, so it cannot be reused or
-  // passed to GC immediately
-  completed_descriptors.Retire(this);
+  if (referred) {
+    // stale helpers may still embed this descriptor, so it cannot be reused or
+    // passed to GC immediately
+    completed_descriptors.Retire(this);
+  } else {
+    // no other thread has referred to this descriptor
+    _tls.reset(this);
+  }
   return succeeded;
 }
 
@@ -183,10 +199,10 @@ MwCASDescriptor::FollowIfNeeded(  //
   word = addr->load(fence);
 }
 
-void
+auto
 MwCASDescriptor::Abort(  //
     uint64_t desc_addr,  //
-    MwCASTarget& target)
+    MwCASTarget& target) -> uint64_t
 {
   auto expected = target.addr->load(kRelaxed);
   while (((expected ^ desc_addr) & kDescMask) == 0) {
@@ -194,17 +210,18 @@ MwCASDescriptor::Abort(  //
       if ((expected & kCntMask) != 0) {
         MWCAS_STAT_INC(kDetachWithCnt);
       }
-      return;
+      return expected;
     }
     MWCAS_STAT_INC(kDetachRetry);
     CPP_UTILITY_SPINLOCK_HINT
   }
+  return 0;
 }
 
-void
+auto
 MwCASDescriptor::Complete(  //
     uint64_t desc_addr,     //
-    MwCASTarget& target)
+    MwCASTarget& target) -> uint64_t
 {
   auto expected = target.addr->load(kRelaxed);
   while (((expected ^ desc_addr) & kDescMask) == 0) {
@@ -216,18 +233,26 @@ MwCASDescriptor::Complete(  //
       if ((expected & kCntMask) != 0) {
         MWCAS_STAT_INC(kDetachWithCnt);
       }
-      return;
+      return expected;
     }
     MWCAS_STAT_INC(kDetachRetry);
     CPP_UTILITY_SPINLOCK_HINT
   }
+  return 0;
 }
 
 auto
 MwCASDescriptor::MwCASInternal(  //
-    const size_t begin_pos)      //
+    const size_t begin_pos,      //
+    bool* const referred)        //
     -> bool
 {
+  // only the owner tracks its embeddings to detect followers (H10): a first
+  // follower always increments the counter of an embedding by the owner
+  // because helpers embed this descriptor only after following
+  uint64_t owned_mask = 0;
+  auto is_referred = false;
+
   const auto thread_id = ::dbgroup::thread::IDManager::GetThreadID();
   const auto desc_addr = std::bit_cast<uint64_t>(this) >> kAddrAlignShift;
   const auto base_addr = kMwCASFlag | desc_addr;
@@ -245,7 +270,11 @@ MwCASDescriptor::MwCASInternal(  //
 
       // try to embed the descriptor
       if (word == expected && addr->compare_exchange_strong(word, desc_addr, fence, kRelaxed)) {
-        if (DetermineThreadId(i, desc_addr)) continue;
+        if (DetermineThreadId(i, desc_addr)) {
+          owned_mask |= 1UL << i;
+          continue;
+        }
+        is_referred = true;
         break;  // this MCAS has been completed
       }
 
@@ -254,6 +283,8 @@ MwCASDescriptor::MwCASInternal(  //
         stat = kFailed;
         break;
       }
+      // a helper has embedded the descriptor
+      is_referred = true;
       if (!DetermineThreadId(i, word)) break;  // this MCAS has been completed
     }
 
@@ -262,21 +293,28 @@ MwCASDescriptor::MwCASInternal(  //
     if (cur_stat == kUndecided
         && stat_.compare_exchange_strong(cur_stat, stat, kRelaxed, kRelaxed)) {
       cur_stat = stat;
+    } else {
+      is_referred = true;  // a helper has decided the status
     }
+  } else {
+    is_referred = true;
   }
 
   // detach all the embedded descriptors (including duplicated ones)
   const auto succeeded = (cur_stat == kSucceeded);
-  if (succeeded) {
-    for (size_t i = 0; i < target_cnt_; ++i) {
-      Complete(base_addr, targets_[i]);
-    }
-  } else {
-    for (size_t i = 0; i < target_cnt_; ++i) {
-      Abort(base_addr, targets_[i]);
-    }
+  for (size_t i = 0; i < target_cnt_; ++i) {
+    const auto detached = succeeded ? Complete(base_addr, targets_[i])  //
+                                    : Abort(base_addr, targets_[i]);
+
+    // the owner must detach its own embedding without any follower, and no
+    // other embedding may remain in the targets it has not embedded
+    const auto owned = (owned_mask & (1UL << i)) != 0;
+    is_referred |= owned ? detached != (owned_addr | (i << kPosShift)) : detached != 0;
   }
 
+  if (referred != nullptr) {
+    *referred = is_referred;
+  }
   return succeeded;
 }
 

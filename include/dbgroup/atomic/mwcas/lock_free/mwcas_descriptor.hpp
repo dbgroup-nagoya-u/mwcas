@@ -40,7 +40,11 @@ namespace dbgroup::atomic::mwcas::lock_free
 /**
  * @brief A class to manage a MwCAS (multi-words compare-and-swap) operation.
  *
- * Completed descriptors are retired in two stages to prevent stale helpers from
+ * A completed descriptor is reused immediately by its owner thread if no other
+ * thread has referred to it, that is, the owner has detached all of its own
+ * embeddings without incremented counters and no other embedding has remained.
+ *
+ * Otherwise, it is retired in two stages to prevent stale helpers from
  * republishing retired descriptors.
  * 1. A completed descriptor is registered with a thread local list with the
  *    current epoch.
@@ -340,10 +344,11 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *
    * @param desc_addr The address of this descriptor with the flag.
    * @param target A target MwCAS information.
+   * @return The embedded descriptor detached by this call (0 if nothing).
    */
-  static void Abort(       //
+  static auto Abort(       //
       uint64_t desc_addr,  //
-      MwCASTarget& target);
+      MwCASTarget& target) -> uint64_t;
 
   /**
    * @brief Swap the agreed embedded descriptor in a target into a new value and
@@ -351,20 +356,24 @@ class alignas(kCacheLineSize) MwCASDescriptor
    *
    * @param desc_addr The address of this descriptor with the flag.
    * @param target A target MwCAS information.
+   * @return The embedded descriptor detached by this call (0 if nothing).
    */
-  static void Complete(    //
+  static auto Complete(    //
       uint64_t desc_addr,  //
-      MwCASTarget& target);
+      MwCASTarget& target) -> uint64_t;
 
   /**
    * @brief An actual MwCAS procedure.
    *
    * @param begin_pos The begin position of target words.
+   * @param[out] referred An output flag for the owner: true if other threads may
+   * have referred to this descriptor (nullptr for helpers).
    * @retval true if a MwCAS operation succeeds.
    * @retval false otherwise.
    */
-  auto MwCASInternal(        //
-      size_t begin_pos = 0)  //
+  auto MwCASInternal(            //
+      size_t begin_pos = 0,      //
+      bool* referred = nullptr)  //
       -> bool;
 
   /**
