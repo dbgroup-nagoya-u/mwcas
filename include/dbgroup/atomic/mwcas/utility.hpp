@@ -92,9 +92,9 @@ CanMwCAS()  //
  * @tparam kCntMask A bit mask for extracting a counter.
  * @tparam kCntShift A bit shift for extracting a counter.
  * @tparam kNeedReference A flag for preventing the reuse of referred descriptors.
- * @param addr A target address.
- * @param word The current value of the target address.
- * @param fence A memory fence.
+ * @param[in] addr A target address.
+ * @param[in,out] word The current value of the target address.
+ * @param[in] fence A memory fence.
  * @retval true if the caller should follow the MwCAS.
  * @retval false otherwise.
  */
