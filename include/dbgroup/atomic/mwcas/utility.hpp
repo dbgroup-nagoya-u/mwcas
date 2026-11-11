@@ -101,7 +101,7 @@ CanMwCAS()  //
 template <uint64_t kCntMask, uint64_t kCntShift, bool kNeedReference>
 inline auto
 PrepareToFollow(  //
-    std::atomic_uint64_t* addr,
+    std::atomic_uint64_t* const addr,
     uint64_t& word,
     const std::memory_order fence)  //
     -> bool
