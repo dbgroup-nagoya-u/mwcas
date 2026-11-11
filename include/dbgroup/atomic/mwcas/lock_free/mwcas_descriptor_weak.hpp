@@ -313,4 +313,4 @@ class alignas(kCacheLineSize) MwCASDescriptorWeak
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
 
-#endif  // DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_
+#endif  // DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_WEAK_HPP_
