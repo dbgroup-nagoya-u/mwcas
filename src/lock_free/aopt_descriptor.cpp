@@ -123,7 +123,7 @@ AOPTDescriptor::MwCAS()  //
 }
 
 auto
-AOPTDescriptor::ReadInternal(  // NOLINT
+AOPTDescriptor::ReadInternal(  //
     std::atomic_uint64_t* const addr,
     const AOPTDescriptor* const self,
     const std::memory_order fence)  //
@@ -158,7 +158,7 @@ AOPTDescriptor::ReadInternal(  // NOLINT
 }
 
 auto
-AOPTDescriptor::MwCASInternal(  // NOLINT
+AOPTDescriptor::MwCASInternal(  //
     const size_t begin_pos)     //
     -> bool
 {

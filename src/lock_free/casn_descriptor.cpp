@@ -100,7 +100,7 @@ CASNDescriptor::MwCAS()  //
 }
 
 auto
-CASNDescriptor::MwCASInternal(  // NOLINT
+CASNDescriptor::MwCASInternal(  //
     const size_t begin_pos)     //
     -> bool
 {
@@ -202,7 +202,7 @@ CASNDescriptor::RDCSS(  //
 }
 
 void
-CASNDescriptor::FollowIfNeeded(  // NOLINT
+CASNDescriptor::FollowIfNeeded(  //
     std::atomic_uint64_t* const addr,
     uint64_t word,
     const std::memory_order fence)
