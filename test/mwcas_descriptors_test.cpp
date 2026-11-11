@@ -36,6 +36,7 @@
 #include <gtest/gtest.h>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/random/zipf.hpp>
 
 // local sources

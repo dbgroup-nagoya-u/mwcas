@@ -26,10 +26,12 @@
 #include <utility>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
+#include "dbgroup/atomic/mwcas/lock_free/common.hpp"
 #include "dbgroup/atomic/mwcas/utility.hpp"
 
 //                                   Bit allocation of a word.
@@ -157,8 +159,7 @@ MwCASDescriptor::FollowIfNeeded(  //
   if (!PrepareToFollow<kCntMask, kCntShift, true>(addr, word, fence)) return;
 
   // follow another MwCAS
-  auto* const another_desc =
-      std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
+  auto* const another_desc = std::bit_cast<MwCASDescriptor*>((word & kAddrMask) << kAddrAlignShift);
   const auto pos = (word & kPosMask) >> kPosShift;
   if (another_desc->DetermineThreadId(pos, word)) {
     another_desc->MwCASInternal(pos + 1);

@@ -28,6 +28,7 @@
 #include <utility>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 #include <dbgroup/memory/utility.hpp>
 #include <dbgroup/thread/epoch_guard.hpp>

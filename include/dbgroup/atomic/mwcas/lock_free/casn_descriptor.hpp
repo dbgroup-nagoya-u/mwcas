@@ -26,6 +26,7 @@
 #include <memory>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 #include <dbgroup/memory/utility.hpp>
@@ -40,7 +41,7 @@ namespace dbgroup::atomic::mwcas::lock_free
  * @brief A class for performing MwCAS with the CASN algorithm.
  *
  */
- class CASNDescriptor;
+class CASNDescriptor;
 
 /**
  * @brief A class for representing RDCSS descriptors.

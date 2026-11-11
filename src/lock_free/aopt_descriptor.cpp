@@ -30,10 +30,12 @@
 #include <utility>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 
 // local sources
+#include "dbgroup/atomic/mwcas/lock_free/common.hpp"
 #include "dbgroup/atomic/mwcas/utility.hpp"
 #include "dbgroup/memory/utility.hpp"
 
