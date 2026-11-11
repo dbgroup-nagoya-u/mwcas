@@ -194,8 +194,13 @@ MwCASDescriptor::Complete(  //
     // verification of thread ID
     const auto embedded_tid = (expected & kThreadIdMask) >> kThreadIdShift;
     if (embedded_tid != target.thread_id.load(kRelaxed)) {
-      target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
-      return true;
+      // replace the duplicated embedded descriptor with the old value.
+      // retry if followers have incremented the counter.
+      if (target.addr->compare_exchange_weak(expected, target.old_val, kRelaxed, kRelaxed)) {
+        return true;
+      }
+      CPP_UTILITY_SPINLOCK_HINT
+      continue;
     }
 
     if (target.addr->compare_exchange_weak(expected, target.new_val, kRelaxed, kRelaxed)) {
@@ -279,7 +284,12 @@ MwCASDescriptor::DetermineThreadId(  //
   if (current_tid == embedded_tid) return true;
 
   // clean up the duplicated embedded descriptor.
-  target.addr->compare_exchange_strong(word, target.old_val, kRelaxed, kRelaxed);
+  // retry while followers have incremented the counter.
+  auto cur = word;
+  while (((cur ^ word) & ~kCntMask) == 0) {
+    if (target.addr->compare_exchange_weak(cur, target.old_val, kRelaxed, kRelaxed)) break;
+    CPP_UTILITY_SPINLOCK_HINT
+  }
   return false;
 }
 
