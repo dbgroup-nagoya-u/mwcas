@@ -23,6 +23,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <utility>
 
 // external C++ libraries
@@ -236,6 +237,73 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     /// @brief A thread ID to be compared for verification.
     std::atomic_size_t thread_id;
+  };
+
+  /**
+   * @brief A class for retaining completed descriptors until stale helpers have
+   * left their epochs.
+   *
+   */
+  class CompletedDescriptors
+  {
+   public:
+    /*########################################################################*
+     * Public constructors and assignment operators
+     *########################################################################*/
+
+    /**
+     * @brief Create a new CompletedDescriptors object.
+     *
+     */
+    constexpr CompletedDescriptors() = default;
+
+    CompletedDescriptors(const CompletedDescriptors&) = delete;
+    CompletedDescriptors(CompletedDescriptors&&) = delete;
+
+    CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
+    CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
+
+    /*########################################################################*
+     * Public destructors
+     *########################################################################*/
+
+    /**
+     * @brief Destroy the CompletedDescriptors object.
+     *
+     */
+    ~CompletedDescriptors();
+
+    /*########################################################################*
+     * Public utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Register a completed descriptor with the internal list.
+     *
+     * @param desc A completed descriptor.
+     * @note If the number of completed descriptors reaches a certain threshold,
+     * this function invoke the retirement of expired ones.
+     */
+    void Retire(  //
+        MwCASDescriptor* desc);
+
+   private:
+    /*########################################################################*
+     * Internal utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Pass the descriptors that no stale helper can reach to GC.
+     *
+     */
+    void PassExpiredToGC();
+
+    /*########################################################################*
+     * Internal member variables
+     *########################################################################*/
+
+    /// @brief Completed descriptors and their completed epochs.
+    std::deque<std::pair<MwCASDescriptor*, Serial64_t>> desc_deq_{};
   };
 
   /*##########################################################################*
