@@ -23,9 +23,11 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <utility>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 #include <dbgroup/memory/utility.hpp>
 #include <dbgroup/thread/epoch_guard.hpp>
@@ -151,7 +153,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
   Read(  //
       void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
-      -> std::pair<T, T>
+      -> T
   {
     static_assert(CanMwCAS<T>());
 
@@ -160,7 +162,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
     while (word & kMwCASFlag) {
       FollowIfNeeded(target_addr, word, fence);
     }
-    return std::pair{std::bit_cast<T>(word & kValueMask), std::bit_cast<T>(word)};
+    return std::bit_cast<T>(word);
   }
 
   /**
@@ -182,8 +184,8 @@ class alignas(kCacheLineSize) MwCASDescriptor
   {
     static_assert(CanMwCAS<T>());
 
-    new (&(targets_.at(target_cnt_++)))
-        MwCASTarget{static_cast<std::atomic_uint64_t*>(addr), old_val, new_val, fence};
+    new (&(targets_.at(target_cnt_++))) MwCASTarget{static_cast<std::atomic_uint64_t*>(addr),
+                                                    old_val, new_val, fence, kInitialThreadId};
   }
 
   /**
@@ -220,7 +222,7 @@ class alignas(kCacheLineSize) MwCASDescriptor
    * @brief A class for representing MwCAS targets.
    *
    */
-  struct alignas(kCacheLineSize / 2) MwCASTarget {
+  struct MwCASTarget {
     /// @brief A target memory address.
     std::atomic_uint64_t* addr;
 
@@ -232,26 +234,84 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
     /// @brief A fence to be inserted when embedding a new value.
     std::memory_order fence;
+
+    /// @brief A thread ID to be compared for verification.
+    std::atomic_size_t thread_id;
+  };
+
+  /**
+   * @brief A class for retaining completed descriptors until stale helpers have
+   * left their epochs.
+   *
+   */
+  class CompletedDescriptors
+  {
+   public:
+    /*########################################################################*
+     * Public constructors and assignment operators
+     *########################################################################*/
+
+    /**
+     * @brief Create a new CompletedDescriptors object.
+     *
+     */
+    constexpr CompletedDescriptors() = default;
+
+    CompletedDescriptors(const CompletedDescriptors&) = delete;
+    CompletedDescriptors(CompletedDescriptors&&) = delete;
+
+    CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
+    CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
+
+    /*########################################################################*
+     * Public destructors
+     *########################################################################*/
+
+    /**
+     * @brief Destroy the CompletedDescriptors object.
+     *
+     */
+    ~CompletedDescriptors();
+
+    /*########################################################################*
+     * Public utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Register a completed descriptor with the internal list.
+     *
+     * @param desc A completed descriptor.
+     * @note If the number of completed descriptors reaches a certain threshold,
+     * this function invoke the retirement of expired ones.
+     */
+    void Retire(  //
+        MwCASDescriptor* desc);
+
+   private:
+    /*########################################################################*
+     * Internal utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Pass the descriptors that no stale helper can reach to GC.
+     *
+     */
+    void PassExpiredToGC();
+
+    /*########################################################################*
+     * Internal member variables
+     *########################################################################*/
+
+    /// @brief Completed descriptors and their completed epochs.
+    std::deque<std::pair<MwCASDescriptor*, Serial64_t>> desc_deq_{};
   };
 
   /*##########################################################################*
    * Internal constants
    *##########################################################################*/
 
-  /// @brief The begin bit position of versions.
-  static constexpr uint64_t kVersionShift = kValueBitNum;
-
-  /// @brief A unit value for incrementing versions.
-  static constexpr uint64_t kVersionUnit = 1UL << kVersionShift;
-
-  /// @brief A bit mask for extracting actual values.
-  static constexpr uint64_t kValueMask = kVersionUnit - 1UL;
-
-  /// @brief A bit mask for extracting versions and actual values.
-  static constexpr uint64_t kVerAndValMask = ~kMwCASFlag;
-
-  /// @brief A bit mask for extracting versions.
-  static constexpr uint64_t kVersionMask = kVerAndValMask ^ kValueMask;
+  /// @brief An initial thread ID assigned before the target is processed.
+  static constexpr size_t kInitialThreadId = ~0UL;
 
   /*##########################################################################*
    * Internal APIs
@@ -270,17 +330,24 @@ class alignas(kCacheLineSize) MwCASDescriptor
       std::memory_order fence);
 
   /**
-   * @brief Swap an embedded descriptor into a desired value.
+   * @brief Swap an embedded descriptor into a old value.
    *
    * @param desc_addr The address of this descriptor with the flag.
    * @param target A target MwCAS information.
-   * @param desired A desired value to be embedded.
    */
-  static auto Finalize(     //
-      uint64_t desc_addr,   //
-      MwCASTarget& target,  //
-      uint64_t desired)     //
-      -> bool;
+  static auto Abort(       //
+      uint64_t desc_addr,  //
+      MwCASTarget& target) -> bool;
+
+  /**
+   * @brief Swap an embedded descriptor into a new value.
+   *
+   * @param desc_addr The address of this descriptor with the flag.
+   * @param target A target MwCAS information.
+   */
+  static auto Complete(    //
+      uint64_t desc_addr,  //
+      MwCASTarget& target) -> bool;
 
   /**
    * @brief An actual MwCAS procedure.
@@ -292,6 +359,20 @@ class alignas(kCacheLineSize) MwCASDescriptor
   auto MwCASInternal(        //
       size_t begin_pos = 0)  //
       -> std::pair<bool, bool>;
+
+  /**
+   * @brief Determine and verify the thread ID of a target and clean up if it's a duplicated
+   * embedded descriptor.
+   *
+   * @param pos The index of a target.
+   * @param word The value read from the target address.
+   * @retval true if the finalized thread ID matches the embedded thread ID.
+   * @retval false otherwise.
+   */
+  auto DetermineThreadId(  //
+      size_t pos,          //
+      uint64_t word)       //
+      -> bool;
 
   /*##########################################################################*
    * Internal member variables
@@ -312,4 +393,4 @@ class alignas(kCacheLineSize) MwCASDescriptor
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
 
-#endif  // DBGROUP_ATOMIC_MWCAS_DEADLOCK_FREE_MWCAS_DESCRIPTOR_HPP_
+#endif  // DBGROUP_ATOMIC_MWCAS_LOCK_FREE_MWCAS_DESCRIPTOR_HPP_

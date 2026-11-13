@@ -23,9 +23,12 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory>
+#include <utility>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
 #include <dbgroup/memory/utility.hpp>
@@ -38,6 +41,26 @@ namespace dbgroup::atomic::mwcas::lock_free
 {
 /**
  * @brief A class for performing MwCAS with the CASN algorithm.
+ *
+ */
+class CASNDescriptor;
+
+/**
+ * @brief A class for representing RDCSS descriptors.
+ */
+struct RDCSSDescriptor {
+  /// @brief Do not call destructors.
+  using T = void;
+
+  /// @brief Reuse allocated descriptors.
+  static constexpr bool kReusePages = true;
+
+  /// @brief The enclosing CASN descriptor.
+  CASNDescriptor* casn{nullptr};
+};
+
+/**
+ * The definition of CASNDescriptor.
  *
  */
 class alignas(kCacheLineSize) CASNDescriptor
@@ -150,13 +173,13 @@ class alignas(kCacheLineSize) CASNDescriptor
   template <class T>
   static auto
   Read(  //
-      const void* const addr,
+      void* const addr,
       const std::memory_order fence = std::memory_order_seq_cst)  //
       -> T
   {
     static_assert(CanMwCAS<T>());
 
-    const auto* const target_addr = static_cast<const std::atomic_uint64_t*>(addr);
+    auto* const target_addr = static_cast<std::atomic_uint64_t*>(addr);
     auto cur = target_addr->load(fence);
     while (true) {
       while (cur & kRDCSSFlag) {
@@ -164,8 +187,7 @@ class alignas(kCacheLineSize) CASNDescriptor
       }
       if ((cur & kMwCASFlag) == 0) break;
 
-      auto* const desc = std::bit_cast<CASNDescriptor*>(cur & kPtrMask);
-      desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
+      FollowIfNeeded(target_addr, cur, fence);
       CPP_UTILITY_SPINLOCK_HINT
       cur = target_addr->load(fence);
     }
@@ -210,7 +232,7 @@ class alignas(kCacheLineSize) CASNDescriptor
    * Type aliases
    *##########################################################################*/
 
-  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor>;
+  using EpochBasedGC = ::dbgroup::memory::EpochBasedGC<CASNDescriptor, RDCSSDescriptor>;
 
   /*##########################################################################*
    * Internal types
@@ -244,6 +266,73 @@ class alignas(kCacheLineSize) CASNDescriptor
     std::memory_order fence;
   };
 
+  /**
+   * @brief A class for retaining completed descriptors until stale helpers have
+   * left their epochs.
+   *
+   */
+  class CompletedDescriptors
+  {
+   public:
+    /*########################################################################*
+     * Public constructors and assignment operators
+     *########################################################################*/
+
+    /**
+     * @brief Create a new CompletedDescriptors object.
+     *
+     */
+    constexpr CompletedDescriptors() = default;
+
+    CompletedDescriptors(const CompletedDescriptors&) = delete;
+    CompletedDescriptors(CompletedDescriptors&&) = delete;
+
+    CompletedDescriptors& operator=(const CompletedDescriptors& obj) = delete;
+    CompletedDescriptors& operator=(CompletedDescriptors&&) = delete;
+
+    /*########################################################################*
+     * Public destructors
+     *########################################################################*/
+
+    /**
+     * @brief Destroy the CompletedDescriptors object.
+     *
+     */
+    ~CompletedDescriptors();
+
+    /*########################################################################*
+     * Public utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Register a completed descriptor with the internal list.
+     *
+     * @param desc A completed descriptor.
+     * @note If the number of completed descriptors reaches a certain threshold,
+     * this function invoke the retirement of expired ones.
+     */
+    void Retire(  //
+        CASNDescriptor* desc);
+
+   private:
+    /*########################################################################*
+     * Internal utility functions
+     *########################################################################*/
+
+    /**
+     * @brief Pass the descriptors that no stale helper can reach to GC.
+     *
+     */
+    void PassExpiredToGC();
+
+    /*########################################################################*
+     * Internal member variables
+     *########################################################################*/
+
+    /// @brief Completed descriptors and their completed epochs.
+    std::deque<std::pair<CASNDescriptor*, Serial64_t>> desc_deq_{};
+  };
+
   /*##########################################################################*
    * Internal constants
    *##########################################################################*/
@@ -251,21 +340,48 @@ class alignas(kCacheLineSize) CASNDescriptor
   /// @brief The second bit from the last indicates RDCSS descriptors.
   static constexpr uint64_t kRDCSSFlag = 1UL << 62UL;
 
-  /// @brief A bit mask for swapping flags with XOR.
-  static constexpr uint64_t kFlagSwap = kMwCASFlag | kRDCSSFlag;
-
   /// @brief The bit position for indicating the original number of a target.
   static constexpr uint64_t kCntPos = 47;
+
+  /// @brief An offset for right-shifting to extract reference counter.
+  static constexpr uint64_t kRefCntShift = 56;
+
+  /// @brief A constant for incrementing reference counter.
+  static constexpr uint64_t kRefCntUnit = 1UL << kRefCntShift;
 
   /// @brief A bit mask for extracting pointers.
   static constexpr uint64_t kPtrMask = (1UL << kCntPos) - 1UL;
 
   /// @brief A bit mask for extracting the original number of a target.
-  static constexpr uint64_t kCntMask = ~kPtrMask ^ (kMwCASFlag | kRDCSSFlag);
+  static constexpr uint64_t kCntMask = (kRefCntUnit - 1UL) ^ kPtrMask;
+
+  /// @brief A bit mask for extracting reference counter.
+  static constexpr uint64_t kRefCntMask = (kRDCSSFlag - 1UL) ^ (kCntMask | kPtrMask);
+
+  static_assert(kMwCASCapacity <= (kCntMask >> kCntPos) + 1);
 
   /*##########################################################################*
    * Internal utility functions
    *##########################################################################*/
+
+  /**
+   * @return A fresh RDCSS descriptor for an invocation of CASN phase 1.
+   */
+  [[nodiscard]]
+  static auto GetRDCSSDescriptor()  //
+      -> RDCSSDescriptor*;
+
+  /**
+   * @brief Insert back-off and follow the existing MwCAS if needed.
+   *
+   * @param addr A target memory address.
+   * @param word The current value of a target address.
+   * @param fence A memory fence.
+   */
+  static void FollowIfNeeded(  //
+      std::atomic_uint64_t* addr,
+      uint64_t word,
+      std::memory_order fence);
 
   /**
    * @brief Complete a found RDCSS operation.
@@ -291,11 +407,13 @@ class alignas(kCacheLineSize) CASNDescriptor
    *
    * @param pos The position of a MwCAS target.
    * @param casn_base The address of a CASN descriptor to be embedded.
+   * @param rdcss_base The address of an RDCSS descriptor to be embedded.
    * @return The current value of a target address.
    */
   auto RDCSS(  //
       size_t pos,
-      uint64_t casn_base)  //
+      uint64_t casn_base,
+      uint64_t rdcss_base)  //
       -> uint64_t;
 
   /*##########################################################################*

@@ -21,16 +21,27 @@
 #include <array>
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <thread>
+#include <utility>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/memory/utility.hpp>
 
 // local sources
+#include "dbgroup/atomic/mwcas/lock_free/common.hpp"
 #include "dbgroup/atomic/mwcas/utility.hpp"
+
+//                           Bit allocation of a word.
+// |     63     |     62     |       61-56       |   55-47  |        46-0        |
+// | MwCAS Flag | RDCSS Flag | Reference Counter | Position | Descriptor Address |
+//
 
 namespace dbgroup::atomic::mwcas::lock_free
 {
@@ -69,6 +80,14 @@ CASNDescriptor::GetDescriptor()  //
   return desc;
 }
 
+auto
+CASNDescriptor::GetRDCSSDescriptor()  //
+    -> RDCSSDescriptor*
+{
+  auto* const page = _gc->GetPageIfPossible<RDCSSDescriptor>();
+  return page ? static_cast<RDCSSDescriptor*>(page) : new RDCSSDescriptor{};
+}
+
 /*############################################################################*
  * Utilities
  *############################################################################*/
@@ -77,15 +96,17 @@ auto
 CASNDescriptor::MwCAS()  //
     -> bool
 {
+  thread_local CompletedDescriptors completed_descriptors{};
+
   // set a memory fence
   stat_.store(kUndecided, kRelease);
   const auto succeeded = MwCASInternal();
-  _gc->AddGarbage<CASNDescriptor>(this);
+  completed_descriptors.Retire(this);
   return succeeded;
 }
 
 auto
-CASNDescriptor::MwCASInternal(  // NOLINT
+CASNDescriptor::MwCASInternal(  //
     const size_t begin_pos)     //
     -> bool
 {
@@ -93,14 +114,20 @@ CASNDescriptor::MwCASInternal(  // NOLINT
 
   auto stat = stat_.load(kAcquire);
   if (stat == kUndecided) {
+    // prepare a fresh RDCSS descriptor for this invocation
+    auto* const rdcss = GetRDCSSDescriptor();
+    rdcss->casn = this;
+    const auto rdcss_base = std::bit_cast<uint64_t>(rdcss) | kRDCSSFlag;
+
     // phase 1: serialize MwCAS operations by embedding a descriptor
     auto mwcas_success = true;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
     retry_entry:
-      auto cur = RDCSS(i, casn_base);
-      if ((cur & kMwCASFlag) > 0 && cur != (casn_base | (i << kCntPos))) {
-        auto* const desc = std::bit_cast<CASNDescriptor*>(cur & kPtrMask);
-        desc->MwCASInternal(((cur & kCntMask) >> kCntPos) + 1);
+      auto cur = RDCSS(i, casn_base, rdcss_base);
+      if ((cur & kMwCASFlag) > 0) {
+        // this entry has already been embedded by helpers
+        if ((cur & ~kRefCntMask) == (casn_base | (i << kCntPos))) continue;
+        FollowIfNeeded(targets_[i].addr, cur, kRelaxed);
         CPP_UTILITY_SPINLOCK_HINT
         goto retry_entry;  // NOLINT
       }
@@ -109,6 +136,10 @@ CASNDescriptor::MwCASInternal(  // NOLINT
         break;
       }
     }
+
+    // the RDCSS descriptor is no longer embedded in any target
+    _gc->AddGarbage<RDCSSDescriptor>(rdcss);
+
     const auto desired = mwcas_success ? kSucceeded : kFailed;
     stat = stat_.load(kRelaxed);
     if (stat == kUndecided && stat_.compare_exchange_strong(stat, desired, kRelaxed, kRelaxed)) {
@@ -121,16 +152,24 @@ CASNDescriptor::MwCASInternal(  // NOLINT
   if (succeeded) {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto& target = targets_[i];
+      const auto casn_addr = casn_base | (i << kCntPos);
       auto expected = target.addr->load(kRelaxed);
-      if (expected != (casn_base | (i << kCntPos))) continue;
-      target.addr->compare_exchange_strong(expected, target.new_val, kRelaxed, kRelaxed);
+      while ((expected & ~kRefCntMask) == casn_addr) {
+        // retry if other threads have incremented the reference counter
+        if (target.addr->compare_exchange_weak(expected, target.new_val, kRelaxed, kRelaxed)) break;
+        CPP_UTILITY_SPINLOCK_HINT
+      }
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
       auto& target = targets_[i];
+      const auto casn_addr = casn_base | (i << kCntPos);
       auto expected = target.addr->load(kRelaxed);
-      if (expected != (casn_base | (i << kCntPos))) continue;
-      target.addr->compare_exchange_strong(expected, target.old_val, kRelaxed, kRelaxed);
+      while ((expected & ~kRefCntMask) == casn_addr) {
+        // retry if other threads have incremented the reference counter
+        if (target.addr->compare_exchange_weak(expected, target.old_val, kRelaxed, kRelaxed)) break;
+        CPP_UTILITY_SPINLOCK_HINT
+      }
     }
   }
 
@@ -140,11 +179,12 @@ CASNDescriptor::MwCASInternal(  // NOLINT
 auto
 CASNDescriptor::RDCSS(  //
     const size_t pos,
-    const uint64_t casn_base)  //
+    const uint64_t casn_base,
+    const uint64_t rdcss_base)  //
     -> uint64_t
 {
   const auto pos_bit = (pos << kCntPos);
-  auto rdcss_addr = (casn_base ^ kFlagSwap) | pos_bit;
+  auto rdcss_addr = rdcss_base | pos_bit;
   auto& target = targets_[pos];
   auto cur = target.addr->load(kRelaxed);
   while (true) {
@@ -153,7 +193,7 @@ CASNDescriptor::RDCSS(  //
       continue;
     }
     if (cur != target.old_val) return cur;
-    if (target.addr->compare_exchange_strong(cur, rdcss_addr, kRelaxed, kRelaxed)) break;
+    if (target.addr->compare_exchange_strong(cur, rdcss_addr, kRelease, kRelaxed)) break;
     CPP_UTILITY_SPINLOCK_HINT
   }
 
@@ -168,12 +208,30 @@ CASNDescriptor::RDCSS(  //
 }
 
 void
+CASNDescriptor::FollowIfNeeded(  //
+    std::atomic_uint64_t* const addr,
+    uint64_t word,
+    const std::memory_order fence)
+{
+  if (!PrepareToFollow<kRefCntMask, kRefCntShift, false>(addr, word, fence)) return;
+
+  // follow the incomplete MwCAS
+  auto* const desc = std::bit_cast<CASNDescriptor*>(word & kPtrMask);
+  desc->MwCASInternal(((word & kCntMask) >> kCntPos) + 1);
+}
+
+void
 CASNDescriptor::CompleteRDCSS(  //
     uint64_t& rdcss_addr)
 {
-  const auto casn_addr = rdcss_addr ^ kFlagSwap;
-  auto* const desc = std::bit_cast<CASNDescriptor*>(rdcss_addr & kPtrMask);
-  auto& target = desc->targets_[(rdcss_addr & kCntMask) >> kCntPos];
+  // synchronize with the release CAS that installed the RDCSS descriptor
+  std::atomic_thread_fence(kAcquire);
+
+  const auto pos_bit = rdcss_addr & kCntMask;
+  const auto* const rdcss = std::bit_cast<RDCSSDescriptor*>(rdcss_addr & kPtrMask);
+  auto* const desc = rdcss->casn;
+  const auto casn_addr = std::bit_cast<uint64_t>(desc) | kMwCASFlag | pos_bit;
+  auto& target = desc->targets_[pos_bit >> kCntPos];
 
   if (desc->stat_.load(kAcquire) != kUndecided) {
     // CASN embedding has already finished
@@ -187,6 +245,38 @@ CASNDescriptor::CompleteRDCSS(  //
     return;
   }
   CPP_UTILITY_SPINLOCK_HINT
+}
+
+/*############################################################################*
+ * Internal classes
+ *############################################################################*/
+
+CASNDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
+{
+  while (!desc_deq_.empty()) {
+    PassExpiredToGC();
+    std::this_thread::sleep_for(std::chrono::milliseconds{dbgroup::memory::kDefaultGCTime});
+  }
+}
+
+void
+CASNDescriptor::CompletedDescriptors::Retire(  //
+    CASNDescriptor* const desc)
+{
+  if (desc_deq_.size() >= kMaxReusableDescriptors) {
+    PassExpiredToGC();
+  }
+  desc_deq_.emplace_back(desc, _gc->GetCurrentEpoch());
+}
+
+void
+CASNDescriptor::CompletedDescriptors::PassExpiredToGC()
+{
+  const auto min_epoch = _gc->GetMinEpoch();
+  while (!desc_deq_.empty() && desc_deq_.front().second < min_epoch) {
+    _gc->AddGarbage<CASNDescriptor>(desc_deq_.front().first);
+    desc_deq_.pop_front();
+  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free

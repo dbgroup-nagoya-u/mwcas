@@ -22,6 +22,7 @@
 #include <cstddef>
 
 // external C++ libraries
+#include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 
 // local sources
