@@ -225,6 +225,7 @@ MwCASDescriptor::MwCASInternal(  //
   const auto base_addr = kMwCASFlag | desc_addr;
   const auto owned_addr = base_addr | (thread_id << kThreadIdShift);
   auto cur_stat = stat_.load(kAcquire);  // set a memory fence for followers
+  auto failed_pos = target_cnt_;
   if (cur_stat == kUndecided) {
     auto stat = kSucceeded;
     for (size_t i = begin_pos; i < target_cnt_; ++i) {
@@ -244,6 +245,7 @@ MwCASDescriptor::MwCASInternal(  //
       // check another thread has embedded the descriptor
       if ((word & kDescMask) != base_addr) {
         stat = kFailed;
+        failed_pos = i;
         break;
       }
       if (!DetermineThreadId(i, word)) break;  // this MCAS has been completed
@@ -265,7 +267,9 @@ MwCASDescriptor::MwCASInternal(  //
     }
   } else {
     for (size_t i = 0; i < target_cnt_; ++i) {
-      referred |= Abort(base_addr, targets_[i]);
+      const auto detected = Abort(base_addr, targets_[i]);
+      // the owner has not embedded this descriptor after failed_pos
+      if (i < failed_pos) referred |= detected;
     }
   }
 
