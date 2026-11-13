@@ -21,14 +21,18 @@
 #include <array>
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <thread>
+#include <utility>
 
 // external C++ libraries
 #include <dbgroup/constants.hpp>
 #include <dbgroup/lock/utility.hpp>
 #include <dbgroup/memory/epoch_based_gc.hpp>
+#include <dbgroup/memory/utility.hpp>
 
 // local sources
 #include "dbgroup/atomic/mwcas/lock_free/common.hpp"
@@ -92,10 +96,12 @@ auto
 CASNDescriptor::MwCAS()  //
     -> bool
 {
+  thread_local CompletedDescriptors completed_descriptors{};
+
   // set a memory fence
   stat_.store(kUndecided, kRelease);
   const auto succeeded = MwCASInternal();
-  _gc->AddGarbage<CASNDescriptor>(this);
+  completed_descriptors.Retire(this);
   return succeeded;
 }
 
@@ -239,6 +245,38 @@ CASNDescriptor::CompleteRDCSS(  //
     return;
   }
   CPP_UTILITY_SPINLOCK_HINT
+}
+
+/*############################################################################*
+ * Internal classes
+ *############################################################################*/
+
+CASNDescriptor::CompletedDescriptors::~CompletedDescriptors()  //
+{
+  while (!desc_deq_.empty()) {
+    PassExpiredToGC();
+    std::this_thread::sleep_for(std::chrono::milliseconds{dbgroup::memory::kDefaultGCTime});
+  }
+}
+
+void
+CASNDescriptor::CompletedDescriptors::Retire(  //
+    CASNDescriptor* const desc)
+{
+  if (desc_deq_.size() >= kMaxReusableDescriptors) {
+    PassExpiredToGC();
+  }
+  desc_deq_.emplace_back(desc, _gc->GetCurrentEpoch());
+}
+
+void
+CASNDescriptor::CompletedDescriptors::PassExpiredToGC()
+{
+  const auto min_epoch = _gc->GetMinEpoch();
+  while (!desc_deq_.empty() && desc_deq_.front().second < min_epoch) {
+    _gc->AddGarbage<CASNDescriptor>(desc_deq_.front().first);
+    desc_deq_.pop_front();
+  }
 }
 
 }  // namespace dbgroup::atomic::mwcas::lock_free
