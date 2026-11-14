@@ -54,6 +54,9 @@ class alignas(kCacheLineSize) MwCASDescriptor
   /// @brief Reuse allocated descriptors.
   static constexpr bool kReusePages = true;
 
+  /// @brief No zero-filling.
+  static constexpr size_t kZeroFillSize = 0;
+
   /// @brief The number of retained descriptors in each thread.
   static constexpr size_t kMaxReusableDescriptors = 64;
 
